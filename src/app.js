@@ -17,7 +17,6 @@ const chaptersRoutes = require("./modules/chapters/chapters.routes");
 const academicYearsRoutes = require("./modules/academic-years/academic-years.routes");
 const classSubjectsRoutes = require("./modules/class-subjects/class-subjects.routes");
 const teacherAllocationsRoutes = require("./modules/teacher-allocations/teacher-allocations.routes");
-const accountantsRoutes = require("./modules/accountants/accountants.routes");
 const feeStructuresRoutes = require("./modules/fee-structures/fee-structures.routes");
 const feeTransactionsRoutes = require("./modules/fee-transactions/fee-transactions.routes");
 const studentAttendanceRoutes = require("./modules/student-attendance/student-attendance.routes");
@@ -88,7 +87,6 @@ app.use(`${apiPrefix}/chapters`, chaptersRoutes);
 app.use(`${apiPrefix}/academic-years`, academicYearsRoutes);
 app.use(`${apiPrefix}/class-subjects`, classSubjectsRoutes);
 app.use(`${apiPrefix}/teacher-allocations`, teacherAllocationsRoutes);
-app.use(`${apiPrefix}/accountants`, accountantsRoutes);
 app.use(`${apiPrefix}/fee-structures`, feeStructuresRoutes);
 app.use(`${apiPrefix}/fee-transactions`, feeTransactionsRoutes);
 app.use(`${apiPrefix}/student-attendance`, studentAttendanceRoutes);
@@ -97,11 +95,8 @@ app.use(`${apiPrefix}/holidays`, holidaysRoutes);
 app.use(`${apiPrefix}/exams`, examsRoutes);
 app.use(`${apiPrefix}/exam-results`, examResultsRoutes);
 app.use(`${apiPrefix}/syllabus-completion`, syllabusCompletionRoutes);
-app.use(`${apiPrefix}/student-promotions`, studentPromotionsRoutes);
 app.use(`${apiPrefix}/parents`, parentsRoutes);
-app.use(`${apiPrefix}/parent`, parentDashboardRoutes);
-app.use(`${apiPrefix}/notifications`, notificationsRoutes);
-app.use(`${apiPrefix}/announcements`, announcementsRoutes);
+
 
 // 404 handler
 app.use((req, res) => {
