@@ -1,0 +1,151 @@
+paths:
+  /api/v1/syllabus-completion:
+    post:
+      tags:
+        - Syllabus Completion
+      summary: Mark chapter completion
+      description: Mark completion status for multiple chapters (School Admin or Teacher)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkSyllabusCompletion"
+      responses:
+        "200":
+          description: Syllabus completion marked successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    get:
+      tags:
+        - Syllabus Completion
+      summary: Get syllabus completion records
+      description: Get all syllabus completion records with filters (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: classId
+          schema:
+            type: integer
+          description: Filter by class ID
+        - in: query
+          name: subjectId
+          schema:
+            type: integer
+          description: Filter by subject ID
+        - in: query
+          name: classSubjectId
+          schema:
+            type: integer
+          description: Filter by class subject ID
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, in_progress, completed]
+          description: Filter by completion status
+        - in: query
+          name: academicYearId
+          schema:
+            type: integer
+          description: Filter by academic year ID
+      responses:
+        "200":
+          description: Syllabus completion records retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/syllabus-completion/class-subject/{classSubjectId}/progress:
+    get:
+      tags:
+        - Syllabus Completion
+      summary: Get completion progress
+      description: Get syllabus completion progress for a class subject (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: classSubjectId
+          required: true
+          schema:
+            type: integer
+          description: Class Subject ID
+      responses:
+        "200":
+          description: Completion progress retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SyllabusProgress"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/syllabus-completion/class-subject/{classSubjectId}/chapters:
+    get:
+      tags:
+        - Syllabus Completion
+      summary: Get subject chapters with status
+      description: Get all chapters for a class subject with completion status (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: classSubjectId
+          required: true
+          schema:
+            type: integer
+          description: Class Subject ID
+      responses:
+        "200":
+          description: Subject chapters retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/syllabus-completion/{id}:
+    delete:
+      tags:
+        - Syllabus Completion
+      summary: Delete completion record
+      description: Delete a syllabus completion record (School Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Syllabus completion record deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"

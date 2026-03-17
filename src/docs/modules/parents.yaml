@@ -1,0 +1,479 @@
+# Parents endpoints
+/parents:
+  post:
+    tags:
+      - Parents
+    summary: Create parent account
+    description: Create a new parent account for the school (School Admin only)
+    operationId: createParent
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateParentRequest"
+          examples:
+            fullParent:
+              summary: Create parent with all details
+              value:
+                email: "parent@example.com"
+                password: "Parent@123"
+                fullName: "John Parent"
+                phone: "9876543210"
+                dateOfBirth: "1980-05-15"
+                gender: "Male"
+                address: "123 Main Street, City"
+            minimalParent:
+              summary: Create parent with minimal details
+              value:
+                email: "parent2@example.com"
+                password: "SecurePass@456"
+                fullName: "Jane Parent"
+    responses:
+      "201":
+        description: Parent created successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Parent"
+            examples:
+              success:
+                summary: Successful parent creation
+                value:
+                  success: true
+                  message: "Parent created successfully"
+                  data:
+                    id: 15
+                    school_id: 1
+                    role: "parent"
+                    email: "parent@example.com"
+                    full_name: "John Parent"
+                    phone: "9876543210"
+                    date_of_birth: "1980-05-15"
+                    gender: "Male"
+                    address: "123 Main Street, City"
+                    is_active: true
+                    created_at: "2024-03-12T10:30:00.000Z"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "409":
+        description: Parent with this email already exists
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+            example:
+              success: false
+              errorCode: "USER_002"
+              message: "Parent with this email already exists in this school"
+
+  get:
+    tags:
+      - Parents
+    summary: Get all parents
+    description: Retrieve list of all parents in the school with children count (Admin, Accountant)
+    operationId: getAllParents
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Parents retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/ParentWithChildren"
+            examples:
+              success:
+                summary: List of parents
+                value:
+                  success: true
+                  message: "Parents retrieved successfully"
+                  data:
+                    - id: 15
+                      email: "parent@example.com"
+                      full_name: "John Parent"
+                      phone: "9876543210"
+                      date_of_birth: "1980-05-15"
+                      gender: "Male"
+                      address: "123 Main Street, City"
+                      is_active: true
+                      created_at: "2024-03-12T10:30:00.000Z"
+                      children_count: 2
+                    - id: 16
+                      email: "parent2@example.com"
+                      full_name: "Jane Parent"
+                      phone: "9876543211"
+                      date_of_birth: "1982-08-20"
+                      gender: "Female"
+                      address: "456 Oak Avenue"
+                      is_active: true
+                      created_at: "2024-03-12T11:00:00.000Z"
+                      children_count: 1
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+
+/parents/{id}:
+  get:
+    tags:
+      - Parents
+    summary: Get parent by ID
+    description: Retrieve parent details by ID (Admin, Accountant)
+    operationId: getParentById
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Parent ID
+        example: 15
+    responses:
+      "200":
+        description: Parent retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Parent"
+            examples:
+              success:
+                summary: Parent details
+                value:
+                  success: true
+                  message: "Parent retrieved successfully"
+                  data:
+                    id: 15
+                    email: "parent@example.com"
+                    full_name: "John Parent"
+                    phone: "9876543210"
+                    date_of_birth: "1980-05-15"
+                    gender: "Male"
+                    address: "123 Main Street, City"
+                    is_active: true
+                    created_at: "2024-03-12T10:30:00.000Z"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  patch:
+    tags:
+      - Parents
+    summary: Update parent
+    description: Update parent details (School Admin only). Supports partial updates.
+    operationId: updateParent
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Parent ID
+        example: 15
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UpdateParentRequest"
+          examples:
+            updateContact:
+              summary: Update contact information
+              value:
+                phone: "9999888877"
+                address: "789 New Street, Updated City"
+            updateAll:
+              summary: Update all fields
+              value:
+                fullName: "John Updated Parent"
+                phone: "9999888877"
+                dateOfBirth: "1980-05-15"
+                gender: "Male"
+                address: "789 New Street, Updated City"
+    responses:
+      "200":
+        description: Parent updated successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Parent"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  delete:
+    tags:
+      - Parents
+    summary: Deactivate parent
+    description: Deactivate a parent account (sets is_active to false). Cannot delete parent with linked students. (School Admin only)
+    operationId: deleteParent
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Parent ID
+        example: 15
+    responses:
+      "200":
+        description: Parent deactivated successfully
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Success"
+            example:
+              success: true
+              message: "Parent deactivated successfully"
+              data: null
+      "400":
+        description: Cannot delete parent with linked students
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+            example:
+              success: false
+              errorCode: "VAL_003"
+              message: "Cannot delete parent with linked students. Please unlink students first."
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+/parents/{id}/link-student:
+  post:
+    tags:
+      - Parents
+    summary: Link student to parent
+    description: Link a student to a parent account (School Admin only)
+    operationId: linkStudentToParent
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Parent ID
+        example: 15
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/LinkStudentRequest"
+          examples:
+            linkStudent:
+              summary: Link student to parent
+              value:
+                studentId: 25
+    responses:
+      "200":
+        description: Student linked to parent successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 25
+                        full_name:
+                          type: string
+                          example: "Student Name"
+                        parent_id:
+                          type: integer
+                          example: 15
+            examples:
+              success:
+                summary: Student linked successfully
+                value:
+                  success: true
+                  message: "Student linked to parent successfully"
+                  data:
+                    id: 25
+                    full_name: "Rahul Kumar"
+                    parent_id: 15
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        description: Parent or student not found
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+
+/parents/students/{studentId}/unlink:
+  delete:
+    tags:
+      - Parents
+    summary: Unlink student from parent
+    description: Remove parent link from a student (School Admin only)
+    operationId: unlinkStudentFromParent
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: studentId
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Student ID
+        example: 25
+    responses:
+      "200":
+        description: Student unlinked from parent successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 25
+                        full_name:
+                          type: string
+                          example: "Student Name"
+                        parent_id:
+                          type: integer
+                          nullable: true
+                          example: null
+            examples:
+              success:
+                summary: Student unlinked successfully
+                value:
+                  success: true
+                  message: "Student unlinked from parent successfully"
+                  data:
+                    id: 25
+                    full_name: "Rahul Kumar"
+                    parent_id: null
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+/parents/{id}/children:
+  get:
+    tags:
+      - Parents
+    summary: Get parent's children
+    description: Retrieve list of all children linked to a parent (Admin, Accountant)
+    operationId: getParentChildren
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Parent ID
+        example: 15
+    responses:
+      "200":
+        description: Parent's children retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/StudentBasic"
+            examples:
+              success:
+                summary: List of children
+                value:
+                  success: true
+                  message: "Parent's children retrieved successfully"
+                  data:
+                    - id: 25
+                      admission_number: "STU2024025"
+                      full_name: "Rahul Kumar"
+                      date_of_birth: "2010-06-15"
+                      gender: "male"
+                      roll_number: "15"
+                      status: "active"
+                      class_name: "Class 5"
+                      class_section: "A"
+                    - id: 26
+                      admission_number: "STU2024026"
+                      full_name: "Priya Kumar"
+                      date_of_birth: "2012-08-20"
+                      gender: "female"
+                      roll_number: "10"
+                      status: "active"
+                      class_name: "Class 3"
+                      class_section: "B"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"

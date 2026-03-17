@@ -1,0 +1,232 @@
+paths:
+  /api/v1/fee-transactions/generate:
+    post:
+      tags:
+        - Fee Transactions
+      summary: Generate fee transactions
+      description: Auto-generate fee transactions for all students in a class based on fee structure and school fee terms (School Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateFeeTransactions"
+      responses:
+        "201":
+          description: Fee transactions generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/fee-transactions:
+    get:
+      tags:
+        - Fee Transactions
+      summary: Get all fee transactions
+      description: Get all fee transactions for the school (School Admin or Accountant)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: studentId
+          schema:
+            type: integer
+          description: Filter by student ID
+        - in: query
+          name: classId
+          schema:
+            type: integer
+          description: Filter by class ID
+        - in: query
+          name: academicYearId
+          schema:
+            type: integer
+          description: Filter by academic year ID
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, partial, paid]
+          description: Filter by payment status
+      responses:
+        "200":
+          description: Fee transactions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/fee-transactions/defaulters:
+    get:
+      tags:
+        - Fee Transactions
+      summary: Get fee defaulters list
+      description: Get list of students with pending/overdue fees (School Admin or Accountant)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: classId
+          schema:
+            type: integer
+          description: Filter by class ID
+      responses:
+        "200":
+          description: Fee defaulters retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/fee-transactions/student/{studentId}:
+    get:
+      tags:
+        - Fee Transactions
+      summary: Get student fee transactions
+      description: Get all fee transactions for a specific student (School Admin or Accountant)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: integer
+          description: Student ID
+      responses:
+        "200":
+          description: Student fee transactions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/fee-transactions/{id}:
+    get:
+      tags:
+        - Fee Transactions
+      summary: Get fee transaction by ID
+      description: Get a specific fee transaction (School Admin or Accountant)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Fee transaction retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      tags:
+        - Fee Transactions
+      summary: Update fee transaction
+      description: Update fee transaction details like due date (School Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFeeTransaction"
+      responses:
+        "200":
+          description: Fee transaction updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/fee-transactions/{id}/payment:
+    patch:
+      tags:
+        - Fee Transactions
+      summary: Record fee payment
+      description: Record a fee payment for a transaction (School Admin or Accountant)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordPayment"
+      responses:
+        "200":
+          description: Payment recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/fee-transactions/{id}/waiver:
+    patch:
+      tags:
+        - Fee Transactions
+      summary: Apply fee waiver
+      description: Apply a fee waiver/discount to a transaction (School Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyWaiver"
+      responses:
+        "200":
+          description: Fee waiver applied successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"

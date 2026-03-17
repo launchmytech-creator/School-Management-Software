@@ -1,0 +1,193 @@
+/classes:
+  post:
+    tags:
+      - Classes
+    summary: Create class
+    description: Create a new class for the school (School Admin only)
+    operationId: createClass
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateClassRequest"
+          examples:
+            basicClass:
+              summary: Create basic class
+              value:
+                name: "Class 5"
+                section: "A"
+                academicYearId: 1
+                defaultFeeAmount: 25000.00
+            classWithoutSection:
+              summary: Create class without section
+              value:
+                name: "Kindergarten"
+                academicYearId: 1
+                defaultFeeAmount: 15000.00
+    responses:
+      "201":
+        description: Class created successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Class"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+
+  get:
+    tags:
+      - Classes
+    summary: Get all classes
+    description: Retrieve list of all classes in the school (Admin, Accountant, Teacher)
+    operationId: getAllClasses
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: academicYearId
+        in: query
+        description: Filter by academic year
+        required: false
+        schema:
+          type: integer
+        example: 1
+    responses:
+      "200":
+        description: Classes retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Class"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+
+/classes/{id}:
+  get:
+    tags:
+      - Classes
+    summary: Get class by ID
+    description: Retrieve class details by ID (Admin, Accountant, Teacher)
+    operationId: getClassById
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    responses:
+      "200":
+        description: Class retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Class"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  patch:
+    tags:
+      - Classes
+    summary: Update class
+    description: Update class details (School Admin only). Supports partial updates.
+    operationId: updateClass
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UpdateClassRequest"
+          examples:
+            updateFee:
+              summary: Update default fee
+              value:
+                defaultFeeAmount: 30000.00
+            updateSection:
+              summary: Update section
+              value:
+                section: "B"
+    responses:
+      "200":
+        description: Class updated successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Class"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  delete:
+    tags:
+      - Classes
+    summary: Delete class
+    description: Delete a class (School Admin only)
+    operationId: deleteClass
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    responses:
+      "200":
+        description: Class deleted successfully
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Success"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"

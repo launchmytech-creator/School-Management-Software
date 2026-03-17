@@ -1,0 +1,175 @@
+paths:
+  /api/v1/student-attendance:
+    post:
+      tags:
+        - Student Attendance
+      summary: Mark student attendance
+      description: Mark attendance for multiple students in a class (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkStudentAttendance"
+      responses:
+        "200":
+          description: Attendance marked successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    get:
+      tags:
+        - Student Attendance
+      summary: Get student attendance records
+      description: Get all student attendance records with filters (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: classId
+          schema:
+            type: integer
+          description: Filter by class ID
+        - in: query
+          name: studentId
+          schema:
+            type: integer
+          description: Filter by student ID
+        - in: query
+          name: attendanceDate
+          schema:
+            type: string
+            format: date
+          description: Filter by specific date
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: Filter by start date (use with endDate)
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: Filter by end date (use with startDate)
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [present, absent, late]
+          description: Filter by attendance status
+      responses:
+        "200":
+          description: Attendance records retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/student-attendance/student/{studentId}/summary:
+    get:
+      tags:
+        - Student Attendance
+      summary: Get student attendance summary
+      description: Get attendance summary for a specific student (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: integer
+          description: Student ID
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          description: Filter by start date (use with endDate)
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          description: Filter by end date (use with startDate)
+      responses:
+        "200":
+          description: Attendance summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/student-attendance/class/{classId}:
+    get:
+      tags:
+        - Student Attendance
+      summary: Get class attendance by date
+      description: Get attendance for all students in a class on a specific date (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: integer
+          description: Class ID
+        - in: query
+          name: date
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Attendance date
+      responses:
+        "200":
+          description: Class attendance retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/student-attendance/{id}:
+    delete:
+      tags:
+        - Student Attendance
+      summary: Delete attendance record
+      description: Delete a student attendance record (School Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Attendance record deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"

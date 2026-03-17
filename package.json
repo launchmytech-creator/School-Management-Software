@@ -1,0 +1,43 @@
+{
+  "name": "school-management-system",
+  "version": "1.0.0",
+  "description": "Multi-tenant School Management System - Backend API",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "seed:superadmin": "node src/scripts/seedSuperAdmin.js",
+    "db:migrate": "node src/scripts/runMigrations.js",
+    "db:reset": "node src/scripts/resetDatabase.js",
+    "db:test": "node src/scripts/testConnection.js",
+    "db:verify": "node src/scripts/verifyNewSchema.js",
+    "db:compare": "node src/scripts/compareSchema.js"
+  },
+  "keywords": [
+    "school",
+    "management",
+    "saas",
+    "multi-tenant"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "js-yaml": "^4.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.11.3",
+    "swagger-ui-express": "^5.0.0",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

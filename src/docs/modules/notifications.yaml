@@ -1,0 +1,423 @@
+# Notifications endpoints
+/notifications/send-fee-reminder:
+  post:
+    tags:
+      - Notifications
+    summary: Send fee reminders
+    description: Send fee reminder notifications to parents with pending fees (Admin, Accountant)
+    operationId: sendFeeReminder
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SendFeeReminderRequest"
+          examples:
+            allPending:
+              summary: Send to all with pending fees
+              value: {}
+            byClass:
+              summary: Send to specific class
+              value:
+                classId: 1
+            byAcademicYear:
+              summary: Send for specific academic year
+              value:
+                academicYearId: 1
+            filtered:
+              summary: Send to class in specific year
+              value:
+                classId: 1
+                academicYearId: 1
+    responses:
+      "200":
+        description: Fee reminders sent successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/FeeReminderResponse"
+            examples:
+              success:
+                summary: Reminders sent
+                value:
+                  success: true
+                  message: "Fee reminders sent to 15 parents"
+                  data:
+                    sent: 15
+                    message: "Fee reminders sent to 15 parents"
+                    notifications:
+                      - id: 100
+                      - id: 101
+                      - id: 102
+              noPending:
+                summary: No pending fees
+                value:
+                  success: true
+                  message: "No pending fees found"
+                  data:
+                    sent: 0
+                    message: "No pending fees found"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+
+/notifications/send-bulk:
+  post:
+    tags:
+      - Notifications
+    summary: Send bulk notification
+    description: Send bulk notification to users based on role (Admin only)
+    operationId: sendBulkNotification
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SendBulkNotificationRequest"
+          examples:
+            toAllParents:
+              summary: Send to all parents
+              value:
+                message: "School will remain closed tomorrow due to public holiday."
+                targetRole: "parent"
+                notificationType: "announcement"
+                channel: "email"
+            toAllUsers:
+              summary: Send to all users
+              value:
+                message: "Annual day celebration on 15th March. All are invited."
+                targetRole: "all"
+                notificationType: "general"
+                channel: "email"
+            toTeachers:
+              summary: Send to all teachers
+              value:
+                message: "Staff meeting scheduled for tomorrow at 10 AM."
+                targetRole: "teacher"
+                notificationType: "alert"
+                channel: "email"
+    responses:
+      "200":
+        description: Bulk notification sent successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/BulkNotificationResponse"
+            examples:
+              success:
+                summary: Notifications sent
+                value:
+                  success: true
+                  message: "Notifications sent to 45 users"
+                  data:
+                    sent: 45
+                    message: "Notifications sent to 45 users"
+                    notifications:
+                      - id: 200
+                      - id: 201
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+
+/notifications:
+  get:
+    tags:
+      - Notifications
+    summary: Get my notifications
+    description: Get notifications for logged-in user with optional filtering (All authenticated users)
+    operationId: getNotifications
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [pending, read, sent]
+        description: Filter by notification status
+        example: "pending"
+      - name: notificationType
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [general, fee_reminder, announcement, alert]
+        description: Filter by notification type
+        example: "fee_reminder"
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+        description: Limit number of results
+        example: 20
+    responses:
+      "200":
+        description: Notifications retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Notification"
+            examples:
+              success:
+                summary: List of notifications
+                value:
+                  success: true
+                  message: "Notifications retrieved successfully"
+                  data:
+                    - id: 100
+                      notification_type: "fee_reminder"
+                      message: "Fee reminder: Tuition Fee payment of ₹25000 is pending for Rahul Kumar (Term 2). Due date: 31/08/2024"
+                      reference_type: "fee_transaction"
+                      reference_id: 101
+                      channel: "email"
+                      status: "pending"
+                      sent_at: null
+                      created_at: "2024-03-12T10:30:00.000Z"
+                    - id: 99
+                      notification_type: "announcement"
+                      message: "School will remain closed tomorrow due to public holiday."
+                      reference_type: null
+                      reference_id: null
+                      channel: "email"
+                      status: "read"
+                      sent_at: "2024-03-11T15:00:00.000Z"
+                      created_at: "2024-03-11T14:30:00.000Z"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+
+/notifications/unread-count:
+  get:
+    tags:
+      - Notifications
+    summary: Get unread notification count
+    description: Get count of unread notifications for logged-in user (All authenticated users)
+    operationId: getUnreadCount
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Unread count retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        unread_count:
+                          type: integer
+                          example: 5
+            examples:
+              success:
+                summary: Unread count
+                value:
+                  success: true
+                  message: "Unread count retrieved successfully"
+                  data:
+                    unread_count: 5
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+
+/notifications/{id}:
+  get:
+    tags:
+      - Notifications
+    summary: Get notification by ID
+    description: Get notification details by ID (All authenticated users)
+    operationId: getNotificationById
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Notification ID
+        example: 100
+    responses:
+      "200":
+        description: Notification retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Notification"
+            examples:
+              success:
+                summary: Notification details
+                value:
+                  success: true
+                  message: "Notification retrieved successfully"
+                  data:
+                    id: 100
+                    notification_type: "fee_reminder"
+                    message: "Fee reminder: Tuition Fee payment of ₹25000 is pending for Rahul Kumar (Term 2). Due date: 31/08/2024"
+                    reference_type: "fee_transaction"
+                    reference_id: 101
+                    channel: "email"
+                    status: "pending"
+                    sent_at: null
+                    created_at: "2024-03-12T10:30:00.000Z"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  delete:
+    tags:
+      - Notifications
+    summary: Delete notification
+    description: Delete a notification (All authenticated users)
+    operationId: deleteNotification
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Notification ID
+        example: 100
+    responses:
+      "200":
+        description: Notification deleted successfully
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Success"
+            example:
+              success: true
+              message: "Notification deleted successfully"
+              data: null
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+/notifications/{id}/mark-read:
+  patch:
+    tags:
+      - Notifications
+    summary: Mark notification as read
+    description: Mark a notification as read (All authenticated users)
+    operationId: markNotificationAsRead
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Notification ID
+        example: 100
+    responses:
+      "200":
+        description: Notification marked as read successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 100
+                        status:
+                          type: string
+                          example: "read"
+            examples:
+              success:
+                summary: Marked as read
+                value:
+                  success: true
+                  message: "Notification marked as read successfully"
+                  data:
+                    id: 100
+                    status: "read"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+/notifications/mark-all-read:
+  patch:
+    tags:
+      - Notifications
+    summary: Mark all notifications as read
+    description: Mark all pending notifications as read for logged-in user (All authenticated users)
+    operationId: markAllNotificationsAsRead
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: All notifications marked as read successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        marked:
+                          type: integer
+                          example: 5
+                        message:
+                          type: string
+                          example: "5 notifications marked as read"
+            examples:
+              success:
+                summary: All marked as read
+                value:
+                  success: true
+                  message: "5 notifications marked as read"
+                  data:
+                    marked: 5
+                    message: "5 notifications marked as read"
+      "401":
+        $ref: "#/components/responses/Unauthorized"

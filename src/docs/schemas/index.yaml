@@ -1,0 +1,2025 @@
+components:
+  schemas:
+    # Common schemas
+    Error:
+      type: object
+      required:
+        - success
+        - errorCode
+        - message
+      properties:
+        success:
+          type: boolean
+          example: false
+        errorCode:
+          type: string
+          example: "AUTH_001"
+        message:
+          type: string
+          example: "Invalid email or password"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+    Success:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Operation successful"
+        data:
+          type: object
+
+    # User related schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        fullName:
+          type: string
+          example: "John Doe"
+        role:
+          type: string
+          enum: [super_admin, admin, teacher, student, parent, accountant]
+          example: "admin"
+        schoolId:
+          type: integer
+          nullable: true
+          example: 1
+        schoolName:
+          type: string
+          nullable: true
+          example: "ABC School"
+        phone:
+          type: string
+          nullable: true
+          example: "+1234567890"
+        isActive:
+          type: boolean
+          example: true
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "admin@school.com"
+        password:
+          type: string
+          format: password
+          example: "Admin@123"
+
+    LoginResponse:
+      allOf:
+        - $ref: "#/components/schemas/Success"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                token:
+                  type: string
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                user:
+                  $ref: "#/components/schemas/User"
+
+    # School related schemas
+    School:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "ABC International School"
+        code:
+          type: string
+          example: "ABC001"
+        subscriptionStatus:
+          type: string
+          enum: [active, suspended, expired, trial]
+          example: "active"
+        subscriptionEndDate:
+          type: string
+          format: date
+          nullable: true
+          example: "2025-12-31"
+        contactEmail:
+          type: string
+          format: email
+          example: "contact@abcschool.com"
+        contactPhone:
+          type: string
+          nullable: true
+          example: "+1234567890"
+        address:
+          type: string
+          nullable: true
+          example: "123 Main Street, City"
+        isActive:
+          type: boolean
+          example: true
+        teacherCount:
+          type: integer
+          example: 25
+        studentCount:
+          type: integer
+          example: 500
+
+    CreateSchoolRequest:
+      type: object
+      required:
+        - school
+        - admin
+      properties:
+        school:
+          type: object
+          required:
+            - name
+            - code
+            - contactEmail
+          properties:
+            name:
+              type: string
+              minLength: 3
+              maxLength: 200
+              example: "ABC International School"
+            code:
+              type: string
+              minLength: 2
+              maxLength: 50
+              example: "ABC001"
+            contactEmail:
+              type: string
+              format: email
+              example: "contact@abcschool.com"
+            contactPhone:
+              type: string
+              example: "+1234567890"
+            address:
+              type: string
+              example: "123 Main Street, City"
+            subscriptionStatus:
+              type: string
+              enum: [active, trial]
+              default: "trial"
+            subscriptionEndDate:
+              type: string
+              format: date
+              example: "2025-12-31"
+        admin:
+          type: object
+          required:
+            - email
+            - password
+            - fullName
+          properties:
+            email:
+              type: string
+              format: email
+              example: "admin@abcschool.com"
+            password:
+              type: string
+              minLength: 8
+              example: "Admin@123"
+            fullName:
+              type: string
+              minLength: 3
+              maxLength: 150
+              example: "School Administrator"
+            phone:
+              type: string
+              example: "+1234567890"
+
+    # Teacher related schemas
+    Teacher:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 3
+        email:
+          type: string
+          format: email
+          example: "teacher@school.com"
+        fullName:
+          type: string
+          example: "Jane Smith"
+        role:
+          type: string
+          example: "teacher"
+        phone:
+          type: string
+          nullable: true
+          example: "+1234567890"
+        dateOfBirth:
+          type: string
+          format: date
+          nullable: true
+          example: "1990-05-15"
+        gender:
+          type: string
+          enum: [Male, Female, Other]
+          nullable: true
+          example: "Female"
+        address:
+          type: string
+          nullable: true
+          example: "456 Oak Avenue, City"
+        schoolId:
+          type: integer
+          example: 1
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00.000Z"
+
+    CreateTeacherRequest:
+      type: object
+      required:
+        - email
+        - password
+        - fullName
+      properties:
+        email:
+          type: string
+          format: email
+          example: "teacher@school.com"
+        password:
+          type: string
+          minLength: 8
+          example: "Teacher@123"
+        fullName:
+          type: string
+          minLength: 3
+          maxLength: 150
+          example: "Jane Smith"
+        phone:
+          type: string
+          example: "+1234567890"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1990-05-15"
+        gender:
+          type: string
+          enum: [Male, Female, Other]
+          example: "Female"
+        address:
+          type: string
+          example: "456 Oak Avenue, City"
+
+    # Class related schemas
+    Class:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Class 5"
+        section:
+          type: string
+          nullable: true
+          example: "A"
+        academicYearId:
+          type: integer
+          example: 1
+        yearName:
+          type: string
+          example: "2024-2025"
+        startDate:
+          type: string
+          format: date
+          example: "2024-04-01"
+        endDate:
+          type: string
+          format: date
+          example: "2025-03-31"
+        defaultFeeAmount:
+          type: number
+          format: decimal
+          nullable: true
+          example: 25000.00
+        studentCount:
+          type: integer
+          example: 45
+
+    CreateClassRequest:
+      type: object
+      required:
+        - name
+        - academicYearId
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "Class 5"
+        section:
+          type: string
+          maxLength: 10
+          example: "A"
+        academicYearId:
+          type: integer
+          example: 1
+        defaultFeeAmount:
+          type: number
+          format: decimal
+          example: 25000.00
+
+    UpdateClassRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "Class 5"
+        section:
+          type: string
+          maxLength: 10
+          example: "B"
+        defaultFeeAmount:
+          type: number
+          format: decimal
+          example: 30000.00
+
+    # Student related schemas
+    Student:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        admissionNumber:
+          type: string
+          example: "2024001"
+        fullName:
+          type: string
+          example: "John Doe"
+        dateOfBirth:
+          type: string
+          format: date
+          nullable: true
+          example: "2010-05-15"
+        gender:
+          type: string
+          enum: [male, female, other]
+          nullable: true
+          example: "male"
+        address:
+          type: string
+          nullable: true
+          example: "123 Main Street"
+        phone:
+          type: string
+          nullable: true
+          example: "1234567890"
+        admissionDate:
+          type: string
+          format: date
+          example: "2024-04-01"
+        currentClassId:
+          type: integer
+          nullable: true
+          example: 1
+        className:
+          type: string
+          nullable: true
+          example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
+        parentId:
+          type: integer
+          nullable: true
+          example: 5
+        parentName:
+          type: string
+          nullable: true
+          example: "Jane Doe"
+        parentPhone:
+          type: string
+          nullable: true
+          example: "9876543210"
+        rollNumber:
+          type: string
+          nullable: true
+          example: "01"
+        status:
+          type: string
+          enum: [active, inactive, transferred, graduated]
+          example: "active"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-04-01T10:30:00.000Z"
+
+    CreateStudentRequest:
+      type: object
+      required:
+        - admissionNumber
+        - fullName
+        - admissionDate
+      properties:
+        admissionNumber:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "2024001"
+        fullName:
+          type: string
+          minLength: 3
+          maxLength: 150
+          example: "John Doe"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "2010-05-15"
+        gender:
+          type: string
+          enum: [male, female, other]
+          example: "male"
+        address:
+          type: string
+          example: "123 Main Street"
+        phone:
+          type: string
+          example: "1234567890"
+        admissionDate:
+          type: string
+          format: date
+          example: "2024-04-01"
+        currentClassId:
+          type: integer
+          example: 1
+        parentId:
+          type: integer
+          example: 5
+        rollNumber:
+          type: string
+          maxLength: 20
+          example: "01"
+        status:
+          type: string
+          enum: [active, inactive, transferred, graduated]
+          default: "active"
+          example: "active"
+
+    UpdateStudentRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 3
+          maxLength: 150
+          example: "John Doe"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "2010-05-15"
+        gender:
+          type: string
+          enum: [male, female, other]
+          example: "male"
+        address:
+          type: string
+          example: "123 Main Street"
+        phone:
+          type: string
+          example: "1234567890"
+        currentClassId:
+          type: integer
+          example: 2
+        parentId:
+          type: integer
+          example: 5
+        rollNumber:
+          type: string
+          maxLength: 20
+          example: "15"
+        status:
+          type: string
+          enum: [active, inactive, transferred, graduated]
+          example: "active"
+
+    # Subject related schemas
+    Subject:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Mathematics"
+        code:
+          type: string
+          example: "MATH"
+        chapterCount:
+          type: integer
+          example: 12
+
+    CreateSubjectRequest:
+      type: object
+      required:
+        - name
+        - code
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: "Mathematics"
+        code:
+          type: string
+          minLength: 2
+          maxLength: 20
+          example: "MATH"
+
+    UpdateSubjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: "Advanced Mathematics"
+        code:
+          type: string
+          minLength: 2
+          maxLength: 20
+          example: "AMATH"
+
+    # Chapter related schemas
+    Chapter:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        subjectId:
+          type: integer
+          example: 1
+        subjectName:
+          type: string
+          example: "Science"
+        subjectCode:
+          type: string
+          example: "SCI"
+        name:
+          type: string
+          example: "Photosynthesis"
+        sequenceNumber:
+          type: integer
+          nullable: true
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00.000Z"
+
+    CreateChapterRequest:
+      type: object
+      required:
+        - subjectId
+        - name
+      properties:
+        subjectId:
+          type: integer
+          example: 1
+        name:
+          type: string
+          minLength: 2
+          maxLength: 200
+          example: "Photosynthesis"
+        sequenceNumber:
+          type: integer
+          example: 1
+
+    UpdateChapterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 200
+          example: "Advanced Photosynthesis"
+        sequenceNumber:
+          type: integer
+          example: 5
+
+    # Academic Year related schemas
+    AcademicYear:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        yearName:
+          type: string
+          example: "2024-2025"
+        startDate:
+          type: string
+          format: date
+          example: "2024-04-01"
+        endDate:
+          type: string
+          format: date
+          example: "2025-03-31"
+        isCurrent:
+          type: boolean
+          example: true
+        classCount:
+          type: integer
+          example: 12
+
+    CreateAcademicYearRequest:
+      type: object
+      required:
+        - yearName
+        - startDate
+        - endDate
+      properties:
+        yearName:
+          type: string
+          minLength: 4
+          maxLength: 20
+          pattern: '^\d{4}-\d{4}$'
+          example: "2024-2025"
+          description: "Format: YYYY-YYYY"
+        startDate:
+          type: string
+          format: date
+          example: "2024-04-01"
+        endDate:
+          type: string
+          format: date
+          example: "2025-03-31"
+          description: "Must be after start date"
+        isCurrent:
+          type: boolean
+          default: false
+          example: true
+
+    UpdateAcademicYearRequest:
+      type: object
+      properties:
+        yearName:
+          type: string
+          minLength: 4
+          maxLength: 20
+          pattern: '^\d{4}-\d{4}$'
+          example: "2024-2025"
+        startDate:
+          type: string
+          format: date
+          example: "2024-04-01"
+        endDate:
+          type: string
+          format: date
+          example: "2025-03-31"
+        isCurrent:
+          type: boolean
+          example: true
+
+    # Class Subject related schemas
+    ClassSubject:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        classId:
+          type: integer
+          example: 1
+        className:
+          type: string
+          example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
+        subjectId:
+          type: integer
+          example: 2
+        subjectName:
+          type: string
+          example: "Mathematics"
+        subjectCode:
+          type: string
+          example: "MATH"
+        academicYearId:
+          type: integer
+          example: 1
+        yearName:
+          type: string
+          example: "2024-2025"
+        maxMarks:
+          type: number
+          format: decimal
+          nullable: true
+          example: 100.00
+
+    AssignSubjectRequest:
+      type: object
+      required:
+        - classId
+        - subjectId
+        - academicYearId
+      properties:
+        classId:
+          type: integer
+          example: 1
+        subjectId:
+          type: integer
+          example: 2
+        academicYearId:
+          type: integer
+          example: 1
+        maxMarks:
+          type: number
+          format: decimal
+          example: 100.00
+
+    UpdateClassSubjectRequest:
+      type: object
+      properties:
+        maxMarks:
+          type: number
+          format: decimal
+          example: 150.00
+
+    # Teacher Allocation related schemas
+    TeacherAllocation:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        teacherId:
+          type: integer
+          example: 5
+        teacherName:
+          type: string
+          example: "Jane Smith"
+        teacherEmail:
+          type: string
+          example: "teacher@school.com"
+        teacherPhone:
+          type: string
+          nullable: true
+          example: "1234567890"
+        classId:
+          type: integer
+          example: 1
+        className:
+          type: string
+          example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
+        subjectId:
+          type: integer
+          example: 2
+        subjectName:
+          type: string
+          example: "Mathematics"
+        subjectCode:
+          type: string
+          example: "MATH"
+        academicYearId:
+          type: integer
+          example: 1
+        yearName:
+          type: string
+          example: "2024-2025"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-03-11T10:30:00.000Z"
+
+    AllocateTeacherRequest:
+      type: object
+      required:
+        - teacherId
+        - classId
+        - subjectId
+        - academicYearId
+      properties:
+        teacherId:
+          type: integer
+          example: 5
+        classId:
+          type: integer
+          example: 1
+        subjectId:
+          type: integer
+          example: 2
+        academicYearId:
+          type: integer
+          example: 1
+
+    # Accountant related schemas
+    Accountant:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: "accountant@school.com"
+        fullName:
+          type: string
+          example: "John Accountant"
+        role:
+          type: string
+          example: "accountant"
+        phone:
+          type: string
+          nullable: true
+          example: "1234567890"
+        dateOfBirth:
+          type: string
+          format: date
+          nullable: true
+          example: "1985-06-15"
+        gender:
+          type: string
+          enum: [Male, Female, Other]
+          nullable: true
+          example: "Male"
+        address:
+          type: string
+          nullable: true
+          example: "456 Oak Avenue"
+        schoolId:
+          type: integer
+          example: 1
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-03-11T10:30:00.000Z"
+
+    CreateAccountantRequest:
+      type: object
+      required:
+        - email
+        - password
+        - fullName
+      properties:
+        email:
+          type: string
+          format: email
+          example: "accountant@school.com"
+        password:
+          type: string
+          minLength: 8
+          example: "Accountant@123"
+        fullName:
+          type: string
+          minLength: 3
+          maxLength: 150
+          example: "John Accountant"
+        phone:
+          type: string
+          example: "1234567890"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1985-06-15"
+        gender:
+          type: string
+          enum: [Male, Female, Other]
+          example: "Male"
+        address:
+          type: string
+          example: "456 Oak Avenue"
+
+    UpdateAccountantRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 3
+          maxLength: 150
+          example: "John Accountant"
+        phone:
+          type: string
+          example: "1234567890"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1985-06-15"
+        gender:
+          type: string
+          enum: [Male, Female, Other]
+          example: "Male"
+        address:
+          type: string
+          example: "456 Oak Avenue"
+        isActive:
+          type: boolean
+          example: true
+
+    # Fee Structure related schemas
+    FeeStructure:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        classId:
+          type: integer
+          example: 1
+        className:
+          type: string
+          example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
+        academicYearId:
+          type: integer
+          example: 1
+        academicYearName:
+          type: string
+          example: "2024-2025"
+        feeType:
+          type: string
+          example: "Tuition Fee"
+        amount:
+          type: number
+          format: decimal
+          example: 25000.00
+        termNumber:
+          type: integer
+          nullable: true
+          example: 1
+
+    CreateFeeStructure:
+      type: object
+      required:
+        - classId
+        - academicYearId
+        - feeType
+        - amount
+      properties:
+        classId:
+          type: integer
+          example: 1
+        academicYearId:
+          type: integer
+          example: 1
+        feeType:
+          type: string
+          maxLength: 50
+          example: "Tuition Fee"
+        amount:
+          type: number
+          format: decimal
+          example: 25000.00
+        termNumber:
+          type: integer
+          minimum: 1
+          maximum: 12
+          example: 1
+
+    UpdateFeeStructure:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: decimal
+          example: 30000.00
+        feeType:
+          type: string
+          maxLength: 50
+          example: "Annual Fee"
+
+    # Fee Transaction related schemas
+    FeeTransaction:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        studentId:
+          type: integer
+          example: 10
+        studentName:
+          type: string
+          example: "John Doe"
+        admissionNumber:
+          type: string
+          example: "2024001"
+        className:
+          type: string
+          example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
+        feeStructureId:
+          type: integer
+          example: 1
+        feeType:
+          type: string
+          example: "Tuition Fee"
+        academicYearId:
+          type: integer
+          example: 1
+        academicYearName:
+          type: string
+          example: "2024-2025"
+        termNumber:
+          type: integer
+          example: 1
+        originalAmount:
+          type: number
+          format: decimal
+          example: 25000.00
+        amountDue:
+          type: number
+          format: decimal
+          example: 25000.00
+        amountPaid:
+          type: number
+          format: decimal
+          example: 0.00
+        waiverAmount:
+          type: number
+          format: decimal
+          example: 0.00
+        waiverReason:
+          type: string
+          nullable: true
+          example: "Scholarship"
+        waiverApprovedBy:
+          type: integer
+          nullable: true
+          example: 2
+        waiverApprovedByName:
+          type: string
+          nullable: true
+          example: "Admin Name"
+        dueDate:
+          type: string
+          format: date
+          example: "2024-07-01"
+        paymentDate:
+          type: string
+          format: date
+          nullable: true
+          example: "2024-06-25"
+        status:
+          type: string
+          enum: [pending, partial, paid]
+          example: "pending"
+        paymentMode:
+          type: string
+          enum: [cash, card, upi, cheque, bank_transfer]
+          nullable: true
+          example: "upi"
+        receiptNumber:
+          type: string
+          nullable: true
+          example: "RCP-2024-001"
+        collectedBy:
+          type: integer
+          nullable: true
+          example: 3
+        collectedByName:
+          type: string
+          nullable: true
+          example: "Accountant Name"
+        parentName:
+          type: string
+          nullable: true
+          example: "Jane Doe"
+        parentPhone:
+          type: string
+          nullable: true
+          example: "9876543210"
+        parentEmail:
+          type: string
+          nullable: true
+          example: "parent@example.com"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-04-01T10:30:00.000Z"
+
+    GenerateFeeTransactions:
+      type: object
+      required:
+        - feeStructureId
+        - academicYearStartDate
+      properties:
+        feeStructureId:
+          type: integer
+          example: 1
+          description: "Fee structure to use for generating transactions"
+        academicYearStartDate:
+          type: string
+          format: date
+          example: "2024-04-01"
+          description: "Academic year start date for calculating due dates"
+
+    RecordPayment:
+      type: object
+      required:
+        - amountPaid
+        - paymentMode
+      properties:
+        amountPaid:
+          type: number
+          format: decimal
+          example: 5000.00
+          description: "Amount being paid (can be partial)"
+        paymentDate:
+          type: string
+          format: date
+          example: "2024-06-25"
+        paymentMode:
+          type: string
+          enum: [cash, card, upi, cheque, bank_transfer]
+          example: "upi"
+        receiptNumber:
+          type: string
+          maxLength: 50
+          example: "RCP-2024-001"
+
+    ApplyWaiver:
+      type: object
+      required:
+        - waiverAmount
+        - waiverReason
+      properties:
+        waiverAmount:
+          type: number
+          format: decimal
+          example: 5000.00
+          description: "Amount to waive/discount"
+        waiverReason:
+          type: string
+          maxLength: 500
+          example: "Scholarship for academic excellence"
+
+    UpdateFeeTransaction:
+      type: object
+      properties:
+        dueDate:
+          type: string
+          format: date
+          example: "2024-08-01"
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Operation successful"
+        data:
+          type: object
+
+    # Student Attendance related schemas
+    StudentAttendance:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        studentId:
+          type: integer
+          example: 10
+        studentName:
+          type: string
+          example: "John Doe"
+        admissionNumber:
+          type: string
+          example: "2024001"
+        classId:
+          type: integer
+          example: 1
+        className:
+          type: string
+          example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
+        attendanceDate:
+          type: string
+          format: date
+          example: "2024-03-11"
+        status:
+          type: string
+          enum: [present, absent, late]
+          example: "present"
+        markedBy:
+          type: integer
+          nullable: true
+          example: 3
+        markedByName:
+          type: string
+          nullable: true
+          example: "Teacher Name"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-03-11T10:30:00.000Z"
+
+    MarkStudentAttendance:
+      type: object
+      required:
+        - classId
+        - attendanceDate
+        - records
+      properties:
+        classId:
+          type: integer
+          example: 1
+          description: "Class ID for which attendance is being marked"
+        attendanceDate:
+          type: string
+          format: date
+          example: "2024-03-11"
+          description: "Date for which attendance is being marked"
+        records:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - studentId
+              - status
+            properties:
+              studentId:
+                type: integer
+                example: 10
+              status:
+                type: string
+                enum: [present, absent, late]
+                example: "present"
+
+    StudentAttendanceSummary:
+      type: object
+      properties:
+        present_days:
+          type: integer
+          example: 187
+        absent_days:
+          type: integer
+          example: 15
+        late_days:
+          type: integer
+          example: 13
+        total_marked_days:
+          type: integer
+          example: 215
+
+    # Teacher Attendance related schemas
+    TeacherAttendance:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        teacherId:
+          type: integer
+          example: 5
+        teacherName:
+          type: string
+          example: "Jane Smith"
+        teacherEmail:
+          type: string
+          example: "teacher@school.com"
+        attendanceDate:
+          type: string
+          format: date
+          example: "2024-03-11"
+        status:
+          type: string
+          enum: [present, absent, late]
+          example: "present"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-03-11T10:30:00.000Z"
+
+    MarkTeacherAttendance:
+      type: object
+      required:
+        - attendanceDate
+        - records
+      properties:
+        attendanceDate:
+          type: string
+          format: date
+          example: "2024-03-11"
+          description: "Date for which attendance is being marked"
+        records:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - teacherId
+              - status
+            properties:
+              teacherId:
+                type: integer
+                example: 5
+              status:
+                type: string
+                enum: [present, absent, late]
+                example: "present"
+
+    TeacherAttendanceSummary:
+      type: object
+      properties:
+        present_days:
+          type: integer
+          example: 200
+        absent_days:
+          type: integer
+          example: 10
+        late_days:
+          type: integer
+          example: 5
+        total_marked_days:
+          type: integer
+          example: 215
+
+    # Holiday related schemas
+    Holiday:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        holidayDate:
+          type: string
+          format: date
+          example: "2024-08-15"
+        description:
+          type: string
+          nullable: true
+          example: "Independence Day"
+        academicYearId:
+          type: integer
+          example: 1
+        academicYearName:
+          type: string
+          example: "2024-2025"
+
+    CreateHoliday:
+      type: object
+      required:
+        - holidayDate
+        - academicYearId
+      properties:
+        holidayDate:
+          type: string
+          format: date
+          example: "2024-08-15"
+        description:
+          type: string
+          maxLength: 200
+          example: "Independence Day"
+        academicYearId:
+          type: integer
+          example: 1
+
+    UpdateHoliday:
+      type: object
+      properties:
+        holidayDate:
+          type: string
+          format: date
+          example: "2024-08-15"
+        description:
+          type: string
+          maxLength: 200
+          example: "Independence Day - National Holiday"
+
+    # Exam related schemas
+    Exam:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        classId:
+          type: integer
+          example: 1
+        className:
+          type: string
+          example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
+        academicYearId:
+          type: integer
+          example: 1
+        academicYearName:
+          type: string
+          example: "2024-2025"
+        name:
+          type: string
+          example: "Half Yearly Examination"
+        examType:
+          type: string
+          nullable: true
+          example: "Half Yearly"
+        startDate:
+          type: string
+          format: date
+          example: "2024-09-01"
+        endDate:
+          type: string
+          format: date
+          example: "2024-09-15"
+        weightage:
+          type: number
+          format: decimal
+          nullable: true
+          example: 50.00
+        subjectCount:
+          type: integer
+          example: 5
+
+    CreateExam:
+      type: object
+      required:
+        - classId
+        - academicYearId
+        - name
+        - startDate
+        - endDate
+      properties:
+        classId:
+          type: integer
+          example: 1
+        academicYearId:
+          type: integer
+          example: 1
+        name:
+          type: string
+          maxLength: 100
+          example: "Half Yearly Examination"
+        examType:
+          type: string
+          maxLength: 50
+          example: "Half Yearly"
+        startDate:
+          type: string
+          format: date
+          example: "2024-09-01"
+        endDate:
+          type: string
+          format: date
+          example: "2024-09-15"
+        weightage:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          example: 50.00
+        subjects:
+          type: array
+          items:
+            type: object
+            required:
+              - subjectId
+              - maxMarks
+            properties:
+              subjectId:
+                type: integer
+                example: 2
+              maxMarks:
+                type: number
+                format: decimal
+                example: 100.00
+              examDate:
+                type: string
+                format: date
+                example: "2024-09-05"
+
+    UpdateExam:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: "Half Yearly Examination 2024"
+        examType:
+          type: string
+          maxLength: 50
+          example: "Half Yearly"
+        startDate:
+          type: string
+          format: date
+          example: "2024-09-01"
+        endDate:
+          type: string
+          format: date
+          example: "2024-09-15"
+        weightage:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          example: 50.00
+
+    AddExamSubject:
+      type: object
+      required:
+        - subjectId
+        - maxMarks
+      properties:
+        subjectId:
+          type: integer
+          example: 2
+        maxMarks:
+          type: number
+          format: decimal
+          example: 100.00
+        examDate:
+          type: string
+          format: date
+          example: "2024-09-05"
+
+    UpdateExamSubject:
+      type: object
+      properties:
+        maxMarks:
+          type: number
+          format: decimal
+          example: 100.00
+        examDate:
+          type: string
+          format: date
+          example: "2024-09-05"
+
+    # Exam Results related schemas
+    ExamResult:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        examSubjectId:
+          type: integer
+          example: 1
+        studentId:
+          type: integer
+          example: 10
+        studentName:
+          type: string
+          example: "John Doe"
+        admissionNumber:
+          type: string
+          example: "2024001"
+        rollNumber:
+          type: string
+          nullable: true
+          example: "01"
+        maxMarks:
+          type: number
+          format: decimal
+          example: 100.00
+        marksObtained:
+          type: number
+          format: decimal
+          nullable: true
+          example: 85.50
+        grade:
+          type: string
+          nullable: true
+          example: "A"
+        isAbsent:
+          type: boolean
+          example: false
+        subjectName:
+          type: string
+          example: "Mathematics"
+        subjectCode:
+          type: string
+          example: "MATH"
+        examName:
+          type: string
+          example: "Half Yearly Examination"
+        examType:
+          type: string
+          nullable: true
+          example: "Half Yearly"
+        className:
+          type: string
+          example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
+        enteredBy:
+          type: integer
+          nullable: true
+          example: 3
+        enteredByName:
+          type: string
+          nullable: true
+          example: "Teacher Name"
+        enteredAt:
+          type: string
+          format: date-time
+          example: "2024-09-10T10:30:00.000Z"
+
+    EnterMarks:
+      type: object
+      required:
+        - examSubjectId
+        - results
+      properties:
+        examSubjectId:
+          type: integer
+          example: 1
+          description: "Exam subject ID for which marks are being entered"
+        results:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - studentId
+            properties:
+              studentId:
+                type: integer
+                example: 10
+              marksObtained:
+                type: number
+                format: decimal
+                example: 85.50
+              grade:
+                type: string
+                maxLength: 5
+                example: "A"
+              isAbsent:
+                type: boolean
+                example: false
+
+    ClassPerformance:
+      type: object
+      properties:
+        subjectName:
+          type: string
+          example: "Mathematics"
+        subjectCode:
+          type: string
+          example: "MATH"
+        maxMarks:
+          type: number
+          format: decimal
+          example: 100.00
+        totalStudents:
+          type: integer
+          example: 45
+        studentsAppeared:
+          type: integer
+          example: 43
+        averageMarks:
+          type: number
+          format: decimal
+          nullable: true
+          example: 72.50
+        highestMarks:
+          type: number
+          format: decimal
+          nullable: true
+          example: 98.00
+        lowestMarks:
+          type: number
+          format: decimal
+          nullable: true
+          example: 45.00
+
+    # Syllabus Completion related schemas
+    SyllabusCompletion:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        classSubjectId:
+          type: integer
+          example: 1
+        chapterId:
+          type: integer
+          example: 5
+        chapterName:
+          type: string
+          example: "Photosynthesis"
+        sequenceNumber:
+          type: integer
+          nullable: true
+          example: 3
+        className:
+          type: string
+          example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
+        subjectName:
+          type: string
+          example: "Science"
+        subjectCode:
+          type: string
+          example: "SCI"
+        academicYearName:
+          type: string
+          example: "2024-2025"
+        status:
+          type: string
+          enum: [pending, in_progress, completed]
+          example: "completed"
+        completedDate:
+          type: string
+          format: date
+          nullable: true
+          example: "2024-08-15"
+        completedBy:
+          type: integer
+          nullable: true
+          example: 3
+        completedByName:
+          type: string
+          nullable: true
+          example: "Teacher Name"
+
+    MarkSyllabusCompletion:
+      type: object
+      required:
+        - classSubjectId
+        - chapters
+      properties:
+        classSubjectId:
+          type: integer
+          example: 1
+          description: "Class subject ID for which completion is being marked"
+        chapters:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - chapterId
+              - status
+            properties:
+              chapterId:
+                type: integer
+                example: 5
+              status:
+                type: string
+                enum: [pending, in_progress, completed]
+                example: "completed"
+
+    SyllabusProgress:
+      type: object
+      properties:
+        totalChapters:
+          type: integer
+          example: 12
+        completedChapters:
+          type: integer
+          example: 8
+        inProgressChapters:
+          type: integer
+          example: 2
+        pendingChapters:
+          type: integer
+          example: 2
+        completionPercentage:
+          type: number
+          format: decimal
+          example: 66.67
+
+    # Student Promotions related schemas
+    StudentPromotion:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        schoolId:
+          type: integer
+          example: 1
+        studentId:
+          type: integer
+          example: 15
+        studentName:
+          type: string
+          example: "John Doe"
+        admissionNumber:
+          type: string
+          example: "STU2024001"
+        rollNumber:
+          type: string
+          nullable: true
+          example: "25"
+        fromClassId:
+          type: integer
+          example: 5
+        fromClassName:
+          type: string
+          example: "Class 4"
+        fromClassSection:
+          type: string
+          example: "A"
+        toClassId:
+          type: integer
+          example: 6
+        toClassName:
+          type: string
+          example: "Class 5"
+        toClassSection:
+          type: string
+          example: "A"
+        fromAcademicYearId:
+          type: integer
+          nullable: true
+          example: 1
+        fromAcademicYear:
+          type: string
+          nullable: true
+          example: "2024-2025"
+        toAcademicYearId:
+          type: integer
+          example: 2
+        toAcademicYear:
+          type: string
+          example: "2025-2026"
+        promotedBy:
+          type: integer
+          example: 3
+        promotedByName:
+          type: string
+          example: "Admin Name"
+        promotionDate:
+          type: string
+          format: date
+          example: "2025-03-15"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-03-15T10:30:00Z"
+
+    PromoteStudentsRequest:
+      type: object
+      required:
+        - studentIds
+        - toClassId
+        - toAcademicYearId
+      properties:
+        studentIds:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+          example: [15, 16, 17]
+          description: "Array of student IDs to promote"
+        toClassId:
+          type: integer
+          example: 6
+          description: "Target class ID for promotion"
+        toAcademicYearId:
+          type: integer
+          example: 2
+          description: "Target academic year ID"
+        promotionDate:
+          type: string
+          format: date
+          example: "2025-03-15"
+          description: "Date of promotion (defaults to current date)"
+
+    EligibleStudent:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 15
+        fullName:
+          type: string
+          example: "John Doe"
+        admissionNumber:
+          type: string
+          example: "STU2024001"
+        rollNumber:
+          type: string
+          nullable: true
+          example: "25"
+        currentClassId:
+          type: integer
+          example: 5
+        className:
+          type: string
+          example: "Class 4"
+        classSection:
+          type: string
+          example: "A"
+        status:
+          type: string
+          enum: [active, inactive, graduated]
+          example: "active"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "2010-05-15"
+        gender:
+          type: string
+          enum: [male, female, other]
+          example: "male"

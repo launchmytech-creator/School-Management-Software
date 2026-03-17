@@ -1,0 +1,286 @@
+# Announcements endpoints
+/announcements:
+  post:
+    tags:
+      - Announcements
+    summary: Create announcement
+    description: Create a new announcement for the school (Admin only)
+    operationId: createAnnouncement
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateAnnouncementRequest"
+          examples:
+            forAllUsers:
+              summary: Announcement for all users
+              value:
+                title: "Annual Day Celebration"
+                message: "We are pleased to announce that our school's Annual Day celebration will be held on 15th March 2024. All students, parents, and staff are cordially invited to attend."
+            forParents:
+              summary: Announcement for parents only
+              value:
+                title: "Parent-Teacher Meeting"
+                message: "Parent-Teacher meeting is scheduled for 20th March 2024 from 10 AM to 2 PM. Please make sure to attend and discuss your child's progress."
+                targetRole: "parent"
+            forTeachers:
+              summary: Announcement for teachers only
+              value:
+                title: "Staff Training Workshop"
+                message: "A professional development workshop on modern teaching methodologies will be conducted on 25th March 2024. Attendance is mandatory for all teaching staff."
+                targetRole: "teacher"
+    responses:
+      "201":
+        description: Announcement created successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Announcement"
+            examples:
+              success:
+                summary: Announcement created
+                value:
+                  success: true
+                  message: "Announcement created successfully"
+                  data:
+                    id: 50
+                    school_id: 1
+                    title: "Annual Day Celebration"
+                    message: "We are pleased to announce that our school's Annual Day celebration will be held on 15th March 2024. All students, parents, and staff are cordially invited to attend."
+                    target_role: null
+                    created_by: 5
+                    created_at: "2024-03-12T10:30:00.000Z"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+
+  get:
+    tags:
+      - Announcements
+    summary: Get announcements
+    description: Get announcements for logged-in user. Users see announcements targeted to their role or all users. Admin sees all announcements. (All authenticated users)
+    operationId: getAnnouncements
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: targetRole
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [school_admin, teacher, parent, accountant]
+        description: Filter by target role (Admin only)
+        example: "parent"
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+        description: Limit number of results
+        example: 10
+    responses:
+      "200":
+        description: Announcements retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AnnouncementWithCreator"
+            examples:
+              success:
+                summary: List of announcements
+                value:
+                  success: true
+                  message: "Announcements retrieved successfully"
+                  data:
+                    - id: 50
+                      title: "Annual Day Celebration"
+                      message: "We are pleased to announce that our school's Annual Day celebration will be held on 15th March 2024. All students, parents, and staff are cordially invited to attend."
+                      target_role: null
+                      created_at: "2024-03-12T10:30:00.000Z"
+                      created_by_name: "Admin User"
+                    - id: 49
+                      title: "Parent-Teacher Meeting"
+                      message: "Parent-Teacher meeting is scheduled for 20th March 2024 from 10 AM to 2 PM. Please make sure to attend and discuss your child's progress."
+                      target_role: "parent"
+                      created_at: "2024-03-11T15:00:00.000Z"
+                      created_by_name: "Admin User"
+                    - id: 48
+                      title: "School Holiday Notice"
+                      message: "School will remain closed on 14th March 2024 due to public holiday."
+                      target_role: null
+                      created_at: "2024-03-10T09:00:00.000Z"
+                      created_by_name: "Admin User"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+
+/announcements/{id}:
+  get:
+    tags:
+      - Announcements
+    summary: Get announcement by ID
+    description: Get announcement details by ID (All authenticated users)
+    operationId: getAnnouncementById
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Announcement ID
+        example: 50
+    responses:
+      "200":
+        description: Announcement retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/AnnouncementDetails"
+            examples:
+              success:
+                summary: Announcement details
+                value:
+                  success: true
+                  message: "Announcement retrieved successfully"
+                  data:
+                    id: 50
+                    title: "Annual Day Celebration"
+                    message: "We are pleased to announce that our school's Annual Day celebration will be held on 15th March 2024. All students, parents, and staff are cordially invited to attend."
+                    target_role: null
+                    created_at: "2024-03-12T10:30:00.000Z"
+                    created_by_name: "Admin User"
+                    created_by_email: "admin@school.com"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  patch:
+    tags:
+      - Announcements
+    summary: Update announcement
+    description: Update announcement details (Admin only). Supports partial updates.
+    operationId: updateAnnouncement
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Announcement ID
+        example: 50
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UpdateAnnouncementRequest"
+          examples:
+            updateTitle:
+              summary: Update title only
+              value:
+                title: "Annual Day Celebration - Updated"
+            updateMessage:
+              summary: Update message only
+              value:
+                message: "We are pleased to announce that our school's Annual Day celebration will be held on 16th March 2024 (date changed). All students, parents, and staff are cordially invited to attend."
+            updateAll:
+              summary: Update all fields
+              value:
+                title: "Annual Day Celebration - Rescheduled"
+                message: "Due to unforeseen circumstances, the Annual Day celebration has been rescheduled to 16th March 2024. We apologize for any inconvenience."
+                targetRole: "parent"
+    responses:
+      "200":
+        description: Announcement updated successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Announcement"
+            examples:
+              success:
+                summary: Updated announcement
+                value:
+                  success: true
+                  message: "Announcement updated successfully"
+                  data:
+                    id: 50
+                    school_id: 1
+                    title: "Annual Day Celebration - Rescheduled"
+                    message: "Due to unforeseen circumstances, the Annual Day celebration has been rescheduled to 16th March 2024. We apologize for any inconvenience."
+                    target_role: "parent"
+                    created_by: 5
+                    created_at: "2024-03-12T10:30:00.000Z"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  delete:
+    tags:
+      - Announcements
+    summary: Delete announcement
+    description: Delete an announcement (Admin only)
+    operationId: deleteAnnouncement
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Announcement ID
+        example: 50
+    responses:
+      "200":
+        description: Announcement deleted successfully
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Success"
+            example:
+              success: true
+              message: "Announcement deleted successfully"
+              data: null
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"

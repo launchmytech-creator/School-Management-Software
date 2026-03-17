@@ -1,0 +1,212 @@
+/students:
+  post:
+    tags:
+      - Students
+    summary: Create student
+    description: Create a new student for the school (School Admin or Accountant)
+    operationId: createStudent
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateStudentRequest"
+          examples:
+            fullStudent:
+              summary: Create student with all details
+              value:
+                admissionNumber: "2024001"
+                fullName: "John Doe"
+                dateOfBirth: "2010-05-15"
+                gender: "male"
+                admissionDate: "2024-04-01"
+                currentClassId: 1
+                parentId: 5
+                rollNumber: "01"
+                phone: "1234567890"
+                address: "123 Main Street"
+            minimalStudent:
+              summary: Create student with minimal details
+              value:
+                admissionNumber: "2024002"
+                fullName: "Jane Smith"
+                admissionDate: "2024-04-01"
+    responses:
+      "201":
+        description: Student created successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Student"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+
+  get:
+    tags:
+      - Students
+    summary: Get all students
+    description: Retrieve list of all students in the school (Admin, Accountant, Teacher)
+    operationId: getAllStudents
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: classId
+        in: query
+        description: Filter by class
+        required: false
+        schema:
+          type: integer
+        example: 1
+      - name: status
+        in: query
+        description: Filter by status
+        required: false
+        schema:
+          type: string
+          enum: [active, inactive, transferred, graduated]
+        example: active
+    responses:
+      "200":
+        description: Students retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Student"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+
+/students/{id}:
+  get:
+    tags:
+      - Students
+    summary: Get student by ID
+    description: Retrieve student details by ID (Admin, Accountant, Teacher)
+    operationId: getStudentById
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    responses:
+      "200":
+        description: Student retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Student"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  patch:
+    tags:
+      - Students
+    summary: Update student
+    description: Update student details (School Admin or Accountant). Supports partial updates.
+    operationId: updateStudent
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UpdateStudentRequest"
+          examples:
+            updateClass:
+              summary: Assign student to class
+              value:
+                currentClassId: 2
+                rollNumber: "15"
+            updateParent:
+              summary: Link parent to student
+              value:
+                parentId: 10
+            updateStatus:
+              summary: Change student status
+              value:
+                status: "graduated"
+    responses:
+      "200":
+        description: Student updated successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Student"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  delete:
+    tags:
+      - Students
+    summary: Deactivate student
+    description: Deactivate a student (sets status to inactive) (School Admin only)
+    operationId: deleteStudent
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    responses:
+      "200":
+        description: Student deactivated successfully
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Success"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"

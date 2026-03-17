@@ -1,0 +1,227 @@
+paths:
+  /api/v1/exams:
+    post:
+      tags:
+        - Exams
+      summary: Create exam
+      description: Create a new exam with optional subjects (School Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExam"
+      responses:
+        "201":
+          description: Exam created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    get:
+      tags:
+        - Exams
+      summary: Get all exams
+      description: Get all exams for the school with filters (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: classId
+          schema:
+            type: integer
+          description: Filter by class ID
+        - in: query
+          name: academicYearId
+          schema:
+            type: integer
+          description: Filter by academic year ID
+        - in: query
+          name: examType
+          schema:
+            type: string
+          description: Filter by exam type
+      responses:
+        "200":
+          description: Exams retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/exams/{id}:
+    get:
+      tags:
+        - Exams
+      summary: Get exam by ID
+      description: Get a specific exam with all subjects (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Exam retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      tags:
+        - Exams
+      summary: Update exam
+      description: Update exam details (School Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateExam"
+      responses:
+        "200":
+          description: Exam updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags:
+        - Exams
+      summary: Delete exam
+      description: Delete an exam (School Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Exam deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/exams/{examId}/subjects:
+    post:
+      tags:
+        - Exams
+      summary: Add subject to exam
+      description: Add a subject to an existing exam (School Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: examId
+          required: true
+          schema:
+            type: integer
+          description: Exam ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddExamSubject"
+      responses:
+        "201":
+          description: Exam subject added successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/exams/subjects/{id}:
+    patch:
+      tags:
+        - Exams
+      summary: Update exam subject
+      description: Update exam subject details (School Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateExamSubject"
+      responses:
+        "200":
+          description: Exam subject updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags:
+        - Exams
+      summary: Delete exam subject
+      description: Remove a subject from an exam (School Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Exam subject deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"

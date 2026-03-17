@@ -1,0 +1,252 @@
+/academic-years:
+  post:
+    tags:
+      - Academic Years
+    summary: Create academic year
+    description: Create a new academic year for the school (School Admin only)
+    operationId: createAcademicYear
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateAcademicYearRequest"
+          examples:
+            currentYear:
+              summary: Create current academic year
+              value:
+                yearName: "2024-2025"
+                startDate: "2024-04-01"
+                endDate: "2025-03-31"
+                isCurrent: true
+            futureYear:
+              summary: Create future academic year
+              value:
+                yearName: "2025-2026"
+                startDate: "2025-04-01"
+                endDate: "2026-03-31"
+                isCurrent: false
+    responses:
+      "201":
+        description: Academic year created successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/AcademicYear"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+
+  get:
+    tags:
+      - Academic Years
+    summary: Get all academic years
+    description: Retrieve list of all academic years in the school (Admin, Accountant, Teacher)
+    operationId: getAllAcademicYears
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Academic years retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/AcademicYear"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+
+/academic-years/current:
+  get:
+    tags:
+      - Academic Years
+    summary: Get current academic year
+    description: Retrieve the current academic year (Admin, Accountant, Teacher)
+    operationId: getCurrentAcademicYear
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Current academic year retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/AcademicYear"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "404":
+        description: No current academic year set
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+
+/academic-years/{id}:
+  get:
+    tags:
+      - Academic Years
+    summary: Get academic year by ID
+    description: Retrieve academic year details by ID (Admin, Accountant, Teacher)
+    operationId: getAcademicYearById
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    responses:
+      "200":
+        description: Academic year retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/AcademicYear"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  patch:
+    tags:
+      - Academic Years
+    summary: Update academic year
+    description: Update academic year details (School Admin only). Supports partial updates.
+    operationId: updateAcademicYear
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UpdateAcademicYearRequest"
+          examples:
+            updateDates:
+              summary: Update dates
+              value:
+                startDate: "2024-04-15"
+                endDate: "2025-04-14"
+            setCurrent:
+              summary: Set as current year
+              value:
+                isCurrent: true
+    responses:
+      "200":
+        description: Academic year updated successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/AcademicYear"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  delete:
+    tags:
+      - Academic Years
+    summary: Delete academic year
+    description: Delete an academic year (School Admin only)
+    operationId: deleteAcademicYear
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    responses:
+      "200":
+        description: Academic year deleted successfully
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Success"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+/academic-years/{id}/set-current:
+  patch:
+    tags:
+      - Academic Years
+    summary: Set as current academic year
+    description: Set a specific academic year as current (School Admin only). Automatically unsets other years.
+    operationId: setCurrentAcademicYear
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    responses:
+      "200":
+        description: Current academic year set successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/AcademicYear"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"

@@ -1,0 +1,182 @@
+/subjects:
+  post:
+    tags:
+      - Subjects
+    summary: Create subject
+    description: Create a new subject for the school (School Admin or Accountant)
+    operationId: createSubject
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateSubjectRequest"
+          examples:
+            mathSubject:
+              summary: Create Mathematics subject
+              value:
+                name: "Mathematics"
+                code: "MATH"
+            scienceSubject:
+              summary: Create Science subject
+              value:
+                name: "Science"
+                code: "SCI"
+    responses:
+      "201":
+        description: Subject created successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Subject"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+
+  get:
+    tags:
+      - Subjects
+    summary: Get all subjects
+    description: Retrieve list of all subjects in the school (Admin, Accountant, Teacher)
+    operationId: getAllSubjects
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Subjects retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Subject"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+
+/subjects/{id}:
+  get:
+    tags:
+      - Subjects
+    summary: Get subject by ID
+    description: Retrieve subject details by ID (Admin, Accountant, Teacher)
+    operationId: getSubjectById
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    responses:
+      "200":
+        description: Subject retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Subject"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  patch:
+    tags:
+      - Subjects
+    summary: Update subject
+    description: Update subject details (School Admin or Accountant). Supports partial updates.
+    operationId: updateSubject
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UpdateSubjectRequest"
+          examples:
+            updateName:
+              summary: Update subject name
+              value:
+                name: "Advanced Mathematics"
+            updateCode:
+              summary: Update subject code
+              value:
+                code: "AMATH"
+    responses:
+      "200":
+        description: Subject updated successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Subject"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+  delete:
+    tags:
+      - Subjects
+    summary: Delete subject
+    description: Delete a subject (School Admin only)
+    operationId: deleteSubject
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        example: 1
+    responses:
+      "200":
+        description: Subject deleted successfully
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Success"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"

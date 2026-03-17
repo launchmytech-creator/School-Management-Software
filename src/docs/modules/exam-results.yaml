@@ -1,0 +1,182 @@
+paths:
+  /api/v1/exam-results:
+    post:
+      tags:
+        - Exam Results
+      summary: Enter marks
+      description: Enter marks for multiple students in an exam subject (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnterMarks"
+      responses:
+        "200":
+          description: Marks entered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    get:
+      tags:
+        - Exam Results
+      summary: Get all exam results
+      description: Get all exam results with filters (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: studentId
+          schema:
+            type: integer
+          description: Filter by student ID
+        - in: query
+          name: examId
+          schema:
+            type: integer
+          description: Filter by exam ID
+        - in: query
+          name: classId
+          schema:
+            type: integer
+          description: Filter by class ID
+        - in: query
+          name: subjectId
+          schema:
+            type: integer
+          description: Filter by subject ID
+      responses:
+        "200":
+          description: Exam results retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/exam-results/student/{studentId}:
+    get:
+      tags:
+        - Exam Results
+      summary: Get student results
+      description: Get all exam results for a specific student (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: integer
+          description: Student ID
+        - in: query
+          name: academicYearId
+          schema:
+            type: integer
+          description: Filter by academic year ID
+        - in: query
+          name: examType
+          schema:
+            type: string
+          description: Filter by exam type
+      responses:
+        "200":
+          description: Student results retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/exam-results/exam-subject/{examSubjectId}:
+    get:
+      tags:
+        - Exam Results
+      summary: Get exam subject results
+      description: Get all results for a specific exam subject (School Admin, Accountant, or Teacher)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: examSubjectId
+          required: true
+          schema:
+            type: integer
+          description: Exam Subject ID
+      responses:
+        "200":
+          description: Exam subject results retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/exam-results/exam/{examId}/performance:
+    get:
+      tags:
+        - Exam Results
+      summary: Get class performance
+      description: Get class performance analytics for an exam (School Admin or Accountant)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: examId
+          required: true
+          schema:
+            type: integer
+          description: Exam ID
+      responses:
+        "200":
+          description: Class performance retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ClassPerformance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/exam-results/{id}:
+    delete:
+      tags:
+        - Exam Results
+      summary: Delete exam result
+      description: Delete an exam result (School Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Exam result deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"

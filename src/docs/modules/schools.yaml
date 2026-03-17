@@ -1,0 +1,171 @@
+paths:
+  /schools:
+    post:
+      tags:
+        - Schools
+      summary: Create school with admin
+      description: Create a new school and its admin user (Super Admin only)
+      operationId: createSchool
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/index.yaml#/components/schemas/CreateSchoolRequest"
+      responses:
+        "201":
+          description: School created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "../schemas/index.yaml#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          school:
+                            $ref: "../schemas/index.yaml#/components/schemas/School"
+                          admin:
+                            $ref: "../schemas/index.yaml#/components/schemas/User"
+        "400":
+          $ref: "../responses/index.yaml#/components/responses/ValidationError"
+        "401":
+          $ref: "../responses/index.yaml#/components/responses/Unauthorized"
+        "403":
+          $ref: "../responses/index.yaml#/components/responses/Forbidden"
+        "409":
+          description: School code or admin email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/index.yaml#/components/schemas/Error"
+        "500":
+          $ref: "../responses/index.yaml#/components/responses/InternalServerError"
+
+    get:
+      tags:
+        - Schools
+      summary: Get all schools
+      description: Retrieve list of all schools (Super Admin only)
+      operationId: getAllSchools
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Schools retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "../schemas/index.yaml#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "../schemas/index.yaml#/components/schemas/School"
+        "401":
+          $ref: "../responses/index.yaml#/components/responses/Unauthorized"
+        "403":
+          $ref: "../responses/index.yaml#/components/responses/Forbidden"
+        "500":
+          $ref: "../responses/index.yaml#/components/responses/InternalServerError"
+
+  /schools/{id}:
+    get:
+      tags:
+        - Schools
+      summary: Get school by ID
+      description: Retrieve school details by ID (Super Admin or School Admin)
+      operationId: getSchoolById
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "../parameters/index.yaml#/components/parameters/IdPathParam"
+      responses:
+        "200":
+          description: School retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "../schemas/index.yaml#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "../schemas/index.yaml#/components/schemas/School"
+        "401":
+          $ref: "../responses/index.yaml#/components/responses/Unauthorized"
+        "403":
+          $ref: "../responses/index.yaml#/components/responses/Forbidden"
+        "404":
+          $ref: "../responses/index.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "../responses/index.yaml#/components/responses/InternalServerError"
+
+    patch:
+      tags:
+        - Schools
+      summary: Update school
+      description: |
+        Update school details (Super Admin only).
+
+        **Features:**
+        - Update subscription plan (automatically tracked in history)
+        - Update fee terms (automatically tracked in history)
+        - Update contact information
+        - Update subscription status
+
+        **Note:** Historical data is preserved when subscriptionPlanId or feeTerms are changed.
+      operationId: updateSchool
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "../parameters/index.yaml#/components/parameters/IdPathParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/index.yaml#/components/schemas/UpdateSchoolRequest"
+            examples:
+              updateSubscriptionPlan:
+                summary: Update subscription plan
+                value:
+                  subscriptionPlanId: 3
+                  subscriptionStatus: "active"
+              updateFeeTerms:
+                summary: Update fee terms
+                value:
+                  feeTerms: 12
+              updateContactInfo:
+                summary: Update contact information
+                value:
+                  contactEmail: "newcontact@abcschool.com"
+                  contactPhone: "+9876543210"
+      responses:
+        "200":
+          description: School updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "../schemas/index.yaml#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "../schemas/index.yaml#/components/schemas/School"
+        "400":
+          $ref: "../responses/index.yaml#/components/responses/ValidationError"
+        "401":
+          $ref: "../responses/index.yaml#/components/responses/Unauthorized"
+        "403":
+          $ref: "../responses/index.yaml#/components/responses/Forbidden"
+        "404":
+          $ref: "../responses/index.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "../responses/index.yaml#/components/responses/InternalServerError"
