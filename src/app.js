@@ -26,7 +26,7 @@ const examsRoutes = require("./modules/exams/exams.routes");
 const examResultsRoutes = require("./modules/exam-results/exam-results.routes");
 const syllabusCompletionRoutes = require("./modules/syllabus-completion/syllabus-completion.routes");
 const parentsRoutes = require("./modules/parents/parents.routes");
-
+const accountantsRoutes = require("./modules/accountants/accountants.routes");
 
 
 const app = express();
@@ -96,6 +96,7 @@ app.use(`${apiPrefix}/exams`, examsRoutes);
 app.use(`${apiPrefix}/exam-results`, examResultsRoutes);
 app.use(`${apiPrefix}/syllabus-completion`, syllabusCompletionRoutes);
 app.use(`${apiPrefix}/parents`, parentsRoutes);
+app.use(`${apiPrefix}/accountants`, accountantsRoutes);
 
 
 // 404 handler
