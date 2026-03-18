@@ -27,7 +27,7 @@ const examResultsRoutes = require("./modules/exam-results/exam-results.routes");
 const syllabusCompletionRoutes = require("./modules/syllabus-completion/syllabus-completion.routes");
 const parentsRoutes = require("./modules/parents/parents.routes");
 const accountantsRoutes = require("./modules/accountants/accountants.routes");
-
+const studentPromotionsRoutes = require("./modules/student-promotions/student-promotions.routes");
 
 const app = express();
 
@@ -97,8 +97,7 @@ app.use(`${apiPrefix}/exam-results`, examResultsRoutes);
 app.use(`${apiPrefix}/syllabus-completion`, syllabusCompletionRoutes);
 app.use(`${apiPrefix}/parents`, parentsRoutes);
 app.use(`${apiPrefix}/accountants`, accountantsRoutes);
-
-
+app.use(`${apiPrefix}/student-promotions`, studentPromotionsRoutes);
 // 404 handler
 app.use((req, res) => {
   logger.warn("Route not found", { path: req.path, method: req.method });

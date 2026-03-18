@@ -67,6 +67,8 @@ tags:
     description: Parent management operations (Admin, Accountant)
   - name: Holidays
     description: Holiday management and working days calculation - Premium Plan feature (Admin, Accountant, Teacher)
+  - name: Student Promotions
+    description: Student promotion and class shifting operations (Admin, Accountant)
 
 
 components:
@@ -2126,6 +2128,72 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+   # Student Promotions related schemas
+    StudentPromotion:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        studentId:
+          type: integer
+          example: 15
+        studentName:
+          type: string
+          example: "John Doe"
+        fromClassId:
+          type: integer
+          example: 5
+        toClassId:
+          type: integer
+          example: 6
+        promotionDate:
+          type: string
+          format: date
+          example: "2025-03-15"
+
+    PromoteStudentsRequest:
+      type: object
+      required:
+        - studentIds
+        - toClassId
+        - toAcademicYearId
+      properties:
+        studentIds:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+          example: [15, 16, 17]
+        toClassId:
+          type: integer
+          example: 6
+        toAcademicYearId:
+          type: integer
+          example: 2
+        promotionDate:
+          type: string
+          format: date
+          example: "2025-03-15"
+
+    EligibleStudent:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 15
+        fullName:
+          type: string
+          example: "John Doe"
+        admissionNumber:
+          type: string
+          example: "STU2024001"
+        currentClassId:
+          type: integer
+          example: 5
+        status:
+          type: string
+          example: "active"
 
   # Classes endpoints
   /classes:
@@ -5814,6 +5882,228 @@ paths:
       responses:
         "200":
           description: Exam result deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+
+# Student Promotions endpoints
+  /student-promotions:
+    post:
+      tags:
+        - Student Promotions
+      summary: Promote students to next class
+      description: Bulk promote students from one class to another. Records promotion history and updates student's current class. (School Admin only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromoteStudentsRequest"
+      responses:
+        "200":
+          description: Students promoted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            promotion:
+                              $ref: "#/components/schemas/StudentPromotion"
+                            student:
+                              type: object
+                              description: "Updated student record"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    get:
+      tags:
+        - Student Promotions
+      summary: Get all promotions for school
+      description: Retrieve all student promotion records for the school with optional filters. (School Admin or Accountant)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: studentId
+          schema:
+            type: integer
+          description: Filter by student ID
+        - in: query
+          name: fromClassId
+          schema:
+            type: integer
+          description: Filter by source class ID
+        - in: query
+          name: toClassId
+          schema:
+            type: integer
+          description: Filter by target class ID
+        - in: query
+          name: academicYearId
+          schema:
+            type: integer
+          description: Filter by academic year (from or to)
+      responses:
+        "200":
+          description: Promotions retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/StudentPromotion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /student-promotions/student/{studentId}/history:
+    get:
+      tags:
+        - Student Promotions
+      summary: Get student promotion history
+      description: Retrieve complete promotion history for a specific student. (School Admin or Accountant)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: integer
+          description: Student ID
+      responses:
+        "200":
+          description: Student promotion history retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/StudentPromotion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /student-promotions/class/{classId}/eligible-students:
+    get:
+      tags:
+        - Student Promotions
+      summary: Get eligible students for promotion
+      description: Retrieve list of active students in a class who are eligible for promotion. (School Admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: integer
+          description: Class ID
+      responses:
+        "200":
+          description: Eligible students retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/EligibleStudent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /student-promotions/{id}:
+    get:
+      tags:
+        - Student Promotions
+      summary: Get promotion by ID
+      description: Retrieve detailed information about a specific promotion record. (School Admin or Accountant)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Promotion record ID
+      responses:
+        "200":
+          description: Promotion retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/StudentPromotion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags:
+        - Student Promotions
+      summary: Delete promotion record
+      description: Delete a promotion record. Note - This does not revert the student's class assignment. (School Admin only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Promotion record ID
+      responses:
+        "200":
+          description: Promotion record deleted successfully
           content:
             application/json:
               schema:
