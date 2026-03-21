@@ -1781,3 +1781,87 @@ components:
           type: string
           format: date
           example: "2025-03-15"
+
+    CreateAnnouncementRequest:
+      type: object
+      required: [title, message]
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 200
+          example: "Annual Day Celebration"
+        message:
+          type: string
+          minLength: 10
+          example: "We are pleased to announce that our school's Annual Day celebration will be held on 15th March 2024."
+        targetRole:
+          type: string
+          enum: [school_admin, teacher, parent, accountant]
+          nullable: true
+          example: "parent"
+
+    UpdateAnnouncementRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 200
+          example: "Annual Day Celebration - Updated"
+        message:
+          type: string
+          minLength: 10
+          example: "Updated announcement message."
+        targetRole:
+          type: string
+          enum: [school_admin, teacher, parent, accountant]
+          nullable: true
+          example: "parent"
+
+    Announcement:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 50
+        school_id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "Annual Day Celebration"
+        message:
+          type: string
+          example: "We are pleased to announce that our school's Annual Day celebration will be held on 15th March 2024."
+        target_role:
+          type: string
+          enum: [school_admin, teacher, parent, accountant]
+          nullable: true
+          example: null
+        created_by:
+          type: integer
+          example: 5
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-03-12T10:30:00.000Z"
+
+    AnnouncementWithCreator:
+      allOf:
+        - $ref: '#/components/schemas/Announcement'
+        - type: object
+          properties:
+            created_by_name:
+              type: string
+              example: "Admin User"
+
+    AnnouncementDetails:
+      allOf:
+        - $ref: '#/components/schemas/AnnouncementWithCreator'
+        - type: object
+          properties:
+            created_by_email:
+              type: string
+              format: email
+              example: "admin@school.com"

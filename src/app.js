@@ -29,6 +29,8 @@ const parentsRoutes = require("./modules/parents/parents.routes");
 const accountantsRoutes = require("./modules/accountants/accountants.routes");
 const studentPromotionsRoutes = require("./modules/student-promotions/student-promotions.routes");
 const parentDashboardRoutes = require("./modules/parent-dashboard/parent-dashboard.routes");
+const announcementsRoutes = require("./modules/announcements/announcements.routes");
+
 
 const app = express();
 
@@ -96,6 +98,7 @@ app.use(`${apiPrefix}/parents`, parentsRoutes);
 app.use(`${apiPrefix}/accountants`, accountantsRoutes);
 app.use(`${apiPrefix}/student-promotions`, studentPromotionsRoutes);
 app.use(`${apiPrefix}/parent`, parentDashboardRoutes);
+app.use(`${apiPrefix}/announcements`, announcementsRoutes);
 // 404 handler
 app.use((req, res) => {
   logger.warn("Route not found", { path: req.path, method: req.method });
