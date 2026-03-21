@@ -1,55 +1,53 @@
-paths:
-  /auth/login:
-    post:
-      tags:
-        - Authentication
-      summary: User login
-      description: Authenticate user and receive JWT token
-      operationId: login
-      requestBody:
-        required: true
+/auth/login:
+  post:
+    tags:
+    - Authentication
+    summary: User login
+    description: Authenticate user and receive JWT token
+    operationId: login
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoginRequest'
+    responses:
+      '200':
+        description: Login successful
         content:
           application/json:
             schema:
-              $ref: "../schemas/index.yaml#/components/schemas/LoginRequest"
-      responses:
-        "200":
-          description: Login successful
-          content:
-            application/json:
-              schema:
-                $ref: "../schemas/index.yaml#/components/schemas/LoginResponse"
-        "401":
-          $ref: "../responses/index.yaml#/components/responses/Unauthorized"
-        "400":
-          $ref: "../responses/index.yaml#/components/responses/ValidationError"
-        "500":
-          $ref: "../responses/index.yaml#/components/responses/InternalServerError"
-
-  /auth/profile:
-    get:
-      tags:
-        - Authentication
-      summary: Get user profile
-      description: Retrieve authenticated user's profile information
-      operationId: getProfile
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Profile retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "../schemas/index.yaml#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "../schemas/index.yaml#/components/schemas/User"
-        "401":
-          $ref: "../responses/index.yaml#/components/responses/Unauthorized"
-        "404":
-          $ref: "../responses/index.yaml#/components/responses/NotFound"
-        "500":
-          $ref: "../responses/index.yaml#/components/responses/InternalServerError"
+              $ref: '#/components/schemas/LoginResponse'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '500':
+        $ref: '#/components/responses/InternalServerError'
+/auth/profile:
+  get:
+    tags:
+    - Authentication
+    summary: Get user profile
+    description: Retrieve authenticated user's profile information
+    operationId: getProfile
+    security:
+    - BearerAuth: []
+    responses:
+      '200':
+        description: Profile retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '404':
+        $ref: '#/components/responses/NotFound'
+      '500':
+        $ref: '#/components/responses/InternalServerError'

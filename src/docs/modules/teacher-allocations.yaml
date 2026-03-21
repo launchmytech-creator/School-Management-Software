@@ -1,23 +1,28 @@
 /teacher-allocations:
   post:
     tags:
-      - Teacher Allocations
+    - Teacher Allocations
     summary: Allocate teacher
-    description: |
-      Allocate a teacher to a class and subject for a specific academic year (School Admin only).
+    description: 'Allocate a teacher to a class and subject for a specific academic
+      year (School Admin only).
 
-      **Business Plan Feature**: Teacher allocation is available only for schools with Business plan subscription.
+
+      **Business Plan Feature**: Teacher allocation is available only for schools
+      with Business plan subscription.
+
 
       A teacher can have multiple allocations (different classes/subjects).
+
+      '
     operationId: allocateTeacher
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/AllocateTeacherRequest"
+            $ref: '#/components/schemas/AllocateTeacherRequest'
           examples:
             singleAllocation:
               summary: Allocate teacher to class and subject
@@ -27,195 +32,192 @@
                 subjectId: 2
                 academicYearId: 1
     responses:
-      "201":
+      '201':
         description: Teacher allocated successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      $ref: "#/components/schemas/TeacherAllocation"
-      "400":
-        $ref: "#/components/responses/ValidationError"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-      "403":
-        $ref: "#/components/responses/Forbidden"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TeacherAllocation'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
   get:
     tags:
-      - Teacher Allocations
+    - Teacher Allocations
     summary: Get all allocations
     description: Retrieve all teacher allocations in the school (Admin, Accountant)
     operationId: getAllAllocations
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: academicYearId
-        in: query
-        description: Filter by academic year
-        required: false
-        schema:
-          type: integer
-        example: 1
+    - name: academicYearId
+      in: query
+      description: Filter by academic year
+      required: false
+      schema:
+        type: integer
+      example: 1
     responses:
-      "200":
+      '200':
         description: Allocations retrieved successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: "#/components/schemas/TeacherAllocation"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TeacherAllocation'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
 /teacher-allocations/teacher/{teacherId}:
   get:
     tags:
-      - Teacher Allocations
+    - Teacher Allocations
     summary: Get allocations by teacher
-    description: Retrieve all allocations for a specific teacher (Admin, Accountant, Teacher)
+    description: Retrieve all allocations for a specific teacher (Admin, Accountant,
+      Teacher)
     operationId: getAllocationsByTeacher
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: teacherId
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 5
-      - name: academicYearId
-        in: query
-        description: Filter by academic year
-        required: false
-        schema:
-          type: integer
-        example: 1
+    - name: teacherId
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 5
+    - name: academicYearId
+      in: query
+      description: Filter by academic year
+      required: false
+      schema:
+        type: integer
+      example: 1
     responses:
-      "200":
+      '200':
         description: Teacher allocations retrieved successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: "#/components/schemas/TeacherAllocation"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TeacherAllocation'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
 /teacher-allocations/class/{classId}:
   get:
     tags:
-      - Teacher Allocations
+    - Teacher Allocations
     summary: Get allocations by class
-    description: Retrieve all teacher allocations for a specific class (Admin, Accountant, Teacher)
+    description: Retrieve all teacher allocations for a specific class (Admin, Accountant,
+      Teacher)
     operationId: getAllocationsByClass
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: classId
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 1
-      - name: academicYearId
-        in: query
-        description: Filter by academic year
-        required: false
-        schema:
-          type: integer
-        example: 1
+    - name: classId
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
+    - name: academicYearId
+      in: query
+      description: Filter by academic year
+      required: false
+      schema:
+        type: integer
+      example: 1
     responses:
-      "200":
+      '200':
         description: Class allocations retrieved successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: "#/components/schemas/TeacherAllocation"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TeacherAllocation'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
 /teacher-allocations/{id}:
   get:
     tags:
-      - Teacher Allocations
+    - Teacher Allocations
     summary: Get allocation by ID
     description: Retrieve teacher allocation details by ID (Admin, Accountant)
     operationId: getAllocationById
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 1
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
     responses:
-      "200":
+      '200':
         description: Allocation retrieved successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      $ref: "#/components/schemas/TeacherAllocation"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-      "404":
-        $ref: "#/components/responses/NotFound"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TeacherAllocation'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '404':
+        $ref: '#/components/responses/NotFound'
   delete:
     tags:
-      - Teacher Allocations
+    - Teacher Allocations
     summary: Remove allocation
     description: Remove a teacher allocation (School Admin only)
     operationId: removeAllocation
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 1
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
     responses:
-      "200":
+      '200':
         description: Teacher allocation removed successfully
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Success"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-      "403":
-        $ref: "#/components/responses/Forbidden"
-      "404":
-        $ref: "#/components/responses/NotFound"
+              $ref: '#/components/schemas/Success'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'

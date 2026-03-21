@@ -1,191 +1,190 @@
 /chapters:
   post:
     tags:
-      - Chapters
+    - Chapters
     summary: Create chapter
-    description: Create a new chapter for a subject (School Admin, Accountant, or Teacher)
+    description: Create a new chapter for a subject (School Admin, Accountant, or
+      Teacher)
     operationId: createChapter
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/CreateChapterRequest"
+            $ref: '#/components/schemas/CreateChapterRequest'
           examples:
             withSequence:
               summary: Create chapter with sequence number
               value:
                 subjectId: 1
-                name: "Photosynthesis"
+                name: Photosynthesis
                 sequenceNumber: 1
             withoutSequence:
               summary: Create chapter without sequence
               value:
                 subjectId: 1
-                name: "Cell Structure"
+                name: Cell Structure
     responses:
-      "201":
+      '201':
         description: Chapter created successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      $ref: "#/components/schemas/Chapter"
-      "400":
-        $ref: "#/components/responses/ValidationError"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-      "403":
-        $ref: "#/components/responses/Forbidden"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Chapter'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
 /chapters/subject/{subjectId}:
   get:
     tags:
-      - Chapters
+    - Chapters
     summary: Get chapters by subject
-    description: Retrieve all chapters for a specific subject (Admin, Accountant, Teacher)
+    description: Retrieve all chapters for a specific subject (Admin, Accountant,
+      Teacher)
     operationId: getChaptersBySubject
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: subjectId
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 1
+    - name: subjectId
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
     responses:
-      "200":
+      '200':
         description: Chapters retrieved successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: "#/components/schemas/Chapter"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Chapter'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
 /chapters/{id}:
   get:
     tags:
-      - Chapters
+    - Chapters
     summary: Get chapter by ID
     description: Retrieve chapter details by ID (Admin, Accountant, Teacher)
     operationId: getChapterById
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 1
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
     responses:
-      "200":
+      '200':
         description: Chapter retrieved successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      $ref: "#/components/schemas/Chapter"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-      "404":
-        $ref: "#/components/responses/NotFound"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Chapter'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '404':
+        $ref: '#/components/responses/NotFound'
   patch:
     tags:
-      - Chapters
+    - Chapters
     summary: Update chapter
-    description: Update chapter details (School Admin, Accountant, or Teacher). Supports partial updates.
+    description: Update chapter details (School Admin, Accountant, or Teacher). Supports
+      partial updates.
     operationId: updateChapter
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 1
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/UpdateChapterRequest"
+            $ref: '#/components/schemas/UpdateChapterRequest'
           examples:
             updateName:
               summary: Update chapter name
               value:
-                name: "Advanced Photosynthesis"
+                name: Advanced Photosynthesis
             updateSequence:
               summary: Update sequence number
               value:
                 sequenceNumber: 5
     responses:
-      "200":
+      '200':
         description: Chapter updated successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      $ref: "#/components/schemas/Chapter"
-      "400":
-        $ref: "#/components/responses/ValidationError"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-      "403":
-        $ref: "#/components/responses/Forbidden"
-      "404":
-        $ref: "#/components/responses/NotFound"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Chapter'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
   delete:
     tags:
-      - Chapters
+    - Chapters
     summary: Delete chapter
     description: Delete a chapter (School Admin only)
     operationId: deleteChapter
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 1
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
     responses:
-      "200":
+      '200':
         description: Chapter deleted successfully
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Success"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-      "403":
-        $ref: "#/components/responses/Forbidden"
-      "404":
-        $ref: "#/components/responses/NotFound"
+              $ref: '#/components/schemas/Success'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'

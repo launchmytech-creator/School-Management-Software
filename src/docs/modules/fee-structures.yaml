@@ -1,137 +1,132 @@
-paths:
-  /api/v1/fee-structures:
-    post:
-      tags:
-        - Fee Structures
-      summary: Create fee structure
-      description: Create a new fee structure for a class (School Admin only)
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
+/fee-structures:
+  post:
+    tags:
+    - Fee Structures
+    summary: Create fee structure
+    description: Create a new fee structure for a class (School Admin only)
+    security:
+    - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CreateFeeStructure'
+    responses:
+      '201':
+        description: Fee structure created successfully
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateFeeStructure"
-      responses:
-        "201":
-          description: Fee structure created successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Fee Structures
-      summary: Get all fee structures
-      description: Get all fee structures for the school (School Admin or Accountant)
-      security:
-        - bearerAuth: []
-      parameters:
-        - in: query
-          name: classId
-          schema:
-            type: integer
-          description: Filter by class ID
-        - in: query
-          name: academicYearId
-          schema:
-            type: integer
-          description: Filter by academic year ID
-        - in: query
-          name: feeType
-          schema:
-            type: string
-          description: Filter by fee type
-      responses:
-        "200":
-          description: Fee structures retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /api/v1/fee-structures/{id}:
-    get:
-      tags:
-        - Fee Structures
-      summary: Get fee structure by ID
-      description: Get a specific fee structure (School Admin or Accountant)
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/IdParam"
-      responses:
-        "200":
-          description: Fee structure retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Fee Structures
-      summary: Update fee structure
-      description: Update a fee structure (School Admin only)
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/IdParam"
-      requestBody:
-        required: true
+              $ref: '#/components/schemas/SuccessResponse'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+  get:
+    tags:
+    - Fee Structures
+    summary: Get all fee structures
+    description: Get all fee structures for the school (School Admin or Accountant)
+    security:
+    - BearerAuth: []
+    parameters:
+    - in: query
+      name: classId
+      schema:
+        type: integer
+      description: Filter by class ID
+    - in: query
+      name: academicYearId
+      schema:
+        type: integer
+      description: Filter by academic year ID
+    - in: query
+      name: feeType
+      schema:
+        type: string
+      description: Filter by fee type
+    responses:
+      '200':
+        description: Fee structures retrieved successfully
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateFeeStructure"
-      responses:
-        "200":
-          description: Fee structure updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Fee Structures
-      summary: Delete fee structure
-      description: Delete a fee structure (School Admin only)
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/IdParam"
-      responses:
-        "200":
-          description: Fee structure deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
+              $ref: '#/components/schemas/SuccessResponse'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+/fee-structures/{id}:
+  get:
+    tags:
+    - Fee Structures
+    summary: Get fee structure by ID
+    description: Get a specific fee structure (School Admin or Accountant)
+    security:
+    - BearerAuth: []
+    parameters:
+    - $ref: '#/components/parameters/IdPathParam'
+    responses:
+      '200':
+        description: Fee structure retrieved successfully
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuccessResponse'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '404':
+        $ref: '#/components/responses/NotFound'
+  patch:
+    tags:
+    - Fee Structures
+    summary: Update fee structure
+    description: Update a fee structure (School Admin only)
+    security:
+    - BearerAuth: []
+    parameters:
+    - $ref: '#/components/parameters/IdPathParam'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UpdateFeeStructure'
+    responses:
+      '200':
+        description: Fee structure updated successfully
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuccessResponse'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
+  delete:
+    tags:
+    - Fee Structures
+    summary: Delete fee structure
+    description: Delete a fee structure (School Admin only)
+    security:
+    - BearerAuth: []
+    parameters:
+    - $ref: '#/components/parameters/IdPathParam'
+    responses:
+      '200':
+        description: Fee structure deleted successfully
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuccessResponse'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'

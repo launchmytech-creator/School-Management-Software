@@ -1,10 +1,10 @@
-/classes:
+/accountants:
   post:
     tags:
-    - Classes
-    summary: Create class
-    description: Create a new class for the school (School Admin only)
-    operationId: createClass
+    - Accountants
+    summary: Create accountant
+    description: Create a new accountant for the school (School Admin only)
+    operationId: createAccountant
     security:
     - BearerAuth: []
     requestBody:
@@ -12,24 +12,21 @@
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/CreateClassRequest'
+            $ref: '#/components/schemas/CreateAccountantRequest'
           examples:
-            basicClass:
-              summary: Create basic class
+            fullAccountant:
+              summary: Create accountant with all details
               value:
-                name: Class 5
-                section: A
-                academicYearId: 1
-                defaultFeeAmount: 25000.0
-            classWithoutSection:
-              summary: Create class without section
-              value:
-                name: Kindergarten
-                academicYearId: 1
-                defaultFeeAmount: 15000.0
+                email: accountant@school.com
+                password: Accountant@123
+                fullName: John Accountant
+                phone: '1234567890'
+                dateOfBirth: '1985-06-15'
+                gender: Male
+                address: 456 Oak Avenue
     responses:
       '201':
-        description: Class created successfully
+        description: Accountant created successfully
         content:
           application/json:
             schema:
@@ -38,7 +35,7 @@
               - type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Class'
+                    $ref: '#/components/schemas/Accountant'
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':
@@ -47,23 +44,15 @@
         $ref: '#/components/responses/Forbidden'
   get:
     tags:
-    - Classes
-    summary: Get all classes
-    description: Retrieve list of all classes in the school (Admin, Accountant, Teacher)
-    operationId: getAllClasses
+    - Accountants
+    summary: Get all accountants
+    description: Retrieve list of all accountants in the school (School Admin only)
+    operationId: getAllAccountants
     security:
     - BearerAuth: []
-    parameters:
-    - name: academicYearId
-      in: query
-      description: Filter by academic year
-      required: false
-      schema:
-        type: integer
-      example: 1
     responses:
       '200':
-        description: Classes retrieved successfully
+        description: Accountants retrieved successfully
         content:
           application/json:
             schema:
@@ -74,28 +63,23 @@
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Class'
+                      $ref: '#/components/schemas/Accountant'
       '401':
         $ref: '#/components/responses/Unauthorized'
-/classes/{id}:
+/accountants/{id}:
   get:
     tags:
-    - Classes
-    summary: Get class by ID
-    description: Retrieve class details by ID (Admin, Accountant, Teacher)
-    operationId: getClassById
+    - Accountants
+    summary: Get accountant by ID
+    description: Retrieve accountant details by ID (School Admin only)
+    operationId: getAccountantById
     security:
     - BearerAuth: []
     parameters:
-    - name: id
-      in: path
-      required: true
-      schema:
-        type: integer
-      example: 1
+    - $ref: '#/components/parameters/IdPathParam'
     responses:
       '200':
-        description: Class retrieved successfully
+        description: Accountant retrieved successfully
         content:
           application/json:
             schema:
@@ -104,44 +88,30 @@
               - type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Class'
+                    $ref: '#/components/schemas/Accountant'
       '401':
         $ref: '#/components/responses/Unauthorized'
       '404':
         $ref: '#/components/responses/NotFound'
   patch:
     tags:
-    - Classes
-    summary: Update class
-    description: Update class details (School Admin only). Supports partial updates.
-    operationId: updateClass
+    - Accountants
+    summary: Update accountant
+    description: Update accountant details (School Admin only)
+    operationId: updateAccountant
     security:
     - BearerAuth: []
     parameters:
-    - name: id
-      in: path
-      required: true
-      schema:
-        type: integer
-      example: 1
+    - $ref: '#/components/parameters/IdPathParam'
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/UpdateClassRequest'
-          examples:
-            updateFee:
-              summary: Update default fee
-              value:
-                defaultFeeAmount: 30000.0
-            updateSection:
-              summary: Update section
-              value:
-                section: B
+            $ref: '#/components/schemas/UpdateAccountantRequest'
     responses:
       '200':
-        description: Class updated successfully
+        description: Accountant updated successfully
         content:
           application/json:
             schema:
@@ -150,7 +120,7 @@
               - type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Class'
+                    $ref: '#/components/schemas/Accountant'
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':
@@ -161,22 +131,17 @@
         $ref: '#/components/responses/NotFound'
   delete:
     tags:
-    - Classes
-    summary: Delete class
-    description: Delete a class (School Admin only)
-    operationId: deleteClass
+    - Accountants
+    summary: Deactivate accountant
+    description: Deactivate an accountant (School Admin only)
+    operationId: deleteAccountant
     security:
     - BearerAuth: []
     parameters:
-    - name: id
-      in: path
-      required: true
-      schema:
-        type: integer
-      example: 1
+    - $ref: '#/components/parameters/IdPathParam'
     responses:
       '200':
-        description: Class deleted successfully
+        description: Accountant deactivated successfully
         content:
           application/json:
             schema:

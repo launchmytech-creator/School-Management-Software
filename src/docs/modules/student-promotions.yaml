@@ -1,0 +1,205 @@
+/student-promotions:
+  post:
+    tags:
+    - Student Promotions
+    summary: Promote students to next class
+    description: Bulk promote students from one class to another (School Admin only)
+    operationId: promoteStudents
+    security:
+    - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PromoteStudentsRequest'
+    responses:
+      '200':
+        description: Students promoted successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        promotion:
+                          $ref: '#/components/schemas/StudentPromotion'
+                        student:
+                          type: object
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
+  get:
+    tags:
+    - Student Promotions
+    summary: Get all promotions
+    description: Retrieve all student promotion records (School Admin or Accountant)
+    operationId: getAllPromotions
+    security:
+    - BearerAuth: []
+    parameters:
+    - name: studentId
+      in: query
+      schema:
+        type: integer
+    - name: fromClassId
+      in: query
+      schema:
+        type: integer
+    - name: toClassId
+      in: query
+      schema:
+        type: integer
+    - name: academicYearId
+      in: query
+      schema:
+        type: integer
+    responses:
+      '200':
+        description: Promotions retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StudentPromotion'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+/student-promotions/student/{studentId}/history:
+  get:
+    tags:
+    - Student Promotions
+    summary: Get student promotion history
+    description: Retrieve complete promotion history for a specific student (School
+      Admin or Accountant)
+    operationId: getStudentPromotionHistory
+    security:
+    - BearerAuth: []
+    parameters:
+    - name: studentId
+      in: path
+      required: true
+      schema:
+        type: integer
+    responses:
+      '200':
+        description: Student promotion history retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StudentPromotion'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+/student-promotions/class/{classId}/eligible-students:
+  get:
+    tags:
+    - Student Promotions
+    summary: Get eligible students for promotion
+    description: Retrieve active students in a class eligible for promotion (School
+      Admin only)
+    operationId: getEligibleStudents
+    security:
+    - BearerAuth: []
+    parameters:
+    - name: classId
+      in: path
+      required: true
+      schema:
+        type: integer
+    responses:
+      '200':
+        description: Eligible students retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Student'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+/student-promotions/{id}:
+  get:
+    tags:
+    - Student Promotions
+    summary: Get promotion by ID
+    description: Retrieve a specific promotion record (School Admin or Accountant)
+    operationId: getPromotionById
+    security:
+    - BearerAuth: []
+    parameters:
+    - $ref: '#/components/parameters/IdPathParam'
+    responses:
+      '200':
+        description: Promotion retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StudentPromotion'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
+  delete:
+    tags:
+    - Student Promotions
+    summary: Delete promotion record
+    description: Delete a promotion record (School Admin only)
+    operationId: deletePromotion
+    security:
+    - BearerAuth: []
+    parameters:
+    - $ref: '#/components/parameters/IdPathParam'
+    responses:
+      '200':
+        description: Promotion record deleted successfully
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Success'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'

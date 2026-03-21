@@ -1,103 +1,100 @@
-paths:
-  /teachers:
-    post:
-      tags:
-        - Teachers
-      summary: Create teacher
-      description: Create a new teacher for the school (School Admin or Accountant)
-      operationId: createTeacher
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
+/teachers:
+  post:
+    tags:
+    - Teachers
+    summary: Create teacher
+    description: Create a new teacher for the school (School Admin or Accountant)
+    operationId: createTeacher
+    security:
+    - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CreateTeacherRequest'
+    responses:
+      '201':
+        description: Teacher created successfully
         content:
           application/json:
             schema:
-              $ref: "../schemas/index.yaml#/components/schemas/CreateTeacherRequest"
-      responses:
-        "201":
-          description: Teacher created successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "../schemas/index.yaml#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "../schemas/index.yaml#/components/schemas/Teacher"
-        "400":
-          $ref: "../responses/index.yaml#/components/responses/ValidationError"
-        "401":
-          $ref: "../responses/index.yaml#/components/responses/Unauthorized"
-        "403":
-          $ref: "../responses/index.yaml#/components/responses/Forbidden"
-        "409":
-          description: Teacher email already exists
-          content:
-            application/json:
-              schema:
-                $ref: "../schemas/index.yaml#/components/schemas/Error"
-        "500":
-          $ref: "../responses/index.yaml#/components/responses/InternalServerError"
-
-    get:
-      tags:
-        - Teachers
-      summary: Get all teachers
-      description: Retrieve list of all teachers in the school (School Admin or Accountant)
-      operationId: getAllTeachers
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Teachers retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "../schemas/index.yaml#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "../schemas/index.yaml#/components/schemas/Teacher"
-        "401":
-          $ref: "../responses/index.yaml#/components/responses/Unauthorized"
-        "403":
-          $ref: "../responses/index.yaml#/components/responses/Forbidden"
-        "500":
-          $ref: "../responses/index.yaml#/components/responses/InternalServerError"
-
-  /teachers/{id}:
-    get:
-      tags:
-        - Teachers
-      summary: Get teacher by ID
-      description: Retrieve teacher details by ID (School Admin or Accountant)
-      operationId: getTeacherById
-      security:
-        - BearerAuth: []
-      parameters:
-        - $ref: "../parameters/index.yaml#/components/parameters/IdPathParam"
-      responses:
-        "200":
-          description: Teacher retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "../schemas/index.yaml#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "../schemas/index.yaml#/components/schemas/Teacher"
-        "401":
-          $ref: "../responses/index.yaml#/components/responses/Unauthorized"
-        "403":
-          $ref: "../responses/index.yaml#/components/responses/Forbidden"
-        "404":
-          $ref: "../responses/index.yaml#/components/responses/NotFound"
-        "500":
-          $ref: "../responses/index.yaml#/components/responses/InternalServerError"
+              allOf:
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Teacher'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '409':
+        description: Teacher email already exists
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+      '500':
+        $ref: '#/components/responses/InternalServerError'
+  get:
+    tags:
+    - Teachers
+    summary: Get all teachers
+    description: Retrieve list of all teachers in the school (School Admin or Accountant)
+    operationId: getAllTeachers
+    security:
+    - BearerAuth: []
+    responses:
+      '200':
+        description: Teachers retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Teacher'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '500':
+        $ref: '#/components/responses/InternalServerError'
+/teachers/{id}:
+  get:
+    tags:
+    - Teachers
+    summary: Get teacher by ID
+    description: Retrieve teacher details by ID (School Admin or Accountant)
+    operationId: getTeacherById
+    security:
+    - BearerAuth: []
+    parameters:
+    - $ref: '#/components/parameters/IdPathParam'
+    responses:
+      '200':
+        description: Teacher retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Teacher'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
+      '500':
+        $ref: '#/components/responses/InternalServerError'

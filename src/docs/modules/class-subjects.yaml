@@ -1,18 +1,19 @@
 /class-subjects:
   post:
     tags:
-      - Class Subjects
+    - Class Subjects
     summary: Assign subject to class
-    description: Assign a subject to a class for a specific academic year (School Admin only)
+    description: Assign a subject to a class for a specific academic year (School
+      Admin only)
     operationId: assignSubjectToClass
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/AssignSubjectRequest"
+            $ref: '#/components/schemas/AssignSubjectRequest'
           examples:
             withMaxMarks:
               summary: Assign with max marks
@@ -20,7 +21,7 @@
                 classId: 1
                 subjectId: 2
                 academicYearId: 1
-                maxMarks: 100.00
+                maxMarks: 100.0
             withoutMaxMarks:
               summary: Assign without max marks
               value:
@@ -28,209 +29,208 @@
                 subjectId: 3
                 academicYearId: 1
     responses:
-      "201":
+      '201':
         description: Subject assigned to class successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      $ref: "#/components/schemas/ClassSubject"
-      "400":
-        $ref: "#/components/responses/ValidationError"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-      "403":
-        $ref: "#/components/responses/Forbidden"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ClassSubject'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
 /class-subjects/class/{classId}:
   get:
     tags:
-      - Class Subjects
+    - Class Subjects
     summary: Get subjects by class
-    description: Retrieve all subjects assigned to a specific class (Admin, Accountant, Teacher)
+    description: Retrieve all subjects assigned to a specific class (Admin, Accountant,
+      Teacher)
     operationId: getSubjectsByClass
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: classId
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 1
-      - name: academicYearId
-        in: query
-        description: Filter by academic year
-        required: false
-        schema:
-          type: integer
-        example: 1
+    - name: classId
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
+    - name: academicYearId
+      in: query
+      description: Filter by academic year
+      required: false
+      schema:
+        type: integer
+      example: 1
     responses:
-      "200":
+      '200':
         description: Class subjects retrieved successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: "#/components/schemas/ClassSubject"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClassSubject'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
 /class-subjects/subject/{subjectId}:
   get:
     tags:
-      - Class Subjects
+    - Class Subjects
     summary: Get classes by subject
-    description: Retrieve all classes where a subject is assigned (Admin, Accountant, Teacher)
+    description: Retrieve all classes where a subject is assigned (Admin, Accountant,
+      Teacher)
     operationId: getClassesBySubject
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: subjectId
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 2
-      - name: academicYearId
-        in: query
-        description: Filter by academic year
-        required: false
-        schema:
-          type: integer
-        example: 1
+    - name: subjectId
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 2
+    - name: academicYearId
+      in: query
+      description: Filter by academic year
+      required: false
+      schema:
+        type: integer
+      example: 1
     responses:
-      "200":
+      '200':
         description: Subject classes retrieved successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items:
-                        $ref: "#/components/schemas/ClassSubject"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClassSubject'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
 /class-subjects/{id}:
   get:
     tags:
-      - Class Subjects
+    - Class Subjects
     summary: Get class subject by ID
-    description: Retrieve class subject assignment details by ID (Admin, Accountant, Teacher)
+    description: Retrieve class subject assignment details by ID (Admin, Accountant,
+      Teacher)
     operationId: getClassSubjectById
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 1
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
     responses:
-      "200":
+      '200':
         description: Class subject retrieved successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      $ref: "#/components/schemas/ClassSubject"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-      "404":
-        $ref: "#/components/responses/NotFound"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ClassSubject'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '404':
+        $ref: '#/components/responses/NotFound'
   patch:
     tags:
-      - Class Subjects
+    - Class Subjects
     summary: Update class subject
-    description: Update class subject details (School Admin only). Currently supports updating max marks.
+    description: Update class subject details (School Admin only). Currently supports
+      updating max marks.
     operationId: updateClassSubject
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 1
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/UpdateClassSubjectRequest"
+            $ref: '#/components/schemas/UpdateClassSubjectRequest'
           examples:
             updateMaxMarks:
               summary: Update max marks
               value:
-                maxMarks: 150.00
+                maxMarks: 150.0
     responses:
-      "200":
+      '200':
         description: Class subject updated successfully
         content:
           application/json:
             schema:
               allOf:
-                - $ref: "#/components/schemas/Success"
-                - type: object
-                  properties:
-                    data:
-                      $ref: "#/components/schemas/ClassSubject"
-      "400":
-        $ref: "#/components/responses/ValidationError"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-      "403":
-        $ref: "#/components/responses/Forbidden"
-      "404":
-        $ref: "#/components/responses/NotFound"
-
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ClassSubject'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
   delete:
     tags:
-      - Class Subjects
+    - Class Subjects
     summary: Remove subject from class
     description: Remove a subject assignment from a class (School Admin only)
     operationId: removeSubjectFromClass
     security:
-      - BearerAuth: []
+    - BearerAuth: []
     parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-        example: 1
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
     responses:
-      "200":
+      '200':
         description: Subject removed from class successfully
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Success"
-      "401":
-        $ref: "#/components/responses/Unauthorized"
-      "403":
-        $ref: "#/components/responses/Forbidden"
-      "404":
-        $ref: "#/components/responses/NotFound"
+              $ref: '#/components/schemas/Success'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'

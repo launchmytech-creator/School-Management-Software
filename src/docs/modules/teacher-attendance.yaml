@@ -1,164 +1,164 @@
-paths:
-  /api/v1/teacher-attendance:
-    post:
-      tags:
-        - Teacher Attendance
-      summary: Mark teacher attendance
-      description: Mark attendance for multiple teachers (School Admin or Accountant)
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
+/teacher-attendance:
+  post:
+    tags:
+    - Teacher Attendance
+    summary: Mark teacher attendance
+    description: Mark attendance for multiple teachers (School Admin or Accountant)
+    security:
+    - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MarkTeacherAttendance'
+    responses:
+      '200':
+        description: Attendance marked successfully
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MarkTeacherAttendance"
-      responses:
-        "200":
-          description: Attendance marked successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Teacher Attendance
-      summary: Get teacher attendance records
-      description: Get all teacher attendance records with filters (School Admin or Accountant)
-      security:
-        - bearerAuth: []
-      parameters:
-        - in: query
-          name: teacherId
-          schema:
-            type: integer
-          description: Filter by teacher ID
-        - in: query
-          name: attendanceDate
-          schema:
-            type: string
-            format: date
-          description: Filter by specific date
-        - in: query
-          name: startDate
-          schema:
-            type: string
-            format: date
-          description: Filter by start date (use with endDate)
-        - in: query
-          name: endDate
-          schema:
-            type: string
-            format: date
-          description: Filter by end date (use with startDate)
-        - in: query
-          name: status
-          schema:
-            type: string
-            enum: [present, absent, late]
-          description: Filter by attendance status
-      responses:
-        "200":
-          description: Attendance records retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /api/v1/teacher-attendance/teacher/{teacherId}/summary:
-    get:
-      tags:
-        - Teacher Attendance
-      summary: Get teacher attendance summary
-      description: Get attendance summary for a specific teacher (School Admin or Accountant)
-      security:
-        - bearerAuth: []
-      parameters:
-        - in: path
-          name: teacherId
-          required: true
-          schema:
-            type: integer
-          description: Teacher ID
-        - in: query
-          name: startDate
-          schema:
-            type: string
-            format: date
-          description: Filter by start date (use with endDate)
-        - in: query
-          name: endDate
-          schema:
-            type: string
-            format: date
-          description: Filter by end date (use with startDate)
-      responses:
-        "200":
-          description: Attendance summary retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /api/v1/teacher-attendance/date:
-    get:
-      tags:
-        - Teacher Attendance
-      summary: Get teacher attendance by date
-      description: Get attendance for all teachers on a specific date (School Admin or Accountant)
-      security:
-        - bearerAuth: []
-      parameters:
-        - in: query
-          name: date
-          required: true
-          schema:
-            type: string
-            format: date
-          description: Attendance date
-      responses:
-        "200":
-          description: Teacher attendance retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /api/v1/teacher-attendance/{id}:
-    delete:
-      tags:
-        - Teacher Attendance
-      summary: Delete attendance record
-      description: Delete a teacher attendance record (School Admin only)
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/IdParam"
-      responses:
-        "200":
-          description: Attendance record deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
+              $ref: '#/components/schemas/SuccessResponse'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+  get:
+    tags:
+    - Teacher Attendance
+    summary: Get teacher attendance records
+    description: Get all teacher attendance records with filters (School Admin or
+      Accountant)
+    security:
+    - BearerAuth: []
+    parameters:
+    - in: query
+      name: teacherId
+      schema:
+        type: integer
+      description: Filter by teacher ID
+    - in: query
+      name: attendanceDate
+      schema:
+        type: string
+        format: date
+      description: Filter by specific date
+    - in: query
+      name: startDate
+      schema:
+        type: string
+        format: date
+      description: Filter by start date (use with endDate)
+    - in: query
+      name: endDate
+      schema:
+        type: string
+        format: date
+      description: Filter by end date (use with startDate)
+    - in: query
+      name: status
+      schema:
+        type: string
+        enum:
+        - present
+        - absent
+        - late
+      description: Filter by attendance status
+    responses:
+      '200':
+        description: Attendance records retrieved successfully
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuccessResponse'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+/teacher-attendance/teacher/{teacherId}/summary:
+  get:
+    tags:
+    - Teacher Attendance
+    summary: Get teacher attendance summary
+    description: Get attendance summary for a specific teacher (School Admin or Accountant)
+    security:
+    - BearerAuth: []
+    parameters:
+    - in: path
+      name: teacherId
+      required: true
+      schema:
+        type: integer
+      description: Teacher ID
+    - in: query
+      name: startDate
+      schema:
+        type: string
+        format: date
+      description: Filter by start date (use with endDate)
+    - in: query
+      name: endDate
+      schema:
+        type: string
+        format: date
+      description: Filter by end date (use with startDate)
+    responses:
+      '200':
+        description: Attendance summary retrieved successfully
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuccessResponse'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+/teacher-attendance/date:
+  get:
+    tags:
+    - Teacher Attendance
+    summary: Get teacher attendance by date
+    description: Get attendance for all teachers on a specific date (School Admin
+      or Accountant)
+    security:
+    - BearerAuth: []
+    parameters:
+    - in: query
+      name: date
+      required: true
+      schema:
+        type: string
+        format: date
+      description: Attendance date
+    responses:
+      '200':
+        description: Teacher attendance retrieved successfully
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuccessResponse'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+/teacher-attendance/{id}:
+  delete:
+    tags:
+    - Teacher Attendance
+    summary: Delete attendance record
+    description: Delete a teacher attendance record (School Admin only)
+    security:
+    - BearerAuth: []
+    parameters:
+    - $ref: '#/components/parameters/IdPathParam'
+    responses:
+      '200':
+        description: Attendance record deleted successfully
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuccessResponse'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'

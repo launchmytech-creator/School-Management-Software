@@ -28,6 +28,7 @@ const syllabusCompletionRoutes = require("./modules/syllabus-completion/syllabus
 const parentsRoutes = require("./modules/parents/parents.routes");
 const accountantsRoutes = require("./modules/accountants/accountants.routes");
 const studentPromotionsRoutes = require("./modules/student-promotions/student-promotions.routes");
+const parentDashboardRoutes = require("./modules/parent-dashboard/parent-dashboard.routes");
 
 const app = express();
 
@@ -54,14 +55,10 @@ app.get("/health", (req, res) => {
 
 // API Documentation
 const swaggerUi = require("swagger-ui-express");
-const jsYaml = require("js-yaml");
-const fs = require("fs");
-const path = require("path");
+const { buildSwaggerDocument } = require("./config/swagger.config");
 
 try {
-  const swaggerDocument = jsYaml.load(
-    fs.readFileSync(path.join(__dirname, "docs", "openapi.yaml"), "utf8"),
-  );
+  const swaggerDocument = buildSwaggerDocument();
   app.use(
     "/api-docs",
     swaggerUi.serve,
@@ -98,6 +95,7 @@ app.use(`${apiPrefix}/syllabus-completion`, syllabusCompletionRoutes);
 app.use(`${apiPrefix}/parents`, parentsRoutes);
 app.use(`${apiPrefix}/accountants`, accountantsRoutes);
 app.use(`${apiPrefix}/student-promotions`, studentPromotionsRoutes);
+app.use(`${apiPrefix}/parent`, parentDashboardRoutes);
 // 404 handler
 app.use((req, res) => {
   logger.warn("Route not found", { path: req.path, method: req.method });

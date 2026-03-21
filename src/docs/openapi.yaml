@@ -4,15 +4,9 @@ info:
   description: |
     Multi-tenant School Management System REST API
 
-    ## Features
-    - JWT Authentication
-    - Role-based Access Control
-    - Multi-tenant Architecture
-    - Comprehensive School Management
-
     ## Roles
     - **Super Admin**: System-level access, can create schools
-    - **School Admin**: School-level access, can manage teachers, students, and school operations
+    - **School Admin**: School-level access, manages teachers, students, operations
     - **Accountant**: Financial management and limited academic operations
     - **Teacher**: Academic operations, attendance, and syllabus tracking
     - **Parent**: Read-only access to child's information
@@ -34,42 +28,64 @@ tags:
   - name: Authentication
     description: Authentication and authorization endpoints
   - name: Schools
-    description: School management operations (Super Admin only)
+    description: School management (Super Admin only)
   - name: Teachers
-    description: Teacher management operations (Admin only)
+    description: Teacher management (Admin only)
   - name: Classes
-    description: Class management operations (Admin, Accountant, Teacher)
+    description: Class management (Admin, Accountant, Teacher)
   - name: Students
-    description: Student management operations (Admin, Accountant, Teacher)
+    description: Student management (Admin, Accountant, Teacher)
   - name: Subjects
-    description: Subject management operations (Admin, Accountant, Teacher)
+    description: Subject management (Admin, Accountant, Teacher)
   - name: Chapters
-    description: Chapter management operations (Admin, Accountant, Teacher)
+    description: Chapter management (Admin, Accountant, Teacher)
   - name: Academic Years
-    description: Academic year management operations (Admin, Accountant, Teacher)
+    description: Academic year management (Admin, Accountant, Teacher)
   - name: Class Subjects
-    description: Class-Subject assignment operations (Admin, Accountant, Teacher)
+    description: Class-Subject assignments (Admin, Accountant, Teacher)
   - name: Teacher Allocations
-    description: Teacher allocation operations - Business Plan feature (Admin, Accountant, Teacher)
+    description: Teacher allocations - Business Plan (Admin, Accountant, Teacher)
   - name: Accountants
-    description: Accountant management operations (Admin only)
+    description: Accountant management (Admin only)
   - name: Fee Structures
-    description: Fee structure management operations - Basic Plan feature (Admin, Accountant)
+    description: Fee structures - Basic Plan (Admin, Accountant)
   - name: Fee Transactions
-    description: Fee transaction and payment management - Basic Plan feature (Admin, Accountant)
+    description: Fee transactions and payments - Basic Plan (Admin, Accountant)
   - name: Student Attendance
-    description: Student attendance management - Premium Plan feature (Admin, Accountant, Teacher)
+    description: Student attendance - Premium Plan (Admin, Accountant, Teacher)
   - name: Teacher Attendance
-    description: Teacher attendance management - Premium Plan feature (Admin, Accountant)
+    description: Teacher attendance - Premium Plan (Admin, Accountant)
   - name: Syllabus Completion
-    description: Syllabus completion tracking - Premium Plan feature (Admin, Teacher)
+    description: Syllabus tracking - Premium Plan (Admin, Teacher)
   - name: Parents
-    description: Parent management operations (Admin, Accountant)
+    description: Parent management (Admin, Accountant)
   - name: Holidays
-    description: Holiday management and working days calculation - Premium Plan feature (Admin, Accountant, Teacher)
+    description: Holiday management - Premium Plan (Admin, Accountant, Teacher)
+  - name: Exams
+    description: Exam management (Admin, Accountant, Teacher)
+  - name: Exam Results
+    description: Exam results and marks (Admin, Accountant, Teacher)
   - name: Student Promotions
-    description: Student promotion and class shifting operations (Admin, Accountant)
+    description: Student promotions (Admin, Accountant)
 
+paths:
+  /health:
+    get:
+      tags:
+        - Authentication
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        "200":
+          description: API is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: OK
 
 components:
   securitySchemes:
@@ -85,66 +101,67 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            $ref: '#/components/schemas/Error'
           example:
             success: false
-            errorCode: "AUTH_001"
-            message: "Unauthorized"
-
+            errorCode: "AUTH_002"
+            message: "Authentication token is missing"
     Forbidden:
       description: Insufficient permissions
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            $ref: '#/components/schemas/Error'
           example:
             success: false
-            errorCode: "AUTH_003"
-            message: "Forbidden"
-
+            errorCode: "AUTH_005"
+            message: "You are not authorized to perform this action"
     NotFound:
       description: Resource not found
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            $ref: '#/components/schemas/Error'
           example:
             success: false
-            errorCode: "NOT_FOUND"
-            message: "Resource not found"
-
+            errorCode: "SYS_003"
+            message: "Requested resource not found"
     ValidationError:
       description: Validation failed
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            $ref: '#/components/schemas/Error'
           example:
             success: false
-            errorCode: "VALIDATION_ERROR"
+            errorCode: "VAL_001"
             message: "Validation failed"
-            errors:
-              - field: "email"
-                message: "Invalid email format"
-
     InternalServerError:
       description: Internal server error
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            $ref: '#/components/schemas/Error'
           example:
             success: false
-            errorCode: "INTERNAL_ERROR"
-            message: "An unexpected error occurred"
+            errorCode: "SYS_001"
+            message: "Internal server error"
+
+  parameters:
+    IdPathParam:
+      name: id
+      in: path
+      required: true
+      description: Resource ID
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
 
   schemas:
     Error:
       type: object
-      required:
-        - success
-        - errorCode
-        - message
+      required: [success, errorCode, message]
       properties:
         success:
           type: boolean
@@ -167,9 +184,7 @@ components:
 
     Success:
       type: object
-      required:
-        - success
-        - message
+      required: [success, message]
       properties:
         success:
           type: boolean
@@ -205,12 +220,17 @@ components:
           type: string
           nullable: true
           example: "ABC School"
+        phone:
+          type: string
+          nullable: true
+          example: "+1234567890"
+        isActive:
+          type: boolean
+          example: true
 
     LoginRequest:
       type: object
-      required:
-        - email
-        - password
+      required: [email, password]
       properties:
         email:
           type: string
@@ -223,7 +243,7 @@ components:
 
     LoginResponse:
       allOf:
-        - $ref: "#/components/schemas/Success"
+        - $ref: '#/components/schemas/Success'
         - type: object
           properties:
             data:
@@ -233,7 +253,7 @@ components:
                   type: string
                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 user:
-                  $ref: "#/components/schemas/User"
+                  $ref: '#/components/schemas/User'
 
     School:
       type: object
@@ -255,17 +275,6 @@ components:
         subscriptionPlanName:
           type: string
           example: "Premium"
-        subscriptionFeatures:
-          type: object
-          example:
-            {
-              "fee_management": true,
-              "marks_management": true,
-              "attendance": true,
-              "syllabus_tracking": true,
-              "teacher_allocation": false,
-              "analytics": false,
-            }
         subscriptionStatus:
           type: string
           enum: [active, suspended, expired, trial]
@@ -279,7 +288,6 @@ components:
           type: integer
           enum: [1, 2, 4, 12]
           example: 4
-          description: "1=Yearly, 2=Half-yearly, 4=Quarterly, 12=Monthly"
         contactEmail:
           type: string
           format: email
@@ -308,16 +316,11 @@ components:
 
     CreateSchoolRequest:
       type: object
-      required:
-        - school
-        - admin
+      required: [school, admin]
       properties:
         school:
           type: object
-          required:
-            - name
-            - code
-            - contactEmail
+          required: [name, code, contactEmail]
           properties:
             name:
               type: string
@@ -334,13 +337,11 @@ components:
               enum: [1, 2, 3]
               default: 1
               example: 2
-              description: "1=Basic, 2=Premium, 3=Business"
             feeTerms:
               type: integer
               enum: [1, 2, 4, 12]
               default: 1
               example: 4
-              description: "1=Yearly, 2=Half-yearly, 4=Quarterly, 12=Monthly"
             contactEmail:
               type: string
               format: email
@@ -361,10 +362,7 @@ components:
               example: "2025-12-31"
         admin:
           type: object
-          required:
-            - email
-            - password
-            - fullName
+          required: [email, password, fullName]
           properties:
             email:
               type: string
@@ -388,19 +386,15 @@ components:
       properties:
         name:
           type: string
-          minLength: 3
-          maxLength: 200
           example: "ABC International School"
         subscriptionPlanId:
           type: integer
           enum: [1, 2, 3]
           example: 3
-          description: "1=Basic, 2=Premium, 3=Business. Changes are tracked in history."
         feeTerms:
           type: integer
           enum: [1, 2, 4, 12]
           example: 12
-          description: "1=Yearly, 2=Half-yearly, 4=Quarterly, 12=Monthly. Changes are tracked in history."
         subscriptionStatus:
           type: string
           enum: [active, suspended, expired, trial]
@@ -441,17 +435,36 @@ components:
           example: "teacher"
         phone:
           type: string
+          nullable: true
           example: "+1234567890"
+        dateOfBirth:
+          type: string
+          format: date
+          nullable: true
+          example: "1990-05-15"
+        gender:
+          type: string
+          enum: [Male, Female, Other]
+          nullable: true
+          example: "Female"
+        address:
+          type: string
+          nullable: true
+          example: "456 Oak Avenue"
+        schoolId:
+          type: integer
+          example: 1
         isActive:
           type: boolean
           example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00.000Z"
 
     CreateTeacherRequest:
       type: object
-      required:
-        - email
-        - password
-        - fullName
+      required: [email, password, fullName]
       properties:
         email:
           type: string
@@ -461,6 +474,29 @@ components:
           type: string
           minLength: 8
           example: "Teacher@123"
+        fullName:
+          type: string
+          minLength: 3
+          maxLength: 150
+          example: "Jane Smith"
+        phone:
+          type: string
+          example: "+1234567890"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1990-05-15"
+        gender:
+          type: string
+          enum: [Male, Female, Other]
+          example: "Female"
+        address:
+          type: string
+          example: "456 Oak Avenue"
+
+    UpdateTeacherRequest:
+      type: object
+      properties:
         fullName:
           type: string
           example: "Jane Smith"
@@ -478,102 +514,10 @@ components:
         address:
           type: string
           example: "456 Oak Avenue"
+        isActive:
+          type: boolean
+          example: true
 
-
-     # Holiday related schemas
-    Holiday:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        holidayDate:
-          type: string
-          format: date
-          example: "2024-08-15"
-        description:
-          type: string
-          nullable: true
-          example: "Independence Day"
-
-    CreateHoliday:
-      type: object
-      required:
-        - holidayDate
-        - academicYearId
-      properties:
-        holidayDate:
-          type: string
-          format: date
-          example: "2024-08-15"
-        description:
-          type: string
-          maxLength: 200
-          example: "Independence Day"
-        academicYearId:
-          type: integer
-          example: 1
-
-    UpdateHoliday:
-      type: object
-      properties:
-        holidayDate:
-          type: string
-          format: date
-          example: "2024-08-15"
-        description:
-          type: string
-          maxLength: 200
-          example: "Independence Day - National Holiday"
-
-
-
-    # Syllabus Completion related schemas
-    SyllabusCompletion:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        chapterId:
-          type: integer
-          example: 5
-        chapterName:
-          type: string
-          example: "Photosynthesis"
-        status:
-          type: string
-          enum: [pending, in_progress, completed]
-          example: "completed"
-
-    MarkSyllabusCompletion:
-      type: object
-      required:
-        - classSubjectId
-        - chapters
-      properties:
-        classSubjectId:
-          type: integer
-          example: 1
-        chapters:
-          type: array
-          minItems: 1
-          items:
-            type: object
-            required:
-              - chapterId
-              - status
-            properties:
-              chapterId:
-                type: integer
-                example: 5
-              status:
-                type: string
-                enum: [pending, in_progress, completed]
-                example: "completed"
-
-
-    # Class related schemas
     Class:
       type: object
       properties:
@@ -596,14 +540,6 @@ components:
         yearName:
           type: string
           example: "2024-2025"
-        startDate:
-          type: string
-          format: date
-          example: "2024-04-01"
-        endDate:
-          type: string
-          format: date
-          example: "2025-03-31"
         defaultFeeAmount:
           type: number
           format: decimal
@@ -615,9 +551,7 @@ components:
 
     CreateClassRequest:
       type: object
-      required:
-        - name
-        - academicYearId
+      required: [name, academicYearId]
       properties:
         name:
           type: string
@@ -641,126 +575,15 @@ components:
       properties:
         name:
           type: string
-          minLength: 1
-          maxLength: 50
           example: "Class 5"
         section:
           type: string
-          maxLength: 10
           example: "B"
         defaultFeeAmount:
           type: number
           format: decimal
           example: 30000.00
 
-
-
-          # Student Attendance related schemas
-    StudentAttendance:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        studentId:
-          type: integer
-          example: 10
-        studentName:
-          type: string
-          example: "John Doe"
-        attendanceDate:
-          type: string
-          format: date
-          example: "2024-03-11"
-        status:
-          type: string
-          enum: [present, absent, late]
-          example: "present"
-
-    MarkStudentAttendance:
-      type: object
-      required:
-        - classId
-        - attendanceDate
-        - records
-      properties:
-        classId:
-          type: integer
-          example: 1
-        attendanceDate:
-          type: string
-          format: date
-          example: "2024-03-11"
-        records:
-          type: array
-          minItems: 1
-          items:
-            type: object
-            required:
-              - studentId
-              - status
-            properties:
-              studentId:
-                type: integer
-                example: 10
-              status:
-                type: string
-                enum: [present, absent, late]
-                example: "present"
-
-
-
-
-           # Teacher Attendance related schemas
-    TeacherAttendance:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        teacherId:
-          type: integer
-          example: 5
-        teacherName:
-          type: string
-          example: "Jane Smith"
-        attendanceDate:
-          type: string
-          format: date
-          example: "2024-03-11"
-        status:
-          type: string
-          enum: [present, absent, late]
-          example: "present"
-
-    MarkTeacherAttendance:
-      type: object
-      required:
-        - attendanceDate
-        - records
-      properties:
-        attendanceDate:
-          type: string
-          format: date
-          example: "2024-03-11"
-        records:
-          type: array
-          minItems: 1
-          items:
-            type: object
-            required:
-              - teacherId
-              - status
-            properties:
-              teacherId:
-                type: integer
-                example: 5
-              status:
-                type: string
-                enum: [present, absent, late]
-                example: "present"
-
-    # Student related schemas
     Student:
       type: object
       properties:
@@ -829,10 +652,7 @@ components:
 
     CreateStudentRequest:
       type: object
-      required:
-        - admissionNumber
-        - fullName
-        - admissionDate
+      required: [admissionNumber, fullName, admissionDate]
       properties:
         admissionNumber:
           type: string
@@ -876,15 +696,12 @@ components:
           type: string
           enum: [active, inactive, transferred, graduated]
           default: "active"
-          example: "active"
 
     UpdateStudentRequest:
       type: object
       properties:
         fullName:
           type: string
-          minLength: 3
-          maxLength: 150
           example: "John Doe"
         dateOfBirth:
           type: string
@@ -908,14 +725,12 @@ components:
           example: 5
         rollNumber:
           type: string
-          maxLength: 20
           example: "15"
         status:
           type: string
           enum: [active, inactive, transferred, graduated]
           example: "active"
 
-    # Subject related schemas
     Subject:
       type: object
       properties:
@@ -937,9 +752,7 @@ components:
 
     CreateSubjectRequest:
       type: object
-      required:
-        - name
-        - code
+      required: [name, code]
       properties:
         name:
           type: string
@@ -957,16 +770,11 @@ components:
       properties:
         name:
           type: string
-          minLength: 2
-          maxLength: 100
           example: "Advanced Mathematics"
         code:
           type: string
-          minLength: 2
-          maxLength: 20
           example: "AMATH"
 
-    # Chapter related schemas
     Chapter:
       type: object
       properties:
@@ -996,9 +804,7 @@ components:
 
     CreateChapterRequest:
       type: object
-      required:
-        - subjectId
-        - name
+      required: [subjectId, name]
       properties:
         subjectId:
           type: integer
@@ -1017,15 +823,12 @@ components:
       properties:
         name:
           type: string
-          minLength: 2
-          maxLength: 200
           example: "Advanced Photosynthesis"
         sequenceNumber:
           type: integer
           example: 5
 
-    # Fee Structure related schemas
-    FeeStructure:
+    AcademicYear:
       type: object
       properties:
         id:
@@ -1034,16 +837,283 @@ components:
         schoolId:
           type: integer
           example: 1
+        yearName:
+          type: string
+          example: "2024-2025"
+        startDate:
+          type: string
+          format: date
+          example: "2024-04-01"
+        endDate:
+          type: string
+          format: date
+          example: "2025-03-31"
+        isCurrent:
+          type: boolean
+          example: true
+        classCount:
+          type: integer
+          example: 12
+
+    CreateAcademicYearRequest:
+      type: object
+      required: [yearName, startDate, endDate]
+      properties:
+        yearName:
+          type: string
+          example: "2024-2025"
+        startDate:
+          type: string
+          format: date
+          example: "2024-04-01"
+        endDate:
+          type: string
+          format: date
+          example: "2025-03-31"
+        isCurrent:
+          type: boolean
+          default: false
+          example: true
+
+    UpdateAcademicYearRequest:
+      type: object
+      properties:
+        yearName:
+          type: string
+          example: "2024-2025"
+        startDate:
+          type: string
+          format: date
+          example: "2024-04-01"
+        endDate:
+          type: string
+          format: date
+          example: "2025-03-31"
+        isCurrent:
+          type: boolean
+          example: true
+
+    ClassSubject:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
         classId:
           type: integer
           example: 1
         className:
           type: string
           example: "Class 5"
-        classSection:
+        subjectId:
+          type: integer
+          example: 2
+        subjectName:
+          type: string
+          example: "Mathematics"
+        academicYearId:
+          type: integer
+          example: 1
+        yearName:
+          type: string
+          example: "2024-2025"
+        maxMarks:
+          type: number
+          format: decimal
+          nullable: true
+          example: 100.00
+
+    AssignSubjectRequest:
+      type: object
+      required: [classId, subjectId, academicYearId]
+      properties:
+        classId:
+          type: integer
+          example: 1
+        subjectId:
+          type: integer
+          example: 2
+        academicYearId:
+          type: integer
+          example: 1
+        maxMarks:
+          type: number
+          format: decimal
+          example: 100.00
+
+    UpdateClassSubjectRequest:
+      type: object
+      properties:
+        maxMarks:
+          type: number
+          format: decimal
+          example: 150.00
+
+    TeacherAllocation:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        teacherId:
+          type: integer
+          example: 5
+        teacherName:
+          type: string
+          example: "Jane Smith"
+        classId:
+          type: integer
+          example: 1
+        className:
+          type: string
+          example: "Class 5"
+        subjectId:
+          type: integer
+          example: 2
+        subjectName:
+          type: string
+          example: "Mathematics"
+        academicYearId:
+          type: integer
+          example: 1
+        yearName:
+          type: string
+          example: "2024-2025"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00.000Z"
+
+    AllocateTeacherRequest:
+      type: object
+      required: [teacherId, classId, subjectId, academicYearId]
+      properties:
+        teacherId:
+          type: integer
+          example: 5
+        classId:
+          type: integer
+          example: 1
+        subjectId:
+          type: integer
+          example: 2
+        academicYearId:
+          type: integer
+          example: 1
+
+    Accountant:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: "accountant@school.com"
+        fullName:
+          type: string
+          example: "John Accountant"
+        role:
+          type: string
+          example: "accountant"
+        phone:
           type: string
           nullable: true
-          example: "A"
+          example: "1234567890"
+        dateOfBirth:
+          type: string
+          format: date
+          nullable: true
+          example: "1985-06-15"
+        gender:
+          type: string
+          enum: [Male, Female, Other]
+          nullable: true
+          example: "Male"
+        address:
+          type: string
+          nullable: true
+          example: "456 Oak Avenue"
+        schoolId:
+          type: integer
+          example: 1
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-03-11T10:30:00.000Z"
+
+    CreateAccountantRequest:
+      type: object
+      required: [email, password, fullName]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "accountant@school.com"
+        password:
+          type: string
+          minLength: 8
+          example: "Accountant@123"
+        fullName:
+          type: string
+          minLength: 3
+          maxLength: 150
+          example: "John Accountant"
+        phone:
+          type: string
+          example: "1234567890"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1985-06-15"
+        gender:
+          type: string
+          enum: [Male, Female, Other]
+          example: "Male"
+        address:
+          type: string
+          example: "456 Oak Avenue"
+
+    UpdateAccountantRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+          example: "John Accountant"
+        phone:
+          type: string
+          example: "1234567890"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1985-06-15"
+        gender:
+          type: string
+          enum: [Male, Female, Other]
+          example: "Male"
+        address:
+          type: string
+          example: "456 Oak Avenue"
+        isActive:
+          type: boolean
+          example: true
+
+    FeeStructure:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        classId:
+          type: integer
+          example: 1
+        className:
+          type: string
+          example: "Class 5"
         academicYearId:
           type: integer
           example: 1
@@ -1064,11 +1134,7 @@ components:
 
     CreateFeeStructure:
       type: object
-      required:
-        - classId
-        - academicYearId
-        - feeType
-        - amount
+      required: [classId, academicYearId, feeType, amount]
       properties:
         classId:
           type: integer
@@ -1099,17 +1165,12 @@ components:
           example: 30000.00
         feeType:
           type: string
-          maxLength: 50
           example: "Annual Fee"
 
-    # Fee Transaction related schemas
     FeeTransaction:
       type: object
       properties:
         id:
-          type: integer
-          example: 1
-        schoolId:
           type: integer
           example: 1
         studentId:
@@ -1121,9 +1182,6 @@ components:
         admissionNumber:
           type: string
           example: "2024001"
-        feeStructureId:
-          type: integer
-          example: 1
         feeType:
           type: string
           example: "Tuition Fee"
@@ -1143,6 +1201,10 @@ components:
           type: number
           format: decimal
           example: 0.00
+        dueDate:
+          type: string
+          format: date
+          example: "2024-07-01"
         status:
           type: string
           enum: [pending, partial, paid]
@@ -1152,12 +1214,14 @@ components:
           enum: [cash, card, upi, cheque, bank_transfer]
           nullable: true
           example: "upi"
+        receiptNumber:
+          type: string
+          nullable: true
+          example: "RCP-2024-001"
 
     GenerateFeeTransactions:
       type: object
-      required:
-        - feeStructureId
-        - academicYearStartDate
+      required: [feeStructureId, academicYearStartDate]
       properties:
         feeStructureId:
           type: integer
@@ -1169,9 +1233,7 @@ components:
 
     RecordPayment:
       type: object
-      required:
-        - amountPaid
-        - paymentMode
+      required: [amountPaid, paymentMode]
       properties:
         amountPaid:
           type: number
@@ -1192,9 +1254,7 @@ components:
 
     ApplyWaiver:
       type: object
-      required:
-        - waiverAmount
-        - waiverReason
+      required: [waiverAmount, waiverReason]
       properties:
         waiverAmount:
           type: number
@@ -1213,350 +1273,60 @@ components:
           format: date
           example: "2024-08-01"
 
-    # Academic Year related schemas
-    AcademicYear:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        schoolId:
-          type: integer
-          example: 1
-        yearName:
-          type: string
-          example: "2024-2025"
-        startDate:
-          type: string
-          format: date
-          example: "2024-04-01"
-        endDate:
-          type: string
-          format: date
-          example: "2025-03-31"
-        isCurrent:
-          type: boolean
-          example: true
-        createdAt:
-          type: string
-          format: date-time
-          example: "2024-01-15T10:30:00.000Z"
-        updatedAt:
-          type: string
-          format: date-time
-          example: "2024-01-15T10:30:00.000Z"
-
-    CreateAcademicYearRequest:
-      type: object
-      required:
-        - yearName
-        - startDate
-        - endDate
-      properties:
-        yearName:
-          type: string
-          example: "2024-2025"
-        startDate:
-          type: string
-          format: date
-          example: "2024-04-01"
-        endDate:
-          type: string
-          format: date
-          example: "2025-03-31"
-        isCurrent:
-          type: boolean
-          example: true
-
-    UpdateAcademicYearRequest:
-      type: object
-      properties:
-        yearName:
-          type: string
-          example: "2024-2025"
-        startDate:
-          type: string
-          format: date
-          example: "2024-04-01"
-        endDate:
-          type: string
-          format: date
-          example: "2025-03-31"
-
-    # Class Subject related schemas
-    ClassSubject:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        classId:
-          type: integer
-          example: 1
-        className:
-          type: string
-          example: "Class 5"
-        subjectId:
-          type: integer
-          example: 2
-        subjectName:
-          type: string
-          example: "Mathematics"
-        academicYearId:
-          type: integer
-          example: 1
-        academicYearName:
-          type: string
-          example: "2024-2025"
-        maxMarks:
-          type: number
-          format: decimal
-          example: 100.00
-        createdAt:
-          type: string
-          format: date-time
-          example: "2024-01-15T10:30:00.000Z"
-
-    AssignSubjectRequest:
-      type: object
-      required:
-        - classId
-        - subjectId
-        - academicYearId
-      properties:
-        classId:
-          type: integer
-          example: 1
-        subjectId:
-          type: integer
-          example: 2
-        academicYearId:
-          type: integer
-          example: 1
-        maxMarks:
-          type: number
-          format: decimal
-          example: 100.00
-
-    UpdateClassSubjectRequest:
-      type: object
-      properties:
-        maxMarks:
-          type: number
-          format: decimal
-          example: 150.00
-
-    # Teacher Allocation related schemas
-    TeacherAllocation:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        teacherId:
-          type: integer
-          example: 5
-        teacherName:
-          type: string
-          example: "Mr. John Smith"
-        classId:
-          type: integer
-          example: 1
-        className:
-          type: string
-          example: "Class 5"
-        subjectId:
-          type: integer
-          example: 2
-        subjectName:
-          type: string
-          example: "Mathematics"
-        academicYearId:
-          type: integer
-          example: 1
-        academicYearName:
-          type: string
-          example: "2024-2025"
-        createdAt:
-          type: string
-          format: date-time
-          example: "2024-01-15T10:30:00.000Z"
-
-    AllocateTeacherRequest:
-      type: object
-      required:
-        - teacherId
-        - classId
-        - subjectId
-        - academicYearId
-      properties:
-        teacherId:
-          type: integer
-          example: 5
-        classId:
-          type: integer
-          example: 1
-        subjectId:
-          type: integer
-          example: 2
-        academicYearId:
-          type: integer
-          example: 1
-
-    # Accountant related schemas
-    Accountant:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        schoolId:
-          type: integer
-          example: 1
-        email:
-          type: string
-          format: email
-          example: "accountant@school.com"
-        fullName:
-          type: string
-          example: "John Accountant"
-        phone:
-          type: string
-          example: "1234567890"
-        dateOfBirth:
-          type: string
-          format: date
-          example: "1985-06-15"
-        gender:
-          type: string
-          enum: [Male, Female, Other]
-          example: "Male"
-        address:
-          type: string
-          example: "456 Oak Avenue"
-        isActive:
-          type: boolean
-          example: true
-        createdAt:
-          type: string
-          format: date-time
-          example: "2024-01-15T10:30:00.000Z"
-        updatedAt:
-          type: string
-          format: date-time
-          example: "2024-01-15T10:30:00.000Z"
-
-    CreateAccountantRequest:
-      type: object
-      required:
-        - email
-        - password
-        - fullName
-      properties:
-        email:
-          type: string
-          format: email
-          example: "accountant@school.com"
-        password:
-          type: string
-          format: password
-          example: "Accountant@123"
-        fullName:
-          type: string
-          example: "John Accountant"
-        phone:
-          type: string
-          example: "1234567890"
-        dateOfBirth:
-          type: string
-          format: date
-          example: "1985-06-15"
-        gender:
-          type: string
-          enum: [Male, Female, Other]
-          example: "Male"
-        address:
-          type: string
-          example: "456 Oak Avenue"
-
-    UpdateAccountantRequest:
-      type: object
-      properties:
-        fullName:
-          type: string
-          example: "John Accountant"
-        phone:
-          type: string
-          example: "9876543210"
-        dateOfBirth:
-          type: string
-          format: date
-          example: "1985-06-15"
-        gender:
-          type: string
-          enum: [Male, Female, Other]
-          example: "Male"
-        address:
-          type: string
-          example: "789 New Street"
-
-    # Parent related schemas
     Parent:
       type: object
       properties:
         id:
           type: integer
           example: 15
-        school_id:
+        schoolId:
           type: integer
           example: 1
-        role:
-          type: string
-          example: "parent"
         email:
           type: string
           format: email
           example: "parent@example.com"
-        full_name:
+        fullName:
           type: string
           example: "John Parent"
         phone:
           type: string
+          nullable: true
           example: "9876543210"
-        date_of_birth:
+        dateOfBirth:
           type: string
           format: date
+          nullable: true
           example: "1980-05-15"
         gender:
           type: string
           enum: [Male, Female, Other]
+          nullable: true
           example: "Male"
         address:
           type: string
-          example: "123 Main Street, City"
-        is_active:
+          nullable: true
+          example: "123 Main Street"
+        isActive:
           type: boolean
           example: true
-        created_at:
+        createdAt:
           type: string
           format: date-time
           example: "2024-03-12T10:30:00.000Z"
 
     ParentWithChildren:
       allOf:
-        - $ref: "#/components/schemas/Parent"
+        - $ref: '#/components/schemas/Parent'
         - type: object
           properties:
-            children_count:
+            childrenCount:
               type: integer
               example: 2
 
     CreateParentRequest:
       type: object
-      required:
-        - email
-        - password
-        - fullName
+      required: [email, password, fullName]
       properties:
         email:
           type: string
@@ -1582,14 +1352,14 @@ components:
           example: "Male"
         address:
           type: string
-          example: "123 Main Street, City"
+          example: "123 Main Street"
 
     UpdateParentRequest:
       type: object
       properties:
         fullName:
           type: string
-          example: "John Updated Parent"
+          example: "John Parent"
         phone:
           type: string
           example: "9999888877"
@@ -1603,50 +1373,192 @@ components:
           example: "Male"
         address:
           type: string
-          example: "789 New Street, Updated City"
+          example: "789 New Street"
 
     LinkStudentRequest:
       type: object
-      required:
-        - studentId
+      required: [studentId]
       properties:
         studentId:
           type: integer
           example: 25
 
-    StudentBasic:
+    StudentAttendance:
       type: object
       properties:
         id:
           type: integer
-          example: 25
-        admission_number:
+          example: 1
+        studentId:
+          type: integer
+          example: 10
+        studentName:
           type: string
-          example: "STU2024025"
-        full_name:
-          type: string
-          example: "Rahul Kumar"
-        date_of_birth:
+          example: "John Doe"
+        attendanceDate:
           type: string
           format: date
-          example: "2010-06-15"
-        gender:
-          type: string
-          example: "male"
-        roll_number:
-          type: string
-          example: "15"
+          example: "2024-03-11"
         status:
           type: string
-          example: "active"
-        class_name:
-          type: string
-          example: "Class 5"
-        class_section:
-          type: string
-          example: "A"
+          enum: [present, absent, late]
+          example: "present"
 
-    # Exam related schemas
+    MarkStudentAttendance:
+      type: object
+      required: [classId, attendanceDate, records]
+      properties:
+        classId:
+          type: integer
+          example: 1
+        attendanceDate:
+          type: string
+          format: date
+          example: "2024-03-11"
+        records:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [studentId, status]
+            properties:
+              studentId:
+                type: integer
+                example: 10
+              status:
+                type: string
+                enum: [present, absent, late]
+                example: "present"
+
+    TeacherAttendance:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        teacherId:
+          type: integer
+          example: 5
+        teacherName:
+          type: string
+          example: "Jane Smith"
+        attendanceDate:
+          type: string
+          format: date
+          example: "2024-03-11"
+        status:
+          type: string
+          enum: [present, absent, late]
+          example: "present"
+
+    MarkTeacherAttendance:
+      type: object
+      required: [attendanceDate, records]
+      properties:
+        attendanceDate:
+          type: string
+          format: date
+          example: "2024-03-11"
+        records:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [teacherId, status]
+            properties:
+              teacherId:
+                type: integer
+                example: 5
+              status:
+                type: string
+                enum: [present, absent, late]
+                example: "present"
+
+    Holiday:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        holidayDate:
+          type: string
+          format: date
+          example: "2024-08-15"
+        description:
+          type: string
+          nullable: true
+          example: "Independence Day"
+        academicYearId:
+          type: integer
+          example: 1
+
+    CreateHoliday:
+      type: object
+      required: [holidayDate, academicYearId]
+      properties:
+        holidayDate:
+          type: string
+          format: date
+          example: "2024-08-15"
+        description:
+          type: string
+          maxLength: 200
+          example: "Independence Day"
+        academicYearId:
+          type: integer
+          example: 1
+
+    UpdateHoliday:
+      type: object
+      properties:
+        holidayDate:
+          type: string
+          format: date
+          example: "2024-08-15"
+        description:
+          type: string
+          maxLength: 200
+          example: "Independence Day - National Holiday"
+
+    SyllabusCompletion:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        chapterId:
+          type: integer
+          example: 5
+        chapterName:
+          type: string
+          example: "Photosynthesis"
+        status:
+          type: string
+          enum: [pending, in_progress, completed]
+          example: "completed"
+
+    MarkSyllabusCompletion:
+      type: object
+      required: [classSubjectId, chapters]
+      properties:
+        classSubjectId:
+          type: integer
+          example: 1
+        chapters:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [chapterId, status]
+            properties:
+              chapterId:
+                type: integer
+                example: 5
+              status:
+                type: string
+                enum: [pending, in_progress, completed]
+                example: "completed"
+
     Exam:
       type: object
       properties:
@@ -1659,9 +1571,16 @@ components:
         className:
           type: string
           example: "Class 5"
+        academicYearId:
+          type: integer
+          example: 1
         name:
           type: string
           example: "Half Yearly Examination"
+        examType:
+          type: string
+          nullable: true
+          example: "Half Yearly"
         startDate:
           type: string
           format: date
@@ -1670,15 +1589,15 @@ components:
           type: string
           format: date
           example: "2024-09-15"
+        weightage:
+          type: number
+          format: decimal
+          nullable: true
+          example: 50.00
 
     CreateExam:
       type: object
-      required:
-        - classId
-        - academicYearId
-        - name
-        - startDate
-        - endDate
+      required: [classId, academicYearId, name, startDate, endDate]
       properties:
         classId:
           type: integer
@@ -1712,9 +1631,7 @@ components:
           type: array
           items:
             type: object
-            required:
-              - subjectId
-              - maxMarks
+            required: [subjectId, maxMarks]
             properties:
               subjectId:
                 type: integer
@@ -1733,7 +1650,6 @@ components:
       properties:
         name:
           type: string
-          maxLength: 100
           example: "Half Yearly Examination 2024"
         startDate:
           type: string
@@ -1746,9 +1662,7 @@ components:
 
     AddExamSubject:
       type: object
-      required:
-        - subjectId
-        - maxMarks
+      required: [subjectId, maxMarks]
       properties:
         subjectId:
           type: integer
@@ -1774,7 +1688,6 @@ components:
           format: date
           example: "2024-09-05"
 
-    # Exam Results related schemas
     ExamResult:
       type: object
       properties:
@@ -1796,12 +1709,13 @@ components:
           type: string
           nullable: true
           example: "A"
+        isAbsent:
+          type: boolean
+          example: false
 
     EnterMarks:
       type: object
-      required:
-        - examSubjectId
-        - results
+      required: [examSubjectId, results]
       properties:
         examSubjectId:
           type: integer
@@ -1811,8 +1725,7 @@ components:
           minItems: 1
           items:
             type: object
-            required:
-              - studentId
+            required: [studentId]
             properties:
               studentId:
                 type: integer
@@ -1829,306 +1742,6 @@ components:
                 type: boolean
                 example: false
 
-paths:
-  /auth/login:
-    post:
-      tags:
-        - Authentication
-      summary: User login
-      description: Authenticate user and receive JWT token
-      operationId: login
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LoginRequest"
-      responses:
-        "200":
-          description: Login successful
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LoginResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-
-  /auth/profile:
-    get:
-      tags:
-        - Authentication
-      summary: Get user profile
-      description: Retrieve authenticated user's profile information
-      operationId: getProfile
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Profile retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/User"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /schools:
-    post:
-      tags:
-        - Schools
-      summary: Create school with admin
-      description: Create a new school and its admin user (Super Admin only)
-      operationId: createSchool
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateSchoolRequest"
-      responses:
-        "201":
-          description: School created successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          school:
-                            $ref: "#/components/schemas/School"
-                          admin:
-                            $ref: "#/components/schemas/User"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Schools
-      summary: Get all schools
-      description: Retrieve list of all schools (Super Admin only)
-      operationId: getAllSchools
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Schools retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/School"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /schools/{id}:
-    get:
-      tags:
-        - Schools
-      summary: Get school by ID
-      description: Retrieve school details by ID
-      operationId: getSchoolById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: School retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/School"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Schools
-      summary: Update school
-      description: |
-        Update school details (Super Admin only).
-
-        **Note:** Changes to subscriptionPlanId and feeTerms are automatically tracked in history tables.
-        Historical data is preserved when these fields are updated.
-      operationId: updateSchool
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateSchoolRequest"
-            examples:
-              updateSubscriptionPlan:
-                summary: Update subscription plan
-                value:
-                  subscriptionPlanId: 3
-                  subscriptionStatus: "active"
-              updateFeeTerms:
-                summary: Update fee terms
-                value:
-                  feeTerms: 12
-              updateContactInfo:
-                summary: Update contact information
-                value:
-                  contactEmail: "newcontact@abcschool.com"
-                  contactPhone: "+9876543210"
-      responses:
-        "200":
-          description: School updated successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/School"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /teachers:
-    post:
-      tags:
-        - Teachers
-      summary: Create teacher
-      description: Create a new teacher for the school (School Admin or Accountant)
-      operationId: createTeacher
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateTeacherRequest"
-      responses:
-        "201":
-          description: Teacher created successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Teacher"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Teachers
-      summary: Get all teachers
-      description: Retrieve list of all teachers in the school (School Admin or Accountant)
-      operationId: getAllTeachers
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Teachers retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/Teacher"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /teachers/{id}:
-    get:
-      tags:
-        - Teachers
-      summary: Get teacher by ID
-      description: Retrieve teacher details by ID (School Admin or Accountant)
-      operationId: getTeacherById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Teacher retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Teacher"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-   # Student Promotions related schemas
     StudentPromotion:
       type: object
       properties:
@@ -2144,9 +1757,21 @@ paths:
         fromClassId:
           type: integer
           example: 5
+        fromClassName:
+          type: string
+          example: "Class 4"
         toClassId:
           type: integer
           example: 6
+        toClassName:
+          type: string
+          example: "Class 5"
+        toAcademicYearId:
+          type: integer
+          example: 2
+        toAcademicYear:
+          type: string
+          example: "2025-2026"
         promotionDate:
           type: string
           format: date
@@ -2154,10 +1779,7 @@ paths:
 
     PromoteStudentsRequest:
       type: object
-      required:
-        - studentIds
-        - toClassId
-        - toAcademicYearId
+      required: [studentIds, toClassId, toAcademicYearId]
       properties:
         studentIds:
           type: array
@@ -2175,3942 +1797,3 @@ paths:
           type: string
           format: date
           example: "2025-03-15"
-
-    EligibleStudent:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 15
-        fullName:
-          type: string
-          example: "John Doe"
-        admissionNumber:
-          type: string
-          example: "STU2024001"
-        currentClassId:
-          type: integer
-          example: 5
-        status:
-          type: string
-          example: "active"
-
-  # Classes endpoints
-  /classes:
-    post:
-      tags:
-        - Classes
-      summary: Create class
-      description: Create a new class for the school (School Admin only)
-      operationId: createClass
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateClassRequest"
-            examples:
-              basicClass:
-                summary: Create basic class
-                value:
-                  name: "Class 5"
-                  section: "A"
-                  academicYearId: 1
-                  defaultFeeAmount: 25000.00
-              classWithoutSection:
-                summary: Create class without section
-                value:
-                  name: "Kindergarten"
-                  academicYearId: 1
-                  defaultFeeAmount: 15000.00
-      responses:
-        "201":
-          description: Class created successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Class"
-              example:
-                success: true
-                message: "Class created successfully"
-                data:
-                  id: 1
-                  schoolId: 1
-                  name: "Class 5"
-                  section: "A"
-                  academicYearId: 1
-                  yearName: "2024-2025"
-                  startDate: "2024-04-01"
-                  endDate: "2025-03-31"
-                  defaultFeeAmount: 25000.00
-                  studentCount: 0
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Classes
-      summary: Get all classes
-      description: Retrieve list of all classes in the school
-      operationId: getAllClasses
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: academicYearId
-          in: query
-          description: Filter by academic year
-          required: false
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Classes retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/Class"
-              example:
-                success: true
-                message: "Classes retrieved successfully"
-                data:
-                  - id: 1
-                    schoolId: 1
-                    name: "Class 5"
-                    section: "A"
-                    academicYearId: 1
-                    yearName: "2024-2025"
-                    startDate: "2024-04-01"
-                    endDate: "2025-03-31"
-                    defaultFeeAmount: 25000.00
-                    studentCount: 45
-                  - id: 2
-                    schoolId: 1
-                    name: "Class 6"
-                    section: "A"
-                    academicYearId: 1
-                    yearName: "2024-2025"
-                    startDate: "2024-04-01"
-                    endDate: "2025-03-31"
-                    defaultFeeAmount: 28000.00
-                    studentCount: 38
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /classes/{id}:
-    get:
-      tags:
-        - Classes
-      summary: Get class by ID
-      description: Retrieve class details by ID
-      operationId: getClassById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Class retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Class"
-              example:
-                success: true
-                message: "Class retrieved successfully"
-                data:
-                  id: 1
-                  schoolId: 1
-                  name: "Class 5"
-                  section: "A"
-                  academicYearId: 1
-                  yearName: "2024-2025"
-                  startDate: "2024-04-01"
-                  endDate: "2025-03-31"
-                  defaultFeeAmount: 25000.00
-                  studentCount: 45
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Classes
-      summary: Update class
-      description: Update class details (School Admin only)
-      operationId: updateClass
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateClassRequest"
-            examples:
-              updateFee:
-                summary: Update default fee
-                value:
-                  defaultFeeAmount: 30000.00
-              updateSection:
-                summary: Update section
-                value:
-                  section: "B"
-              updateMultiple:
-                summary: Update multiple fields
-                value:
-                  name: "Class 5 Advanced"
-                  section: "A"
-                  defaultFeeAmount: 32000.00
-      responses:
-        "200":
-          description: Class updated successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Class"
-              example:
-                success: true
-                message: "Class updated successfully"
-                data:
-                  id: 1
-                  schoolId: 1
-                  name: "Class 5"
-                  section: "B"
-                  academicYearId: 1
-                  yearName: "2024-2025"
-                  startDate: "2024-04-01"
-                  endDate: "2025-03-31"
-                  defaultFeeAmount: 30000.00
-                  studentCount: 45
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Classes
-      summary: Delete class
-      description: Delete a class (School Admin only)
-      operationId: deleteClass
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Class deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-              example:
-                success: true
-                message: "Class deleted successfully"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-
-  # Students endpoints
-  /students:
-    post:
-      tags:
-        - Students
-      summary: Create student
-      description: Create a new student (School Admin or Accountant)
-      operationId: createStudent
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateStudentRequest"
-            examples:
-              completeStudent:
-                summary: Create student with all details
-                value:
-                  admissionNumber: "STU2024001"
-                  fullName: "John Doe"
-                  dateOfBirth: "2010-05-15"
-                  gender: "male"
-                  address: "123 Main Street, City"
-                  phone: "+1234567890"
-                  admissionDate: "2024-04-01"
-                  currentClassId: 5
-                  parentId: 10
-                  rollNumber: "25"
-              basicStudent:
-                summary: Create student with required fields only
-                value:
-                  admissionNumber: "STU2024002"
-                  fullName: "Jane Smith"
-                  admissionDate: "2024-04-01"
-      responses:
-        "201":
-          description: Student created successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Student"
-              example:
-                success: true
-                message: "Student created successfully"
-                data:
-                  id: 15
-                  schoolId: 1
-                  admissionNumber: "STU2024001"
-                  fullName: "John Doe"
-                  dateOfBirth: "2010-05-15"
-                  gender: "male"
-                  address: "123 Main Street, City"
-                  phone: "+1234567890"
-                  admissionDate: "2024-04-01"
-                  currentClassId: 5
-                  className: "Class 5"
-                  classSection: "A"
-                  parentId: 10
-                  rollNumber: "25"
-                  status: "active"
-                  createdAt: "2024-04-01T10:30:00Z"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Students
-      summary: Get all students
-      description: Retrieve list of all students in the school
-      operationId: getAllStudents
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: classId
-          in: query
-          description: Filter by class
-          required: false
-          schema:
-            type: integer
-          example: 5
-        - name: status
-          in: query
-          description: Filter by status
-          required: false
-          schema:
-            type: string
-            enum: [active, inactive, transferred, graduated]
-          example: "active"
-      responses:
-        "200":
-          description: Students retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/Student"
-              example:
-                success: true
-                message: "Students retrieved successfully"
-                data:
-                  - id: 15
-                    schoolId: 1
-                    admissionNumber: "STU2024001"
-                    fullName: "John Doe"
-                    dateOfBirth: "2010-05-15"
-                    gender: "male"
-                    currentClassId: 5
-                    className: "Class 5"
-                    classSection: "A"
-                    rollNumber: "25"
-                    status: "active"
-                  - id: 16
-                    schoolId: 1
-                    admissionNumber: "STU2024002"
-                    fullName: "Jane Smith"
-                    dateOfBirth: "2010-08-20"
-                    gender: "female"
-                    currentClassId: 5
-                    className: "Class 5"
-                    classSection: "A"
-                    rollNumber: "26"
-                    status: "active"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /students/{id}:
-    get:
-      tags:
-        - Students
-      summary: Get student by ID
-      description: Retrieve student details by ID
-      operationId: getStudentById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 15
-      responses:
-        "200":
-          description: Student retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Student"
-              example:
-                success: true
-                message: "Student retrieved successfully"
-                data:
-                  id: 15
-                  schoolId: 1
-                  admissionNumber: "STU2024001"
-                  fullName: "John Doe"
-                  dateOfBirth: "2010-05-15"
-                  gender: "male"
-                  address: "123 Main Street, City"
-                  phone: "+1234567890"
-                  admissionDate: "2024-04-01"
-                  currentClassId: 5
-                  className: "Class 5"
-                  classSection: "A"
-                  parentId: 10
-                  rollNumber: "25"
-                  status: "active"
-                  createdAt: "2024-04-01T10:30:00Z"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Students
-      summary: Update student
-      description: Update student details (School Admin or Accountant)
-      operationId: updateStudent
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 15
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateStudentRequest"
-            examples:
-              updateClass:
-                summary: Update student class
-                value:
-                  currentClassId: 6
-                  rollNumber: "12"
-              updateContact:
-                summary: Update contact information
-                value:
-                  phone: "+9876543210"
-                  address: "456 New Street, City"
-              updateStatus:
-                summary: Update student status
-                value:
-                  status: "inactive"
-      responses:
-        "200":
-          description: Student updated successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Student"
-              example:
-                success: true
-                message: "Student updated successfully"
-                data:
-                  id: 15
-                  schoolId: 1
-                  admissionNumber: "STU2024001"
-                  fullName: "John Doe"
-                  dateOfBirth: "2010-05-15"
-                  gender: "male"
-                  address: "123 Main Street, City"
-                  phone: "+1234567890"
-                  admissionDate: "2024-04-01"
-                  currentClassId: 6
-                  className: "Class 6"
-                  classSection: "A"
-                  parentId: 10
-                  rollNumber: "12"
-                  status: "active"
-                  createdAt: "2024-04-01T10:30:00Z"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Students
-      summary: Deactivate student
-      description: Deactivate a student (School Admin only)
-      operationId: deleteStudent
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 15
-      responses:
-        "200":
-          description: Student deactivated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-              example:
-                success: true
-                message: "Student deactivated successfully"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # Subjects endpoints
-  /subjects:
-    post:
-      tags:
-        - Subjects
-      summary: Create subject
-      description: Create a new subject (School Admin or Accountant)
-      operationId: createSubject
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateSubjectRequest"
-            examples:
-              scienceSubject:
-                summary: Create Science subject
-                value:
-                  name: "Science"
-                  code: "SCI"
-              mathSubject:
-                summary: Create Mathematics subject
-                value:
-                  name: "Mathematics"
-                  code: "MATH"
-      responses:
-        "201":
-          description: Subject created successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Subject"
-              example:
-                success: true
-                message: "Subject created successfully"
-                data:
-                  id: 1
-                  schoolId: 1
-                  name: "Science"
-                  code: "SCI"
-                  createdAt: "2024-04-01T10:00:00Z"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Subjects
-      summary: Get all subjects
-      description: Retrieve list of all subjects in the school
-      operationId: getAllSubjects
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Subjects retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/Subject"
-              example:
-                success: true
-                message: "Subjects retrieved successfully"
-                data:
-                  - id: 1
-                    schoolId: 1
-                    name: "Science"
-                    code: "SCI"
-                    createdAt: "2024-04-01T10:00:00Z"
-                  - id: 2
-                    schoolId: 1
-                    name: "Mathematics"
-                    code: "MATH"
-                    createdAt: "2024-04-01T10:05:00Z"
-                  - id: 3
-                    schoolId: 1
-                    name: "English"
-                    code: "ENG"
-                    createdAt: "2024-04-01T10:10:00Z"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /subjects/{id}:
-    get:
-      tags:
-        - Subjects
-      summary: Get subject by ID
-      description: Retrieve subject details by ID
-      operationId: getSubjectById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Subject retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Subject"
-              example:
-                success: true
-                message: "Subject retrieved successfully"
-                data:
-                  id: 1
-                  schoolId: 1
-                  name: "Science"
-                  code: "SCI"
-                  createdAt: "2024-04-01T10:00:00Z"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Subjects
-      summary: Update subject
-      description: Update subject details (School Admin or Accountant)
-      operationId: updateSubject
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateSubjectRequest"
-            examples:
-              updateName:
-                summary: Update subject name
-                value:
-                  name: "Advanced Science"
-              updateCode:
-                summary: Update subject code
-                value:
-                  code: "ASCI"
-              updateBoth:
-                summary: Update name and code
-                value:
-                  name: "Physical Science"
-                  code: "PHYS"
-      responses:
-        "200":
-          description: Subject updated successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Subject"
-              example:
-                success: true
-                message: "Subject updated successfully"
-                data:
-                  id: 1
-                  schoolId: 1
-                  name: "Advanced Science"
-                  code: "SCI"
-                  createdAt: "2024-04-01T10:00:00Z"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Subjects
-      summary: Delete subject
-      description: Delete a subject (School Admin only)
-      operationId: deleteSubject
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Subject deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-              example:
-                success: true
-                message: "Subject deleted successfully"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # Chapters endpoints
-  /chapters:
-    post:
-      tags:
-        - Chapters
-      summary: Create chapter
-      description: Create a new chapter (School Admin, Accountant, or Teacher)
-      operationId: createChapter
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateChapterRequest"
-            examples:
-              basicChapter:
-                summary: Create chapter with sequence
-                value:
-                  subjectId: 1
-                  name: "Photosynthesis"
-                  sequenceNumber: 1
-              chapterWithoutSequence:
-                summary: Create chapter without sequence
-                value:
-                  subjectId: 1
-                  name: "Cell Structure"
-      responses:
-        "201":
-          description: Chapter created successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Chapter"
-              example:
-                success: true
-                message: "Chapter created successfully"
-                data:
-                  id: 5
-                  schoolId: 1
-                  subjectId: 1
-                  subjectName: "Science"
-                  name: "Photosynthesis"
-                  sequenceNumber: 1
-                  createdAt: "2024-04-01T11:00:00Z"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-  /chapters/subject/{subjectId}:
-    get:
-      tags:
-        - Chapters
-      summary: Get chapters by subject
-      description: Retrieve all chapters for a specific subject
-      operationId: getChaptersBySubject
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: subjectId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Chapters retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/Chapter"
-              example:
-                success: true
-                message: "Chapters retrieved successfully"
-                data:
-                  - id: 5
-                    schoolId: 1
-                    subjectId: 1
-                    subjectName: "Science"
-                    name: "Photosynthesis"
-                    sequenceNumber: 1
-                    createdAt: "2024-04-01T11:00:00Z"
-                  - id: 6
-                    schoolId: 1
-                    subjectId: 1
-                    subjectName: "Science"
-                    name: "Cell Structure"
-                    sequenceNumber: 2
-                    createdAt: "2024-04-01T11:05:00Z"
-                  - id: 7
-                    schoolId: 1
-                    subjectId: 1
-                    subjectName: "Science"
-                    name: "Respiration"
-                    sequenceNumber: 3
-                    createdAt: "2024-04-01T11:10:00Z"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /chapters/{id}:
-    get:
-      tags:
-        - Chapters
-      summary: Get chapter by ID
-      description: Retrieve chapter details by ID
-      operationId: getChapterById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 5
-      responses:
-        "200":
-          description: Chapter retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Chapter"
-              example:
-                success: true
-                message: "Chapter retrieved successfully"
-                data:
-                  id: 5
-                  schoolId: 1
-                  subjectId: 1
-                  subjectName: "Science"
-                  name: "Photosynthesis"
-                  sequenceNumber: 1
-                  createdAt: "2024-04-01T11:00:00Z"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Chapters
-      summary: Update chapter
-      description: Update chapter details (School Admin, Accountant, or Teacher)
-      operationId: updateChapter
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 5
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateChapterRequest"
-            examples:
-              updateName:
-                summary: Update chapter name
-                value:
-                  name: "Photosynthesis in Plants"
-              updateSequence:
-                summary: Update sequence number
-                value:
-                  sequenceNumber: 5
-              updateBoth:
-                summary: Update name and sequence
-                value:
-                  name: "Advanced Photosynthesis"
-                  sequenceNumber: 10
-      responses:
-        "200":
-          description: Chapter updated successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Chapter"
-              example:
-                success: true
-                message: "Chapter updated successfully"
-                data:
-                  id: 5
-                  schoolId: 1
-                  subjectId: 1
-                  subjectName: "Science"
-                  name: "Photosynthesis in Plants"
-                  sequenceNumber: 1
-                  createdAt: "2024-04-01T11:00:00Z"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Chapters
-      summary: Delete chapter
-      description: Delete a chapter (School Admin only)
-      operationId: deleteChapter
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 5
-      responses:
-        "200":
-          description: Chapter deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-              example:
-                success: true
-                message: "Chapter deleted successfully"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # Academic Years endpoints
-  /academic-years:
-    post:
-      tags:
-        - Academic Years
-      summary: Create academic year
-      description: Create a new academic year for the school (School Admin only)
-      operationId: createAcademicYear
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateAcademicYearRequest"
-            examples:
-              currentYear:
-                summary: Create current academic year
-                value:
-                  yearName: "2024-2025"
-                  startDate: "2024-04-01"
-                  endDate: "2025-03-31"
-                  isCurrent: true
-      responses:
-        "201":
-          description: Academic year created successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/AcademicYear"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Academic Years
-      summary: Get all academic years
-      description: Retrieve list of all academic years in the school (Admin, Accountant, Teacher)
-      operationId: getAllAcademicYears
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Academic years retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/AcademicYear"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /academic-years/current:
-    get:
-      tags:
-        - Academic Years
-      summary: Get current academic year
-      description: Retrieve the current academic year (Admin, Accountant, Teacher)
-      operationId: getCurrentAcademicYear
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Current academic year retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/AcademicYear"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /academic-years/{id}:
-    get:
-      tags:
-        - Academic Years
-      summary: Get academic year by ID
-      description: Retrieve academic year details by ID (Admin, Accountant, Teacher)
-      operationId: getAcademicYearById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Academic year retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/AcademicYear"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Academic Years
-      summary: Update academic year
-      description: Update academic year details (School Admin only). Supports partial updates.
-      operationId: updateAcademicYear
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateAcademicYearRequest"
-            examples:
-              updateDates:
-                summary: Update dates
-                value:
-                  startDate: "2024-04-15"
-                  endDate: "2025-04-14"
-      responses:
-        "200":
-          description: Academic year updated successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/AcademicYear"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Academic Years
-      summary: Delete academic year
-      description: Delete an academic year (School Admin only)
-      operationId: deleteAcademicYear
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Academic year deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /academic-years/{id}/set-current:
-    patch:
-      tags:
-        - Academic Years
-      summary: Set as current academic year
-      description: Set a specific academic year as current (School Admin only). Automatically unsets other years.
-      operationId: setCurrentAcademicYear
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Current academic year set successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/AcademicYear"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # Class Subjects endpoints
-  /class-subjects:
-    post:
-      tags:
-        - Class Subjects
-      summary: Assign subject to class
-      description: Assign a subject to a class for a specific academic year (School Admin only)
-      operationId: assignSubjectToClass
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AssignSubjectRequest"
-            examples:
-              withMaxMarks:
-                summary: Assign with max marks
-                value:
-                  classId: 1
-                  subjectId: 2
-                  academicYearId: 1
-                  maxMarks: 100.00
-      responses:
-        "201":
-          description: Subject assigned to class successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/ClassSubject"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-  /class-subjects/class/{classId}:
-    get:
-      tags:
-        - Class Subjects
-      summary: Get subjects by class
-      description: Retrieve all subjects assigned to a specific class (Admin, Accountant, Teacher)
-      operationId: getSubjectsByClass
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: classId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-        - name: academicYearId
-          in: query
-          description: Filter by academic year
-          required: false
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Class subjects retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/ClassSubject"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /class-subjects/subject/{subjectId}:
-    get:
-      tags:
-        - Class Subjects
-      summary: Get classes by subject
-      description: Retrieve all classes where a subject is assigned (Admin, Accountant, Teacher)
-      operationId: getClassesBySubject
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: subjectId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 2
-        - name: academicYearId
-          in: query
-          description: Filter by academic year
-          required: false
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Subject classes retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/ClassSubject"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /class-subjects/{id}:
-    get:
-      tags:
-        - Class Subjects
-      summary: Get class subject by ID
-      description: Retrieve class subject assignment details by ID (Admin, Accountant, Teacher)
-      operationId: getClassSubjectById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Class subject retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/ClassSubject"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Class Subjects
-      summary: Update class subject
-      description: Update class subject details (School Admin only). Currently supports updating max marks.
-      operationId: updateClassSubject
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateClassSubjectRequest"
-            examples:
-              updateMaxMarks:
-                summary: Update max marks
-                value:
-                  maxMarks: 150.00
-      responses:
-        "200":
-          description: Class subject updated successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/ClassSubject"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Class Subjects
-      summary: Remove subject from class
-      description: Remove a subject assignment from a class (School Admin only)
-      operationId: removeSubjectFromClass
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Subject removed from class successfully
-          content:
-            application/json:
-            schema:
-              $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # Teacher Allocations endpoints
-  /teacher-allocations:
-    post:
-      tags:
-        - Teacher Allocations
-      summary: Allocate teacher
-      description: Allocate a teacher to a class and subject for a specific academic year (School Admin only). Business Plan feature.
-      operationId: allocateTeacher
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AllocateTeacherRequest"
-            examples:
-              singleAllocation:
-                summary: Allocate teacher to class and subject
-                value:
-                  teacherId: 5
-                  classId: 1
-                  subjectId: 2
-                  academicYearId: 1
-      responses:
-        "201":
-          description: Teacher allocated successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/TeacherAllocation"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Teacher Allocations
-      summary: Get all allocations
-      description: Retrieve all teacher allocations in the school (Admin, Accountant)
-      operationId: getAllAllocations
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: academicYearId
-          in: query
-          description: Filter by academic year
-          required: false
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Allocations retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/TeacherAllocation"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /teacher-allocations/teacher/{teacherId}:
-    get:
-      tags:
-        - Teacher Allocations
-      summary: Get allocations by teacher
-      description: Retrieve all allocations for a specific teacher (Admin, Accountant, Teacher)
-      operationId: getAllocationsByTeacher
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: teacherId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 5
-        - name: academicYearId
-          in: query
-          description: Filter by academic year
-          required: false
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Teacher allocations retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/TeacherAllocation"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /teacher-allocations/class/{classId}:
-    get:
-      tags:
-        - Teacher Allocations
-      summary: Get allocations by class
-      description: Retrieve all teacher allocations for a specific class (Admin, Accountant, Teacher)
-      operationId: getAllocationsByClass
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: classId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-        - name: academicYearId
-          in: query
-          description: Filter by academic year
-          required: false
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Class allocations retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/TeacherAllocation"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /teacher-allocations/{id}:
-    get:
-      tags:
-        - Teacher Allocations
-      summary: Get allocation by ID
-      description: Retrieve teacher allocation details by ID (Admin, Accountant)
-      operationId: getAllocationById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Allocation retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/TeacherAllocation"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Teacher Allocations
-      summary: Remove allocation
-      description: Remove a teacher allocation (School Admin only)
-      operationId: removeAllocation
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Teacher allocation removed successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # Accountants endpoints
-  /accountants:
-    post:
-      tags:
-        - Accountants
-      summary: Create accountant
-      description: Create a new accountant for the school (School Admin only)
-      operationId: createAccountant
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateAccountantRequest"
-            examples:
-              fullAccountant:
-                summary: Create accountant with all details
-                value:
-                  email: "accountant@school.com"
-                  password: "Accountant@123"
-                  fullName: "John Accountant"
-                  phone: "1234567890"
-                  dateOfBirth: "1985-06-15"
-                  gender: "Male"
-                  address: "456 Oak Avenue"
-      responses:
-        "201":
-          description: Accountant created successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Accountant"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Accountants
-      summary: Get all accountants
-      description: Retrieve list of all accountants in the school (School Admin only)
-      operationId: getAllAccountants
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Accountants retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/Accountant"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /accountants/{id}:
-    get:
-      tags:
-        - Accountants
-      summary: Get accountant by ID
-      description: Retrieve accountant details by ID (School Admin only)
-      operationId: getAccountantById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Accountant retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Accountant"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Accountants
-      summary: Update accountant
-      description: Update accountant details (School Admin only). Supports partial updates.
-      operationId: updateAccountant
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateAccountantRequest"
-            examples:
-              updateContact:
-                summary: Update contact information
-                value:
-                  phone: "9876543210"
-                  address: "789 New Street"
-      responses:
-        "200":
-          description: Accountant updated successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Accountant"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Accountants
-      summary: Deactivate accountant
-      description: Deactivate an accountant (sets is_active to false) (School Admin only)
-      operationId: deleteAccountant
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        "200":
-          description: Accountant deactivated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # Fee Structures endpoints
-  /fee-structures:
-    post:
-      tags:
-        - Fee Structures
-      summary: Create fee structure
-      description: Create a new fee structure for a class (School Admin only)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateFeeStructure"
-      responses:
-        "201":
-          description: Fee structure created successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Fee Structures
-      summary: Get all fee structures
-      description: Get all fee structures for the school (School Admin or Accountant)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: query
-          name: classId
-          schema:
-            type: integer
-          description: Filter by class ID
-        - in: query
-          name: academicYearId
-          schema:
-            type: integer
-          description: Filter by academic year ID
-        - in: query
-          name: feeType
-          schema:
-            type: string
-          description: Filter by fee type
-      responses:
-        "200":
-          description: Fee structures retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /fee-structures/{id}:
-    get:
-      tags:
-        - Fee Structures
-      summary: Get fee structure by ID
-      description: Get a specific fee structure (School Admin or Accountant)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Fee structure retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Fee Structures
-      summary: Update fee structure
-      description: Update a fee structure (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateFeeStructure"
-      responses:
-        "200":
-          description: Fee structure updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Fee Structures
-      summary: Delete fee structure
-      description: Delete a fee structure (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Fee structure deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # Fee Transactions endpoints
-  /fee-transactions/generate:
-    post:
-      tags:
-        - Fee Transactions
-      summary: Generate fee transactions
-      description: Auto-generate fee transactions for all students in a class based on fee structure and school fee terms (School Admin only)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/GenerateFeeTransactions"
-      responses:
-        "201":
-          description: Fee transactions generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-  /fee-transactions:
-    get:
-      tags:
-        - Fee Transactions
-      summary: Get all fee transactions
-      description: Get all fee transactions for the school (School Admin or Accountant)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: query
-          name: studentId
-          schema:
-            type: integer
-          description: Filter by student ID
-        - in: query
-          name: classId
-          schema:
-            type: integer
-          description: Filter by class ID
-        - in: query
-          name: academicYearId
-          schema:
-            type: integer
-          description: Filter by academic year ID
-        - in: query
-          name: status
-          schema:
-            type: string
-            enum: [pending, partial, paid]
-          description: Filter by payment status
-      responses:
-        "200":
-          description: Fee transactions retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /fee-transactions/defaulters:
-    get:
-      tags:
-        - Fee Transactions
-      summary: Get fee defaulters list
-      description: Get list of students with pending/overdue fees (School Admin or Accountant)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: query
-          name: classId
-          schema:
-            type: integer
-          description: Filter by class ID
-      responses:
-        "200":
-          description: Fee defaulters retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /fee-transactions/student/{studentId}:
-    get:
-      tags:
-        - Fee Transactions
-      summary: Get student fee transactions
-      description: Get all fee transactions for a specific student (School Admin or Accountant)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: studentId
-          required: true
-          schema:
-            type: integer
-          description: Student ID
-      responses:
-        "200":
-          description: Student fee transactions retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /fee-transactions/{id}:
-    get:
-      tags:
-        - Fee Transactions
-      summary: Get fee transaction by ID
-      description: Get a specific fee transaction (School Admin or Accountant)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Fee transaction retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Fee Transactions
-      summary: Update fee transaction
-      description: Update fee transaction details like due date (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateFeeTransaction"
-      responses:
-        "200":
-          description: Fee transaction updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /fee-transactions/{id}/payment:
-    patch:
-      tags:
-        - Fee Transactions
-      summary: Record fee payment
-      description: Record a fee payment for a transaction (School Admin or Accountant)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RecordPayment"
-      responses:
-        "200":
-          description: Payment recorded successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /fee-transactions/{id}/waiver:
-    patch:
-      tags:
-        - Fee Transactions
-      summary: Apply fee waiver
-      description: Apply a fee waiver/discount to a transaction (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ApplyWaiver"
-      responses:
-        "200":
-          description: Fee waiver applied successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  
-  
-
-
-  # Parents endpoints
-  /parents:
-    post:
-      tags:
-        - Parents
-      summary: Create parent account
-      description: Create a new parent account for the school (School Admin only)
-      operationId: createParent
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateParentRequest"
-      responses:
-        "201":
-          description: Parent created successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Parent"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Parents
-      summary: Get all parents
-      description: Retrieve list of all parents in the school (Admin, Accountant)
-      operationId: getAllParents
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: Parents retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/ParentWithChildren"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-  /parents/{id}:
-    get:
-      tags:
-        - Parents
-      summary: Get parent by ID
-      description: Retrieve parent details by ID (Admin, Accountant)
-      operationId: getParentById
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 15
-      responses:
-        "200":
-          description: Parent retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Parent"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Parents
-      summary: Update parent
-      description: Update parent details (School Admin only)
-      operationId: updateParent
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 15
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateParentRequest"
-      responses:
-        "200":
-          description: Parent updated successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/Parent"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Parents
-      summary: Deactivate parent
-      description: Deactivate a parent account (School Admin only)
-      operationId: deleteParent
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 15
-      responses:
-        "200":
-          description: Parent deactivated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /parents/{id}/link-student:
-    post:
-      tags:
-        - Parents
-      summary: Link student to parent
-      description: Link a student to a parent account (School Admin only)
-      operationId: linkStudentToParent
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 15
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LinkStudentRequest"
-      responses:
-        "200":
-          description: Student linked to parent successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /parents/students/{studentId}/unlink:
-    delete:
-      tags:
-        - Parents
-      summary: Unlink student from parent
-      description: Remove parent link from a student (School Admin only)
-      operationId: unlinkStudentFromParent
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: studentId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 25
-      responses:
-        "200":
-          description: Student unlinked from parent successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /parents/{id}/children:
-    get:
-      tags:
-        - Parents
-      summary: Get parent's children
-      description: Retrieve list of all children linked to a parent (Admin, Accountant)
-      operationId: getParentChildren
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 15
-      responses:
-        "200":
-          description: Parent's children retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/StudentBasic"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-
-
-# Teacher Attendance endpoints
-  /teacher-attendance:
-    post:
-      tags:
-        - Teacher Attendance
-      summary: Mark teacher attendance
-      description: Mark attendance for multiple teachers (School Admin or Accountant)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/MarkTeacherAttendance"
-      responses:
-        "200":
-          description: Attendance marked successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Teacher Attendance
-      summary: Get teacher attendance records
-      description: Get all teacher attendance records with filters
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: query
-          name: teacherId
-          schema:
-            type: integer
-        - in: query
-          name: attendanceDate
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: startDate
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: endDate
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: status
-          schema:
-            type: string
-            enum: [present, absent, late]
-      responses:
-        "200":
-          description: Attendance records retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /teacher-attendance/teacher/{teacherId}/summary:
-    get:
-      tags:
-        - Teacher Attendance
-      summary: Get teacher attendance summary
-      description: Get attendance summary with present/absent/late counts
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: teacherId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - in: query
-          name: startDate
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: endDate
-          schema:
-            type: string
-            format: date
-      responses:
-        "200":
-          description: Attendance summary retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /teacher-attendance/date:
-    get:
-      tags:
-        - Teacher Attendance
-      summary: Get teacher attendance by date
-      description: Get attendance for all teachers on a specific date
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: query
-          name: date
-          required: true
-          schema:
-            type: string
-            format: date
-      responses:
-        "200":
-          description: Teacher attendance retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /teacher-attendance/{id}:
-    delete:
-      tags:
-        - Teacher Attendance
-      summary: Delete attendance record
-      description: Delete a teacher attendance record (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Attendance record deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-
-
-# Student Attendance endpoints
-  /student-attendance:
-    post:
-      tags:
-        - Student Attendance
-      summary: Mark student attendance
-      description: Mark attendance for multiple students in a class (School Admin, Accountant, or Teacher)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/MarkStudentAttendance"
-      responses:
-        "200":
-          description: Attendance marked successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Student Attendance
-      summary: Get student attendance records
-      description: Get all student attendance records with filters
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: query
-          name: classId
-          schema:
-            type: integer
-        - in: query
-          name: studentId
-          schema:
-            type: integer
-        - in: query
-          name: attendanceDate
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: startDate
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: endDate
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: status
-          schema:
-            type: string
-            enum: [present, absent, late]
-      responses:
-        "200":
-          description: Attendance records retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /student-attendance/student/{studentId}/summary:
-    get:
-      tags:
-        - Student Attendance
-      summary: Get student attendance summary
-      description: Get attendance summary with present/absent/late counts
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: studentId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - in: query
-          name: startDate
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: endDate
-          schema:
-            type: string
-            format: date
-      responses:
-        "200":
-          description: Attendance summary retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /student-attendance/class/{classId}:
-    get:
-      tags:
-        - Student Attendance
-      summary: Get class attendance by date
-      description: Get attendance for all students in a class on a specific date
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: classId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - in: query
-          name: date
-          required: true
-          schema:
-            type: string
-            format: date
-      responses:
-        "200":
-          description: Class attendance retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /student-attendance/{id}:
-    delete:
-      tags:
-        - Student Attendance
-      summary: Delete attendance record
-      description: Delete a student attendance record (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Attendance record deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-# Syllabus Completion endpoints
-  /syllabus-completion:
-    post:
-      tags:
-        - Syllabus Completion
-      summary: Mark chapter completion
-      description: Mark completion status for multiple chapters (School Admin or Teacher)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/MarkSyllabusCompletion"
-      responses:
-        "200":
-          description: Syllabus completion marked successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Syllabus Completion
-      summary: Get syllabus completion records
-      description: Get all syllabus completion records with filters
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: query
-          name: classId
-          schema:
-            type: integer
-        - in: query
-          name: subjectId
-          schema:
-            type: integer
-        - in: query
-          name: classSubjectId
-          schema:
-            type: integer
-        - in: query
-          name: status
-          schema:
-            type: string
-            enum: [pending, in_progress, completed]
-        - in: query
-          name: academicYearId
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Syllabus completion records retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /syllabus-completion/class-subject/{classSubjectId}/progress:
-    get:
-      tags:
-        - Syllabus Completion
-      summary: Get completion progress
-      description: Get syllabus completion progress for a class subject
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: classSubjectId
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Completion progress retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /syllabus-completion/class-subject/{classSubjectId}/chapters:
-    get:
-      tags:
-        - Syllabus Completion
-      summary: Get subject chapters with status
-      description: Get all chapters for a class subject with completion status
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: classSubjectId
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Subject chapters retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /syllabus-completion/{id}:
-    delete:
-      tags:
-        - Syllabus Completion
-      summary: Delete completion record
-      description: Delete a syllabus completion record (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Syllabus completion record deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-
-# Holidays endpoints
-  /holidays:
-    post:
-      tags:
-        - Holidays
-      summary: Create holiday
-      description: Create a new holiday (School Admin only)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateHoliday"
-      responses:
-        "201":
-          description: Holiday created successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Holidays
-      summary: Get all holidays
-      description: Get all holidays for the school
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: query
-          name: academicYearId
-          schema:
-            type: integer
-        - in: query
-          name: startDate
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: endDate
-          schema:
-            type: string
-            format: date
-      responses:
-        "200":
-          description: Holidays retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /holidays/working-days:
-    get:
-      tags:
-        - Holidays
-      summary: Calculate working days
-      description: Calculate working days between two dates excluding weekends and holidays
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: query
-          name: startDate
-          required: true
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: endDate
-          required: true
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: academicYearId
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Working days calculated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /holidays/{id}:
-    get:
-      tags:
-        - Holidays
-      summary: Get holiday by ID
-      description: Get a specific holiday
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Holiday retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Holidays
-      summary: Update holiday
-      description: Update a holiday (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateHoliday"
-      responses:
-        "200":
-          description: Holiday updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Holidays
-      summary: Delete holiday
-      description: Delete a holiday (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Holiday deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-
-  # Exams endpoints
-  /exams:
-    post:
-      tags:
-        - Exams
-      summary: Create exam
-      description: Create a new exam with optional subjects (School Admin only)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateExam"
-      responses:
-        "201":
-          description: Exam created successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Exams
-      summary: Get all exams
-      description: Get all exams with filters
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: query
-          name: classId
-          schema:
-            type: integer
-        - in: query
-          name: academicYearId
-          schema:
-            type: integer
-        - in: query
-          name: examType
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Exams retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /exams/{id}:
-    get:
-      tags:
-        - Exams
-      summary: Get exam by ID
-      description: Get a specific exam with all subjects
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Exam retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    patch:
-      tags:
-        - Exams
-      summary: Update exam
-      description: Update exam details (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateExam"
-      responses:
-        "200":
-          description: Exam updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Exams
-      summary: Delete exam
-      description: Delete an exam (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Exam deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /exams/{examId}/subjects:
-    post:
-      tags:
-        - Exams
-      summary: Add subject to exam
-      description: Add a subject to an existing exam (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: examId
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AddExamSubject"
-      responses:
-        "201":
-          description: Exam subject added successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-  /exams/subjects/{id}:
-    patch:
-      tags:
-        - Exams
-      summary: Update exam subject
-      description: Update exam subject details (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateExamSubject"
-      responses:
-        "200":
-          description: Exam subject updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Exams
-      summary: Delete exam subject
-      description: Remove a subject from an exam (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Exam subject deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # Exam Results endpoints
-  /exam-results:
-    post:
-      tags:
-        - Exam Results
-      summary: Enter marks
-      description: Enter marks for multiple students in an exam subject
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/EnterMarks"
-      responses:
-        "200":
-          description: Marks entered successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-    get:
-      tags:
-        - Exam Results
-      summary: Get all exam results
-      description: Get all exam results with filters
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: query
-          name: studentId
-          schema:
-            type: integer
-        - in: query
-          name: examId
-          schema:
-            type: integer
-        - in: query
-          name: classId
-          schema:
-            type: integer
-        - in: query
-          name: subjectId
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Exam results retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /exam-results/student/{studentId}:
-    get:
-      tags:
-        - Exam Results
-      summary: Get student results
-      description: Get all exam results for a specific student
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: studentId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - in: query
-          name: academicYearId
-          schema:
-            type: integer
-        - in: query
-          name: examType
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Student results retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /exam-results/exam-subject/{examSubjectId}:
-    get:
-      tags:
-        - Exam Results
-      summary: Get exam subject results
-      description: Get all results for a specific exam subject
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: examSubjectId
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Exam subject results retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /exam-results/exam/{examId}/performance:
-    get:
-      tags:
-        - Exam Results
-      summary: Get class performance
-      description: Get class performance analytics for an exam
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: examId
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Class performance retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-
-  /exam-results/{id}:
-    delete:
-      tags:
-        - Exam Results
-      summary: Delete exam result
-      description: Delete an exam result (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Exam result deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-
-# Student Promotions endpoints
-  /student-promotions:
-    post:
-      tags:
-        - Student Promotions
-      summary: Promote students to next class
-      description: Bulk promote students from one class to another. Records promotion history and updates student's current class. (School Admin only)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PromoteStudentsRequest"
-      responses:
-        "200":
-          description: Students promoted successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            promotion:
-                              $ref: "#/components/schemas/StudentPromotion"
-                            student:
-                              type: object
-                              description: "Updated student record"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    get:
-      tags:
-        - Student Promotions
-      summary: Get all promotions for school
-      description: Retrieve all student promotion records for the school with optional filters. (School Admin or Accountant)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: query
-          name: studentId
-          schema:
-            type: integer
-          description: Filter by student ID
-        - in: query
-          name: fromClassId
-          schema:
-            type: integer
-          description: Filter by source class ID
-        - in: query
-          name: toClassId
-          schema:
-            type: integer
-          description: Filter by target class ID
-        - in: query
-          name: academicYearId
-          schema:
-            type: integer
-          description: Filter by academic year (from or to)
-      responses:
-        "200":
-          description: Promotions retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/StudentPromotion"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-  /student-promotions/student/{studentId}/history:
-    get:
-      tags:
-        - Student Promotions
-      summary: Get student promotion history
-      description: Retrieve complete promotion history for a specific student. (School Admin or Accountant)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: studentId
-          required: true
-          schema:
-            type: integer
-          description: Student ID
-      responses:
-        "200":
-          description: Student promotion history retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/StudentPromotion"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-  /student-promotions/class/{classId}/eligible-students:
-    get:
-      tags:
-        - Student Promotions
-      summary: Get eligible students for promotion
-      description: Retrieve list of active students in a class who are eligible for promotion. (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: classId
-          required: true
-          schema:
-            type: integer
-          description: Class ID
-      responses:
-        "200":
-          description: Eligible students retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/EligibleStudent"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-
-  /student-promotions/{id}:
-    get:
-      tags:
-        - Student Promotions
-      summary: Get promotion by ID
-      description: Retrieve detailed information about a specific promotion record. (School Admin or Accountant)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: integer
-          description: Promotion record ID
-      responses:
-        "200":
-          description: Promotion retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/Success"
-                  - type: object
-                    properties:
-                      data:
-                        $ref: "#/components/schemas/StudentPromotion"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      tags:
-        - Student Promotions
-      summary: Delete promotion record
-      description: Delete a promotion record. Note - This does not revert the student's class assignment. (School Admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: integer
-          description: Promotion record ID
-      responses:
-        "200":
-          description: Promotion record deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Success"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
