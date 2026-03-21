@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import { 
@@ -6,7 +6,8 @@ import {
   Phone, 
   ChevronLeft, 
   ChevronRight,
-  Users
+  Users,
+  CalendarDays
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -17,27 +18,98 @@ import {
   Cell
 } from 'recharts';
 import { studentService } from '../../services/studentService';
+import { attendanceService, type AttendanceRecord } from '../../services/attendanceService';
+import { holidayService, type Holiday } from '../../services/holidayService';
+import { academicYearService } from '../../services/academicYearService';
+import type { AcademicYear } from '../../types/academicYear';
 import type { Student } from '../../types/student';
+import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+
+type AttendanceStatus = 'present' | 'absent' | 'holiday' | 'sunday' | 'none';
+
+interface CalendarDay {
+  date: Date;
+  dateStr: string;
+  status: AttendanceStatus;
+  isCurrentMonth: boolean;
+  holiday?: Holiday;
+}
 
 const StudentProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState('Attendance');
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
+  const [currentAcademicYear, setCurrentAcademicYear] = useState<AcademicYear | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
+
+  const fetchAcademicYears = useCallback(async () => {
+    try {
+      const years = await academicYearService.getAllYears();
+      setAcademicYears(years);
+      const current = years.find(y => y.isCurrent) || years[0];
+      setCurrentAcademicYear(current);
+      if (current) {
+        const startDate = new Date(current.startDate);
+        setCurrentMonth(new Date(startDate.getFullYear(), startDate.getMonth(), 1));
+      }
+    } catch {
+      setCurrentAcademicYear(null);
+    }
+  }, []);
+
+  const fetchHolidays = useCallback(async () => {
+    if (!currentAcademicYear) return;
+    try {
+      const startYear = new Date(currentAcademicYear.startDate).getFullYear();
+      const data = await holidayService.getHolidays(startYear);
+      setHolidays(data);
+    } catch {
+      setHolidays([]);
+    }
+  }, [currentAcademicYear]);
+
+  const fetchAttendance = useCallback(async () => {
+    if (!id || !currentAcademicYear) return;
+    try {
+      setLoadingAttendance(true);
+      const yearStart = new Date(currentAcademicYear.startDate);
+      const yearEnd = new Date(currentAcademicYear.endDate);
+      const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+      const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+      
+      const startDate = monthStart < yearStart ? yearStart : monthStart;
+      const endDate = monthEnd > yearEnd ? yearEnd : monthEnd;
+      
+      const data = await attendanceService.getAttendance({
+        studentId: parseInt(id),
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      });
+      setAttendanceRecords(data);
+    } catch {
+      setAttendanceRecords([]);
+    } finally {
+      setLoadingAttendance(false);
+    }
+  }, [id, currentAcademicYear, currentMonth]);
 
   useEffect(() => {
     const fetchStudent = async () => {
       try {
         if (id) {
           const data = await studentService.getStudentById(parseInt(id));
-          // For the image match, we'll enrich with specific fields if they are missing
           setStudent({
             ...data,
             fullName: data.fullName || 'Ethan Caldwell',
             className: data.className || 'Grade 10 - A',
             parentName: data.parentName || 'Michael Caldwell',
             phone: data.phone || '+1 234 567 890',
-            // Defaulting some fields for the "image match" experience
             status: data.status || 'active'
           });
         }
@@ -48,27 +120,125 @@ const StudentProfile: React.FC = () => {
       }
     };
     fetchStudent();
-  }, [id]);
+    fetchAcademicYears();
+  }, [id, fetchAcademicYears]);
 
-  if (loading) {
-    return (
-      <AdminLayout title="Student Profile">
-        <div className="h-96 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500/20 border-t-blue-500"></div>
-        </div>
-      </AdminLayout>
-    );
-  }
+  useEffect(() => {
+    fetchHolidays();
+  }, [fetchHolidays]);
 
-  const attendanceData = [
-    { day: 1, status: 'present' }, { day: 2, status: 'present' }, { day: 3, status: 'present' }, { day: 4, status: 'absent' }, { day: 5, status: 'present' },
-    { day: 6, status: 'weekend' }, { day: 7, status: 'weekend' }, { day: 8, status: 'present' }, { day: 9, status: 'present' }, { day: 10, status: 'present' },
-    { day: 11, status: 'present' }, { day: 12, status: 'present' }, { day: 13, status: 'weekend' }, { day: 14, status: 'weekend' }, { day: 15, status: 'present' },
-    { day: 16, status: 'absent' }, { day: 17, status: 'present' }, { day: 18, status: 'present' }, { day: 19, status: 'present' }, { day: 20, status: 'weekend' },
-    { day: 21, status: 'weekend' }, { day: 22, status: 'present' }, { day: 23, status: 'present' }, { day: 24, status: 'present' }, { day: 25, status: 'present' },
-    { day: 26, status: 'present' }, { day: 27, status: 'weekend' }, { day: 28, status: 'weekend' }, { day: 29, status: 'present' }, { day: 30, status: 'present' },
-    { day: 31, status: 'present' }
-  ];
+  useEffect(() => {
+    fetchAttendance();
+  }, [fetchAttendance]);
+
+  const calendarDays = useMemo<CalendarDay[]>(() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const days: CalendarDay[] = [];
+
+    const startPadding = (firstDay.getDay() + 6) % 7;
+    for (let i = startPadding - 1; i >= 0; i--) {
+      const date = new Date(year, month, -i);
+      days.push({
+        date,
+        dateStr: date.toISOString().split('T')[0],
+        status: 'none',
+        isCurrentMonth: false
+      });
+    }
+
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const date = new Date(year, month, day);
+      const dateStr = date.toISOString().split('T')[0];
+      const attendance = attendanceRecords.find(r => r.attendanceDate === dateStr);
+      const holiday = holidays.find(h => h.holidayDate === dateStr);
+      const isSunday = date.getDay() === 0;
+
+      let status: AttendanceStatus = 'none';
+      if (holiday) {
+        status = 'holiday';
+      } else if (isSunday) {
+        status = 'sunday';
+      } else if (attendance?.status === 'present') {
+        status = 'present';
+      } else if (attendance?.status === 'absent') {
+        status = 'absent';
+      }
+
+      days.push({
+        date,
+        dateStr,
+        status,
+        isCurrentMonth: true,
+        holiday
+      });
+    }
+
+    return days;
+  }, [currentMonth, attendanceRecords, holidays]);
+
+  const attendanceSummary = useMemo(() => {
+    const monthDays = calendarDays.filter(d => d.isCurrentMonth);
+    const totalDays = monthDays.length;
+    const holidayCount = monthDays.filter(d => d.status === 'holiday').length;
+    const sundayCount = monthDays.filter(d => d.status === 'sunday').length;
+    const workingDays = totalDays - holidayCount - sundayCount;
+    const presentCount = attendanceRecords.filter(r => r.status === 'present').length;
+    const absentCount = attendanceRecords.filter(r => r.status === 'absent').length;
+    const percentage = workingDays > 0 ? Math.round((presentCount / workingDays) * 100) : 0;
+
+    return {
+      totalDays,
+      holidayCount,
+      sundayCount,
+      workingDays,
+      presentCount,
+      absentCount,
+      percentage
+    };
+  }, [calendarDays, attendanceRecords]);
+
+  const canGoPrev = useMemo(() => {
+    if (!currentAcademicYear) return false;
+    const yearStart = new Date(currentAcademicYear.startDate);
+    const prevMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+    return prevMonth >= yearStart;
+  }, [currentAcademicYear, currentMonth]);
+
+  const canGoNext = useMemo(() => {
+    if (!currentAcademicYear) return false;
+    const yearEnd = new Date(currentAcademicYear.endDate);
+    const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    return nextMonth <= yearEnd;
+  }, [currentAcademicYear, currentMonth]);
+
+  const prevMonth = () => {
+    if (canGoPrev) {
+      setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+    }
+  };
+
+  const nextMonth = () => {
+    if (canGoNext) {
+      setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    }
+  };
+
+  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const year = academicYears.find(y => y.id.toString() === e.target.value);
+    if (year) {
+      setCurrentAcademicYear(year);
+      const startDate = new Date(year.startDate);
+      setCurrentMonth(new Date(startDate.getFullYear(), startDate.getMonth(), 1));
+    }
+  };
+
+  const monthYear = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   const performanceData = [
     { name: 'Term 1', value: 35 },
@@ -78,25 +248,34 @@ const StudentProfile: React.FC = () => {
     { name: 'Current', value: 95 }
   ];
 
+  if (loading) {
+    return (
+      <AdminLayout title="Student Profile">
+        <div className="h-96 flex items-center justify-center">
+          <LoadingSpinner size="lg" message="Loading student profile..." />
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout title="Student Profile">
       <div className="space-y-6 pb-12">
-        {/* Breadcrumbs */}
-        <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-          <span>Dashboard</span>
-          <span className="text-slate-300">/</span>
-          <span>Students</span>
-          <span className="text-slate-300">/</span>
-          <span className="text-blue-500">Student Profile</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+            <span>Dashboard</span>
+            <span className="text-slate-300">/</span>
+            <span>Students</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-blue-500">Student Profile</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Sidebar: Profile Card */}
           <div className="lg:col-span-3 space-y-6">
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 text-center relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
               
-              {/* Profile Image */}
               <div className="relative inline-block mb-6">
                 <div className="size-32 rounded-full border-4 border-slate-50 overflow-hidden shadow-lg">
                   <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student?.fullName}`} alt="Avatar" className="w-full h-full object-cover" />
@@ -108,7 +287,7 @@ const StudentProfile: React.FC = () => {
               <div className="inline-flex px-4 py-1.5 bg-blue-50 text-blue-500 text-[11px] font-black rounded-full uppercase tracking-widest mb-2">
                 {student?.className}
               </div>
-              <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-8">Academic Year: 2023-24</p>
+              <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-8">Academic Year: {currentAcademicYear?.name || 'N/A'}</p>
 
               <div className="space-y-6 text-left border-t border-slate-50 pt-8">
                 <div className="flex items-start gap-4">
@@ -151,9 +330,7 @@ const StudentProfile: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Content: Tabs & Data */}
           <div className="lg:col-span-9 space-y-8">
-            {/* Tabs */}
             <div className="bg-white p-2 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center gap-2">
               {['Overview', 'Attendance', 'Marks', 'Fee Status', 'Reports'].map((tab) => (
                 <button
@@ -172,15 +349,36 @@ const StudentProfile: React.FC = () => {
 
             {activeTab === 'Attendance' && (
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                {/* Attendance Calendar */}
                 <div className="xl:col-span-2 bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100">
                   <div className="flex items-center justify-between mb-10">
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">October 2023 Attendance</h3>
+                    <div className="flex items-center gap-4">
+                      <CalendarDays size={20} className="text-blue-500" />
+                      <select
+                        value={currentAcademicYear?.id?.toString() || ''}
+                        onChange={handleYearChange}
+                        className="text-sm font-bold text-slate-500 bg-slate-50 border-none rounded-lg px-3 py-1.5 cursor-pointer focus:ring-2 focus:ring-blue-500"
+                      >
+                        {academicYears.map(year => (
+                          <option key={year.id} value={year.id.toString()}>
+                            {year.name}
+                          </option>
+                        ))}
+                      </select>
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight">{monthYear} Attendance</h3>
+                    </div>
                     <div className="flex items-center gap-3">
-                      <button className="p-1 text-slate-300 hover:text-slate-600 transition-colors">
+                      <button 
+                        onClick={prevMonth} 
+                        disabled={!canGoPrev}
+                        className={`p-1 transition-colors ${canGoPrev ? 'text-slate-300 hover:text-slate-600' : 'text-slate-200 cursor-not-allowed'}`}
+                      >
                         <ChevronLeft size={20} />
                       </button>
-                      <button className="p-1 text-slate-300 hover:text-slate-600 transition-colors">
+                      <button 
+                        onClick={nextMonth}
+                        disabled={!canGoNext}
+                        className={`p-1 transition-colors ${canGoNext ? 'text-slate-300 hover:text-slate-600' : 'text-slate-200 cursor-not-allowed'}`}
+                      >
                         <ChevronRight size={20} />
                       </button>
                     </div>
@@ -188,42 +386,61 @@ const StudentProfile: React.FC = () => {
 
                   <div className="grid grid-cols-7 gap-4 mb-4">
                     {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(d => (
-                      <div key={d} className="text-[10px] font-black text-slate-300 text-center uppercase tracking-widest">{d}</div>
+                      <div key={d} className={`text-[10px] font-black text-center uppercase tracking-widest ${d === 'SUN' ? 'text-red-400' : 'text-slate-300'}`}>{d}</div>
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-7 gap-4">
-                    {attendanceData.map((d) => (
-                      <div 
-                        key={d.day}
-                        className={`aspect-square rounded-2xl flex items-center justify-center text-sm font-black transition-all cursor-default ${
-                          d.status === 'present' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/10' :
-                          d.status === 'absent' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/10' :
-                          'bg-slate-50 text-slate-300'
-                        }`}
-                      >
-                        {d.day}
-                      </div>
-                    ))}
-                  </div>
+                  {loadingAttendance ? (
+                    <div className="h-64 flex items-center justify-center">
+                      <LoadingSpinner size="md" message="Loading attendance..." />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-7 gap-4">
+                      {calendarDays.map((day, index) => (
+                        <div 
+                          key={index}
+                          className={`aspect-square rounded-2xl flex flex-col items-center justify-center text-sm font-black transition-all cursor-default relative ${
+                            day.status === 'present' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/10' :
+                            day.status === 'absent' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/10' :
+                            day.status === 'holiday' ? 'bg-amber-400 text-amber-900 shadow-md shadow-amber-400/10' :
+                            day.status === 'sunday' ? 'bg-red-50 text-red-400 border border-red-100' :
+                            !day.isCurrentMonth ? 'bg-transparent text-slate-200' : 'bg-slate-50 text-slate-300'
+                          }`}
+                          title={day.holiday?.description || (day.status === 'sunday' ? 'Sunday' : '')}
+                        >
+                          <span>{day.date.getDate()}</span>
+                          {day.status === 'holiday' && day.holiday && (
+                            <span className="text-[6px] font-bold mt-0.5 px-1 text-center leading-tight truncate max-w-full">
+                              {day.holiday.description.length > 10 
+                                ? day.holiday.description.substring(0, 8) + '..' 
+                                : day.holiday.description}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="mt-10 flex items-center gap-6 text-[10px] font-black uppercase tracking-widest">
                     <div className="flex items-center gap-2">
-                        <div className="size-3 rounded-full bg-emerald-500"></div>
-                        <span className="text-slate-500">Present (24)</span>
+                      <div className="size-3 rounded-full bg-emerald-500"></div>
+                      <span className="text-slate-500">Present ({attendanceSummary.presentCount})</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="size-3 rounded-full bg-rose-500"></div>
-                        <span className="text-slate-500">Absent (2)</span>
+                      <div className="size-3 rounded-full bg-rose-500"></div>
+                      <span className="text-slate-500">Absent ({attendanceSummary.absentCount})</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="size-3 rounded-full bg-slate-100"></div>
-                        <span className="text-slate-300">Weekend</span>
+                      <div className="size-3 rounded-full bg-amber-400"></div>
+                      <span className="text-slate-500">Holiday ({attendanceSummary.holidayCount})</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="size-3 rounded-full bg-red-50 border border-red-200"></div>
+                      <span className="text-slate-300">Sunday ({attendanceSummary.sundayCount})</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Attendance Summary Ratio */}
                 <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
                   <h3 className="text-xl font-black text-slate-900 tracking-tight mb-8">Attendance Summary</h3>
                   
@@ -237,26 +454,40 @@ const StudentProfile: React.FC = () => {
                       />
                       <circle
                         cx="96" cy="96" r="80"
-                        className="stroke-emerald-500"
+                        className={`stroke-${attendanceSummary.percentage >= 75 ? 'emerald' : attendanceSummary.percentage >= 50 ? 'amber' : 'rose'}-500`}
                         strokeWidth="16"
                         fill="transparent"
                         strokeDasharray={2 * Math.PI * 80}
-                        strokeDashoffset={2 * Math.PI * 80 * (1 - 0.94)}
+                        strokeDashoffset={2 * Math.PI * 80 * (1 - attendanceSummary.percentage / 100)}
                         strokeLinecap="round"
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-4xl font-black text-slate-800 tracking-tight">94%</span>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Ratio</span>
+                      <span className="text-4xl font-black text-slate-800 tracking-tight">{attendanceSummary.percentage}%</span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Attendance</span>
+                    </div>
+                  </div>
+
+                  <div className="w-full space-y-3 mb-6">
+                    <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl">
+                      <span className="text-xs font-bold text-emerald-600">Working Days</span>
+                      <span className="text-lg font-black text-emerald-700">{attendanceSummary.workingDays}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-rose-50 rounded-xl">
+                      <span className="text-xs font-bold text-rose-600">Present Days</span>
+                      <span className="text-lg font-black text-rose-700">{attendanceSummary.presentCount}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                      <span className="text-xs font-bold text-slate-500">Absent Days</span>
+                      <span className="text-lg font-black text-slate-700">{attendanceSummary.absentCount}</span>
                     </div>
                   </div>
 
                   <p className="text-xs font-bold text-slate-400 leading-relaxed px-4">
-                    {student?.fullName?.split(' ')[0]} has maintained excellent attendance this term, exceeding the school target of 90%.
+                    {student?.fullName?.split(' ')[0]} has {attendanceSummary.percentage >= 90 ? 'excellent' : attendanceSummary.percentage >= 75 ? 'good' : 'needs improvement'} attendance this month.
                   </p>
                 </div>
 
-                {/* Performance Comparison (Full width below) */}
                 <div className="xl:col-span-3 bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100">
                    <h3 className="text-xl font-black text-slate-900 tracking-tight mb-10">Performance Comparison</h3>
                    <div className="h-64 mt-10">

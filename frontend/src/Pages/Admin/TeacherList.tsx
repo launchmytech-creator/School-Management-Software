@@ -7,7 +7,8 @@ import {
   User, 
   UserPlus, 
   Mail, 
-  Phone
+  Phone,
+  BookOpen
 } from "lucide-react";
 import { teacherService } from "../../services/teacherService";
 import { useNotification } from "../../context/NotificationContext";
@@ -75,6 +76,12 @@ const TeacherList: React.FC = () => {
             ]
           }}
           actions={[
+            {
+              label: "Allocate Teacher",
+              icon: BookOpen,
+              onClick: () => navigate("/admin/teacher-allocation"),
+              variant: "secondary"
+            },
             {
               label: "Add New Teacher",
               icon: UserPlus,

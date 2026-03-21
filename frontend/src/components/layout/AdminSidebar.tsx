@@ -16,7 +16,7 @@ const AdminSidebar: React.FC = () => {
     { name: 'Teacher Attendance', icon: 'event_available', path: '/admin/teacher-attendance' },
     { name: 'Accountants', icon: 'account_balance_wallet', path: '/admin/accountants' },
     { name: 'Parents', icon: 'family_restroom', path: '/admin/parents' },
-    { name: 'Attendance', icon: 'how_to_reg', path: '/admin/attendance' },
+    // { name: 'Attendance', icon: 'how_to_reg', path: '/admin/attendance' },
     { name: 'Fees', icon: 'payments', path: '/admin/fees' },
     { name: 'Fee Defaulters', icon: 'warning', path: '/admin/fee-defaulters' },
     { name: 'Fee Structures', icon: 'receipt_long', path: '/admin/fee-structures' },

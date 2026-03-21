@@ -9,6 +9,7 @@ interface Action {
   icon?: LucideIcon;
   onClick: () => void;
   variant?: 'default' | 'outline' | 'secondary';
+  disabled?: boolean;
 }
 
 interface PageHeaderProps {
@@ -80,6 +81,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
               variant={action.variant || 'default'}
               onClick={action.onClick}
               className="gap-2"
+              disabled={action.disabled}
             >
               {action.icon && <action.icon className="size-4" />}
               {action.label}

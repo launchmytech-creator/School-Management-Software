@@ -1,21 +1,67 @@
 import { apiRequest } from './api';
 
+interface BackendPromotion {
+  id: number;
+  student_id?: number;
+  from_class_id: number;
+  to_class_id: number;
+  from_academic_year_id: number;
+  to_academic_year_id: number;
+  promotion_date: string;
+  promoted_by: number;
+  student_name: string;
+  admission_number: string;
+  roll_number?: string;
+  from_class_name: string;
+  from_class_section?: string;
+  to_class_name: string;
+  to_class_section?: string;
+  from_academic_year: string;
+  to_academic_year: string;
+  promoted_by_name: string;
+}
+
 export interface Promotion {
   id: number;
   studentId: number;
   studentName: string;
   admissionNumber: string;
+  rollNumber?: string;
   fromClassId: number;
   fromClassName: string;
+  fromClassSection?: string;
   toClassId: number;
   toClassName: string;
+  toClassSection?: string;
   fromAcademicYearId: number;
   fromAcademicYearName: string;
   toAcademicYearId: number;
   toAcademicYearName: string;
   promotedAt: string;
   promotedBy: number;
+  promotedByName: string;
 }
+
+const mapFromBackend = (data: BackendPromotion): Promotion => ({
+  id: data.id,
+  studentId: data.student_id || 0,
+  studentName: data.student_name || '',
+  admissionNumber: data.admission_number || '',
+  rollNumber: data.roll_number,
+  fromClassId: data.from_class_id,
+  fromClassName: data.from_class_name || '',
+  fromClassSection: data.from_class_section,
+  toClassId: data.to_class_id,
+  toClassName: data.to_class_name || '',
+  toClassSection: data.to_class_section,
+  fromAcademicYearId: data.from_academic_year_id,
+  fromAcademicYearName: data.from_academic_year || '',
+  toAcademicYearId: data.to_academic_year_id,
+  toAcademicYearName: data.to_academic_year || '',
+  promotedAt: data.promotion_date || '',
+  promotedBy: data.promoted_by || 0,
+  promotedByName: data.promoted_by_name || '',
+});
 
 export interface EligibleStudent {
   studentId: number;
@@ -28,9 +74,22 @@ export interface EligibleStudent {
 
 export interface PromoteStudentsDto {
   studentIds: number[];
-  toClassId: number;
-  toAcademicYearId: number;
+  toClassId: number | string;
+  toAcademicYearId: number | string;
   toSection?: string;
+}
+
+export interface PromotionGroup {
+  key: string;
+  fromClassName: string;
+  fromClassSection?: string;
+  toClassName: string;
+  toClassSection?: string;
+  fromAcademicYear: string;
+  toAcademicYear: string;
+  promotionDate: string;
+  promotedByName: string;
+  students: Promotion[];
 }
 
 export const promotionService = {
@@ -43,22 +102,26 @@ export const promotionService = {
   },
 
   getPromotions: async (params: {
-    classId?: number;
+    fromClassId?: number;
+    toClassId?: number;
     academicYearId?: number;
   } = {}): Promise<Promotion[]> => {
     const queryParams = new URLSearchParams();
-    if (params.classId) queryParams.append('classId', String(params.classId));
+    if (params.fromClassId) queryParams.append('fromClassId', String(params.fromClassId));
+    if (params.toClassId) queryParams.append('toClassId', String(params.toClassId));
     if (params.academicYearId) queryParams.append('academicYearId', String(params.academicYearId));
     
     const queryString = queryParams.toString();
-    return apiRequest<Promotion[]>(`/student-promotions${queryString ? `?${queryString}` : ''}`);
+    const response = await apiRequest<BackendPromotion[]>(`/student-promotions${queryString ? `?${queryString}` : ''}`);
+    return response.map(mapFromBackend);
   },
 
   getStudentPromotionHistory: async (studentId: number): Promise<Promotion[]> => {
-    return apiRequest<Promotion[]>(`/student-promotions/student/${studentId}/history`);
+    const response = await apiRequest<BackendPromotion[]>(`/student-promotions/student/${studentId}/history`);
+    return response.map(mapFromBackend);
   },
 
-  getEligibleStudents: async (classId: number, toClassId: number): Promise<EligibleStudent[]> => {
+  getEligibleStudents: async (classId: string | number, toClassId: string | number): Promise<EligibleStudent[]> => {
     return apiRequest<EligibleStudent[]>(`/student-promotions/class/${classId}/eligible-students?toClassId=${toClassId}`);
   },
 

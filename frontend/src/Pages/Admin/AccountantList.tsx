@@ -23,7 +23,7 @@ const AccountantList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [selectedAccountant, setSelectedAccountant] = useState<Accountant | null>(null);
+  const [selectedAccountant, _setSelectedAccountant] = useState<Accountant | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const fetchAccountants = React.useCallback(async () => {
@@ -202,24 +202,24 @@ const AccountantList: React.FC = () => {
                         </td>
                         <td className="px-6 py-6 text-center">
                            <StatusBadge label={accountant.isActive ? 'Active' : 'Inactive'} variant={accountant.isActive ? 'success' : 'neutral'} />
-                        </td>
-                        <td className="px-8 py-6">
-                           <div className="flex items-center justify-end gap-2 px-1">
-                              <button 
-                                 onClick={() => { setSelectedAccountant(accountant); setIsDetailsOpen(true); }}
-                                 className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
-                              >
-                                 <Eye className="size-4" />
-                              </button>
-                              <button 
-                                 onClick={() => navigate(`/admin/accountants/${accountant.id}/edit`)}
-                                 className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
-                              >
-                                 <Edit2 className="size-4" />
-                              </button>
-                              <button 
-                                 onClick={() => handleDelete(accountant.id)}
-                                 className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                         </td>
+                         <td className="px-8 py-6">
+                            <div className="flex items-center justify-end gap-2 px-1">
+                               <button 
+                                  onClick={() => navigate(`/admin/accountants/${accountant.id}`)}
+                                  className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
+                               >
+                                  <Eye className="size-4" />
+                               </button>
+                               <button 
+                                  onClick={() => navigate(`/admin/accountants/${accountant.id}/edit`)}
+                                  className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
+                               >
+                                  <Edit2 className="size-4" />
+                               </button>
+                               <button 
+                                  onClick={() => handleDelete(accountant.id)}
+                                  className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
                               >
                                  <Trash2 className="size-4" />
                               </button>

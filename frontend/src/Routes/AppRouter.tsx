@@ -10,6 +10,8 @@ import AccountantFeeDefaulters from "../Pages/Accountant/FeeDefaulters";
 import FinancialReports from "../Pages/Accountant/FinancialReports";
 import AccountantStudents from "../Pages/Accountant/Students";
 import TeacherDashboard from "../Pages/Teacher/Dashboard";
+import StudentAttendance from "../Pages/Teacher/StudentAttendance";
+import TeacherSyllabus from "../Pages/Teacher/Syllabus";
 import ParentDashboard from "../Pages/Parent/Dashboard";
 import CreateSchool from "../Pages/superAdmin/CreateSchool";
 import Students from "../Pages/Admin/Students";
@@ -26,10 +28,11 @@ import TeacherList from "../Pages/Admin/TeacherList";
 import TeacherAllocation from "../Pages/Admin/TeacherAllocation";
 import TeacherProfile from "../Pages/Admin/TeacherProfile";
 import AccountantList from "../Pages/Admin/AccountantList";
+import AccountantProfile from "../Pages/Admin/AccountantProfile";
 import AddAccountant from "../Pages/Admin/AddAccountant";
 import EditAccountant from "../Pages/Admin/EditAccountant";
 
-import Attendance from "../Pages/Admin/Attendance";
+// import Attendance from "../Pages/Admin/Attendance";
 import FeeCollection from "../Pages/Admin/FeeCollection";
 import FeeDefaulters from "../Pages/Admin/FeeDefaulters";
 import FeeStructures from "../Pages/Admin/FeeStructures";
@@ -180,16 +183,24 @@ const AppRouter = () => {
                   </RequiresActiveYear>
                 }
               />
+              <Route
+                path="accountants/:id"
+                element={
+                  <RequiresActiveYear>
+                    <AccountantProfile />
+                  </RequiresActiveYear>
+                }
+              />
 
               {/* Attendance */}
-              <Route
+              {/* <Route
                 path="attendance"
                 element={
                   <RequiresActiveYear>
                     <Attendance />
                   </RequiresActiveYear>
                 }
-              />
+              /> */}
 
               {/* Fee Management */}
               <Route
@@ -369,6 +380,22 @@ const AppRouter = () => {
           <ProtectedRoute allowedRoles={["teacher"]}>
             <Routes>
               <Route path="dashboard" element={<TeacherDashboard />} />
+              <Route
+                path="attendance"
+                element={
+                  <RequiresActiveYear>
+                    <StudentAttendance />
+                  </RequiresActiveYear>
+                }
+              />
+              <Route
+                path="syllabus"
+                element={
+                  <RequiresActiveYear>
+                    <TeacherSyllabus />
+                  </RequiresActiveYear>
+                }
+              />
             </Routes>
           </ProtectedRoute>
         }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import AdminStatCard from '../../components/dashboard/AdminStatCard';
 import AttendanceChart from '../../components/dashboard/AttendanceChart';
@@ -17,25 +18,32 @@ import {
 } from 'lucide-react';
 import { useNotification } from '../../context/NotificationContext';
 import { dashboardService, type AdminDashboardStats, type DashboardActivity, type AttendanceOverview, type FeeOverview } from '../../services/dashboardService';
+import { syllabusService, type ClassProgress } from '../../services/syllabusService';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 
 const AdminDashboard: React.FC = () => {
   const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
   const [activities, setActivities] = useState<DashboardActivity[]>([]);
   const [attendanceOverview, setAttendanceOverview] = useState<AttendanceOverview | null>(null);
   const [feeOverview, setFeeOverview] = useState<FeeOverview | null>(null);
+  const [syllabusProgress, setSyllabusProgress] = useState<ClassProgress[]>([]);
 
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await dashboardService.getAdminDashboard();
-      setStats(data.stats);
-      setActivities(data.recentActivity);
-      setAttendanceOverview(data.attendanceOverview);
-      setFeeOverview(data.feeOverview);
+      const [dashboardData, syllabusData] = await Promise.all([
+        dashboardService.getAdminDashboard(),
+        syllabusService.getAllClassesProgress(),
+      ]);
+      setStats(dashboardData.stats);
+      setActivities(dashboardData.recentActivity);
+      setAttendanceOverview(dashboardData.attendanceOverview);
+      setFeeOverview(dashboardData.feeOverview);
+      setSyllabusProgress(syllabusData.classes);
     } catch {
       showNotification('Failed to load dashboard data', 'error');
     } finally {
@@ -109,12 +117,6 @@ const AdminDashboard: React.FC = () => {
     },
   ];
 
-  const syllabusProgress = [
-    { className: 'Class 10 - Secondary Board', percentage: 85, color: '#3B82F6' },
-    { className: 'Class 11 - Higher Secondary', percentage: 62, color: '#3B82F6' },
-    { className: 'Class 12 - Senior Secondary', percentage: 90, color: '#3B82F6' },
-  ];
-
   const formattedActivities = activities.length > 0 ? activities.map((activity, index) => ({
     id: activity.id || String(index),
     title: activity.title,
@@ -156,7 +158,8 @@ const AdminDashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <AttendanceChart 
             present={attendanceOverview?.present || 0} 
-            total={attendanceOverview?.total || 0} 
+            total={attendanceOverview?.total || 0}
+            onViewDetails={() => navigate('/admin/attendance')}
           />
           <FeeStatusChart 
             paid={feeOverview?.collected || 0} 
