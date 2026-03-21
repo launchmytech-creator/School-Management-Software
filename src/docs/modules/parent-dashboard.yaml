@@ -1,0 +1,416 @@
+paths:
+  /parent/dashboard:
+    get:
+      tags:
+        - Parent Dashboard
+      summary: Get dashboard overview
+      description: Get overview of all children with fee summary and recent attendance (Parent only)
+      operationId: getParentDashboard
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Dashboard retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            student:
+                              $ref: '#/components/schemas/Student'
+                            fee_summary:
+                              type: object
+                              properties:
+                                total_fees:
+                                  type: integer
+                                  example: 4
+                                paid_fees:
+                                  type: integer
+                                  example: 2
+                                pending_fees:
+                                  type: integer
+                                  example: 2
+                                total_due:
+                                  type: number
+                                  format: decimal
+                                  example: 50000.00
+                            recent_attendance:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  status:
+                                    type: string
+                                    enum: [present, absent, late]
+                                  attendance_date:
+                                    type: string
+                                    format: date
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /parent/children:
+    get:
+      tags:
+        - Parent Dashboard
+      summary: Get my children
+      description: Get list of all children linked to the authenticated parent (Parent only)
+      operationId: getMyChildren
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Children retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Student'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /parent/children/{childId}/marks:
+    get:
+      tags:
+        - Parent Dashboard
+      summary: Get child's exam marks
+      description: Get all exam results for a specific child (Parent only)
+      operationId: getChildMarks
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 10
+      responses:
+        '200':
+          description: Child marks retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            exam_name:
+                              type: string
+                              example: "Half Yearly Examination"
+                            exam_type:
+                              type: string
+                              example: "Half Yearly"
+                            subject_name:
+                              type: string
+                              example: "Mathematics"
+                            subject_code:
+                              type: string
+                              example: "MATH"
+                            max_marks:
+                              type: number
+                              format: decimal
+                              example: 100.00
+                            marks_obtained:
+                              type: number
+                              format: decimal
+                              nullable: true
+                              example: 85.50
+                            grade:
+                              type: string
+                              nullable: true
+                              example: "A"
+                            is_absent:
+                              type: boolean
+                              example: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /parent/children/{childId}/attendance:
+    get:
+      tags:
+        - Parent Dashboard
+      summary: Get child's attendance
+      description: Get attendance records for a specific child (Parent only)
+      operationId: getChildAttendance
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 10
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+          example: "2024-04-01"
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+          example: "2024-09-30"
+      responses:
+        '200':
+          description: Child attendance retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StudentAttendance'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /parent/children/{childId}/attendance-summary:
+    get:
+      tags:
+        - Parent Dashboard
+      summary: Get child's attendance summary
+      description: Get attendance summary stats for a specific child (Parent only)
+      operationId: getChildAttendanceSummary
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 10
+        - name: academicYearId
+          in: query
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Attendance summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          total_days:
+                            type: integer
+                            example: 215
+                          present_days:
+                            type: integer
+                            example: 187
+                          absent_days:
+                            type: integer
+                            example: 15
+                          late_days:
+                            type: integer
+                            example: 13
+                          working_days:
+                            type: integer
+                            example: 215
+                          attendance_percentage:
+                            type: string
+                            example: "86.98"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /parent/children/{childId}/fees:
+    get:
+      tags:
+        - Parent Dashboard
+      summary: Get child's fee status
+      description: Get all fee transactions for a specific child (Parent only)
+      operationId: getChildFeeStatus
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 10
+      responses:
+        '200':
+          description: Child fee status retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/FeeTransaction'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /parent/children/{childId}/syllabus:
+    get:
+      tags:
+        - Parent Dashboard
+      summary: Get child's syllabus progress
+      description: Get syllabus completion progress for a specific child (Parent only)
+      operationId: getChildSyllabusProgress
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 10
+      responses:
+        '200':
+          description: Syllabus progress retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            subject_name:
+                              type: string
+                              example: "Science"
+                            subject_code:
+                              type: string
+                              example: "SCI"
+                            chapter_name:
+                              type: string
+                              example: "Photosynthesis"
+                            sequence_number:
+                              type: integer
+                              nullable: true
+                              example: 1
+                            status:
+                              type: string
+                              enum: [pending, in_progress, completed]
+                              nullable: true
+                              example: "completed"
+                            completed_date:
+                              type: string
+                              format: date
+                              nullable: true
+                              example: "2024-08-15"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /parent/children/{childId}/teachers:
+    get:
+      tags:
+        - Parent Dashboard
+      summary: Get child's teachers
+      description: Get all teachers allocated to a specific child's class (Parent only)
+      operationId: getChildTeachers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: childId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 10
+      responses:
+        '200':
+          description: Child teachers retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Success'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 5
+                            full_name:
+                              type: string
+                              example: "Jane Smith"
+                            email:
+                              type: string
+                              format: email
+                              example: "teacher@school.com"
+                            phone:
+                              type: string
+                              nullable: true
+                              example: "+1234567890"
+                            subject_name:
+                              type: string
+                              example: "Mathematics"
+                            subject_code:
+                              type: string
+                              example: "MATH"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'

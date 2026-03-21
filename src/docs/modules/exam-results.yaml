@@ -19,7 +19,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':
@@ -60,7 +60,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '401':
         $ref: '#/components/responses/Unauthorized'
 /exam-results/student/{studentId}:
@@ -95,7 +95,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '401':
         $ref: '#/components/responses/Unauthorized'
 /exam-results/exam-subject/{examSubjectId}:
@@ -120,7 +120,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '401':
         $ref: '#/components/responses/Unauthorized'
 /exam-results/exam/{examId}/performance:
@@ -145,7 +145,7 @@
           application/json:
             schema:
               allOf:
-              - $ref: '#/components/schemas/SuccessResponse'
+              - $ref: '#/components/schemas/Success'
               - type: object
                 properties:
                   data:
@@ -170,7 +170,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '401':
         $ref: '#/components/responses/Unauthorized'
       '403':

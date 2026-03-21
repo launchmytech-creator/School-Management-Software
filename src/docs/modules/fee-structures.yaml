@@ -18,7 +18,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':
@@ -54,7 +54,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '401':
         $ref: '#/components/responses/Unauthorized'
 /fee-structures/{id}:
@@ -73,7 +73,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '401':
         $ref: '#/components/responses/Unauthorized'
       '404':
@@ -99,7 +99,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':
@@ -123,7 +123,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '401':
         $ref: '#/components/responses/Unauthorized'
       '403':

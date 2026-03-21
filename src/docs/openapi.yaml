@@ -67,26 +67,10 @@ tags:
     description: Exam results and marks (Admin, Accountant, Teacher)
   - name: Student Promotions
     description: Student promotions (Admin, Accountant)
+  - name: Parent Dashboard
+    description: Parent portal - view children's marks, attendance, fees, syllabus (Parent only)
 
 paths:
-  /health:
-    get:
-      tags:
-        - Authentication
-      summary: Health check
-      operationId: healthCheck
-      responses:
-        "200":
-          description: API is running
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: OK
-
 components:
   securitySchemes:
     BearerAuth:

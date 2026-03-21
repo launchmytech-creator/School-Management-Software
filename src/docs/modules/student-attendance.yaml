@@ -19,7 +19,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':
@@ -78,7 +78,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '401':
         $ref: '#/components/responses/Unauthorized'
 /student-attendance/student/{studentId}/summary:
@@ -115,7 +115,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '401':
         $ref: '#/components/responses/Unauthorized'
 /student-attendance/class/{classId}:
@@ -147,7 +147,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':
@@ -168,7 +168,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SuccessResponse'
+              $ref: '#/components/schemas/Success'
       '401':
         $ref: '#/components/responses/Unauthorized'
       '403':
