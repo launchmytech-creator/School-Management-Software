@@ -69,6 +69,8 @@ tags:
     description: Student promotions (Admin, Accountant)
   - name: Parent Dashboard
     description: Parent portal - view children's marks, attendance, fees, syllabus (Parent only)
+  - name: Notifications
+    description: Email notifications - send, broadcast, and manage notification history
 
 paths:
 components:
@@ -1865,3 +1867,206 @@ components:
               type: string
               format: email
               example: "admin@school.com"
+
+    SyllabusProgress:
+      type: object
+      properties:
+        total_chapters:
+          type: integer
+          example: 10
+        completed_chapters:
+          type: integer
+          example: 6
+        in_progress_chapters:
+          type: integer
+          example: 2
+        pending_chapters:
+          type: integer
+          example: 2
+        completion_percentage:
+          type: number
+          format: decimal
+          example: 60.00
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 11
+        notification_type:
+          type: string
+          enum: [general, fee_reminder, exam_result, attendance_alert, announcement, welcome]
+          example: "fee_reminder"
+        message:
+          type: string
+          example: "Fee reminder for John Doe. Amount due: 5000. Due date: 2026-04-01."
+        reference_type:
+          type: string
+          nullable: true
+          example: "fee"
+        reference_id:
+          type: integer
+          nullable: true
+          example: 3
+        channel:
+          type: string
+          example: "email"
+        status:
+          type: string
+          enum: [pending, sent, failed]
+          example: "sent"
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-03-23T10:00:00.000Z"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-03-23T10:00:00.000Z"
+
+    NotificationWithRecipient:
+      allOf:
+        - $ref: "#/components/schemas/Notification"
+        - type: object
+          properties:
+            recipient_name:
+              type: string
+              example: "Jane Smith"
+            recipient_email:
+              type: string
+              format: email
+              example: "jane@school.com"
+
+    SendNotificationRequest:
+      type: object
+      required: [userId, subject, message]
+      properties:
+        userId:
+          type: integer
+          example: 11
+        subject:
+          type: string
+          maxLength: 200
+          example: "Important Update"
+        message:
+          type: string
+          maxLength: 2000
+          example: "Please attend the staff meeting tomorrow at 9 AM."
+        notificationType:
+          type: string
+          maxLength: 50
+          example: "general"
+        referenceType:
+          type: string
+          maxLength: 50
+          example: "announcement"
+        referenceId:
+          type: integer
+          example: 5
+
+    BroadcastNotificationRequest:
+      type: object
+      required: [title, message]
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          example: "School Holiday"
+        message:
+          type: string
+          maxLength: 2000
+          example: "School will remain closed on 25th March 2026."
+        targetRole:
+          type: string
+          nullable: true
+          enum: [school_admin, teacher, parent, accountant]
+          example: "parent"
+        announcementId:
+          type: integer
+          nullable: true
+          example: 10
+
+    FeeReminderRequest:
+      type: object
+      required: [parentId, studentName, amountDue, dueDate]
+      properties:
+        parentId:
+          type: integer
+          example: 9
+        studentName:
+          type: string
+          example: "John Doe"
+        amountDue:
+          type: string
+          example: "5000"
+        dueDate:
+          type: string
+          example: "2026-04-01"
+
+    ExamResultNotificationRequest:
+      type: object
+      required: [parentId, studentName, examName, grade, marks, totalMarks]
+      properties:
+        parentId:
+          type: integer
+          example: 9
+        studentName:
+          type: string
+          example: "John Doe"
+        examName:
+          type: string
+          example: "Half Yearly Examination"
+        grade:
+          type: string
+          example: "A"
+        marks:
+          type: number
+          example: 88
+        totalMarks:
+          type: number
+          example: 100
+        examId:
+          type: integer
+          nullable: true
+          example: 3
+
+    AttendanceAlertRequest:
+      type: object
+      required: [parentId, studentName, date, status]
+      properties:
+        parentId:
+          type: integer
+          example: 9
+        studentName:
+          type: string
+          example: "John Doe"
+        date:
+          type: string
+          format: date
+          example: "2026-03-23"
+        status:
+          type: string
+          enum: [present, absent, late]
+          example: "absent"
+        studentId:
+          type: integer
+          nullable: true
+          example: 5
+
+    BroadcastResult:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 25
+        sent:
+          type: integer
+          example: 24
+        failed:
+          type: integer
+          example: 1

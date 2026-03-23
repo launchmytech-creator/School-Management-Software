@@ -1,0 +1,406 @@
+# Notifications endpoints
+
+/notifications/my:
+  get:
+    tags:
+      - Notifications
+    summary: Get my notifications
+    description: Get all notifications for the currently authenticated user. Any role can access this.
+    operationId: getMyNotifications
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [pending, sent, failed]
+        description: Filter by delivery status
+      - name: type
+        in: query
+        schema:
+          type: string
+          enum: [general, fee_reminder, exam_result, attendance_alert, announcement, welcome]
+        description: Filter by notification type
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+        description: Number of records to return
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          default: 0
+        description: Number of records to skip
+    responses:
+      "200":
+        description: Notifications retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Notification"
+            examples:
+              success:
+                summary: List of notifications
+                value:
+                  success: true
+                  message: "Notifications retrieved successfully"
+                  data:
+                    - id: 1
+                      user_id: 11
+                      notification_type: "fee_reminder"
+                      message: "Fee reminder for John Doe. Amount due: 5000. Due date: 2026-04-01."
+                      channel: "email"
+                      status: "sent"
+                      sent_at: "2026-03-23T10:00:00.000Z"
+                      created_at: "2026-03-23T10:00:00.000Z"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+
+/notifications:
+  get:
+    tags:
+      - Notifications
+    summary: Get all school notifications
+    description: Get all notifications sent within the school. Admin and Super Admin only.
+    operationId: getSchoolNotifications
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [pending, sent, failed]
+        description: Filter by delivery status
+      - name: type
+        in: query
+        schema:
+          type: string
+          enum: [general, fee_reminder, exam_result, attendance_alert, announcement, welcome]
+        description: Filter by notification type
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 100
+        description: Number of records to return
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          default: 0
+        description: Number of records to skip
+    responses:
+      "200":
+        description: Notifications retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/NotificationWithRecipient"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+
+/notifications/send:
+  post:
+    tags:
+      - Notifications
+    summary: Send a custom notification
+    description: Send a custom email notification to any specific user by their ID. Admin and Super Admin only.
+    operationId: sendNotification
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SendNotificationRequest"
+          examples:
+            generic:
+              summary: Send a general message to a teacher
+              value:
+                userId: 11
+                subject: "Important Update"
+                message: "Please attend the staff meeting tomorrow at 9 AM in the conference room."
+                notificationType: "general"
+    responses:
+      "201":
+        description: Notification sent successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Notification"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+/notifications/broadcast:
+  post:
+    tags:
+      - Notifications
+    summary: Broadcast announcement to all users
+    description: Send an email notification to all active users in the school, or filter by a specific role. Admin and Super Admin only.
+    operationId: broadcastAnnouncement
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BroadcastNotificationRequest"
+          examples:
+            toAll:
+              summary: Broadcast to all users
+              value:
+                title: "School Holiday"
+                message: "School will remain closed on 25th March 2026 due to a public holiday."
+            toParents:
+              summary: Broadcast to parents only
+              value:
+                title: "Fee Due Reminder"
+                message: "This is a reminder that the last date for fee submission is 31st March 2026."
+                targetRole: "parent"
+            toTeachers:
+              summary: Broadcast to teachers only
+              value:
+                title: "Staff Meeting"
+                message: "All teaching staff are requested to attend a mandatory meeting on 24th March at 10 AM."
+                targetRole: "teacher"
+    responses:
+      "200":
+        description: Broadcast completed
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/BroadcastResult"
+            examples:
+              success:
+                summary: Broadcast result
+                value:
+                  success: true
+                  message: "Broadcast completed"
+                  data:
+                    total: 25
+                    sent: 24
+                    failed: 1
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+
+/notifications/fee-reminder:
+  post:
+    tags:
+      - Notifications
+    summary: Send fee payment reminder
+    description: Send a fee payment reminder email to a parent. Admin and Accountant only.
+    operationId: sendFeeReminder
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/FeeReminderRequest"
+          examples:
+            reminder:
+              summary: Fee reminder to parent
+              value:
+                parentId: 9
+                studentName: "John Doe"
+                amountDue: "5000"
+                dueDate: "2026-04-01"
+    responses:
+      "201":
+        description: Fee reminder sent successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Notification"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+/notifications/exam-result:
+  post:
+    tags:
+      - Notifications
+    summary: Send exam result notification
+    description: Notify a parent about their child's exam results via email. Admin and Teacher only.
+    operationId: sendExamResult
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ExamResultNotificationRequest"
+          examples:
+            result:
+              summary: Exam result notification
+              value:
+                parentId: 9
+                studentName: "John Doe"
+                examName: "Half Yearly Examination"
+                grade: "A"
+                marks: 88
+                totalMarks: 100
+                examId: 3
+    responses:
+      "201":
+        description: Exam result notification sent
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Notification"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+/notifications/attendance-alert:
+  post:
+    tags:
+      - Notifications
+    summary: Send attendance alert
+    description: Notify a parent about their child's attendance status via email. Admin and Teacher only.
+    operationId: sendAttendanceAlert
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AttendanceAlertRequest"
+          examples:
+            absent:
+              summary: Absent alert
+              value:
+                parentId: 9
+                studentName: "John Doe"
+                date: "2026-03-23"
+                status: "absent"
+                studentId: 5
+            late:
+              summary: Late arrival alert
+              value:
+                parentId: 9
+                studentName: "John Doe"
+                date: "2026-03-23"
+                status: "late"
+                studentId: 5
+    responses:
+      "201":
+        description: Attendance alert sent
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/Notification"
+      "400":
+        $ref: "#/components/responses/ValidationError"
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"
+      "404":
+        $ref: "#/components/responses/NotFound"
+
+/notifications/retry-failed:
+  post:
+    tags:
+      - Notifications
+    summary: Retry failed notifications
+    description: Re-attempt email delivery for all notifications that previously failed. Admin and Super Admin only.
+    operationId: retryFailedNotifications
+    security:
+      - BearerAuth: []
+    responses:
+      "200":
+        description: Retry completed
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Success"
+                - type: object
+                  properties:
+                    data:
+                      $ref: "#/components/schemas/BroadcastResult"
+            examples:
+              success:
+                summary: Retry result
+                value:
+                  success: true
+                  message: "Retry completed"
+                  data:
+                    total: 3
+                    retried: 3
+                    failed: 0
+      "401":
+        $ref: "#/components/responses/Unauthorized"
+      "403":
+        $ref: "#/components/responses/Forbidden"

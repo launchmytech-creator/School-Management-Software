@@ -20,7 +20,7 @@ class StudentPromotionsService {
 
         if (studentQuery.rows.length === 0) {
           throw new AppError(
-            ERROR_CODES.NOT_FOUND,
+            ERROR_CODES.RESOURCE_NOT_FOUND,
             `Student with ID ${studentId} not found`,
             404,
           );
@@ -184,7 +184,7 @@ class StudentPromotionsService {
 
     if (result.rows.length === 0) {
       throw new AppError(
-        ERROR_CODES.NOT_FOUND,
+        ERROR_CODES.RESOURCE_NOT_FOUND,
         "Promotion record not found",
         404,
       );
@@ -217,7 +217,7 @@ class StudentPromotionsService {
 
     if (result.rows.length === 0) {
       throw new AppError(
-        ERROR_CODES.NOT_FOUND,
+        ERROR_CODES.RESOURCE_NOT_FOUND,
         "Promotion record not found",
         404,
       );

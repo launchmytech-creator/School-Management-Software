@@ -64,7 +64,9 @@ class StudentAttendanceService {
     }
   }
 
-  async getAttendanceBySchool(schoolId, filters = {}) {
+  async getAttendanceBySchool(schoolId, filters = {}, caller = {}) {
+    const isTeacher = caller.callerRole === "teacher";
+
     let query = `
       SELECT sa.*, 
              s.full_name as student_name, s.admission_number,
@@ -80,14 +82,23 @@ class StudentAttendanceService {
     const params = [schoolId];
     let paramCount = 2;
 
+    // Teachers can only see attendance for classes they are allocated to
+    if (isTeacher) {
+      query += ` AND sa.class_id IN (
+        SELECT DISTINCT class_id FROM teacher_allocations
+        WHERE teacher_id = $${paramCount++} AND school_id = $${paramCount++}
+      )`;
+      params.push(parseInt(caller.callerId), schoolId);
+    }
+
     if (filters.classId) {
       query += ` AND sa.class_id = $${paramCount++}`;
-      params.push(filters.classId);
+      params.push(parseInt(filters.classId));
     }
 
     if (filters.studentId) {
       query += ` AND sa.student_id = $${paramCount++}`;
-      params.push(filters.studentId);
+      params.push(parseInt(filters.studentId));
     }
 
     if (filters.attendanceDate) {
@@ -122,7 +133,7 @@ class StudentAttendanceService {
       WHERE student_id = $1 AND school_id = $2
     `;
 
-    const params = [studentId, schoolId];
+    const params = [parseInt(studentId), parseInt(schoolId)];
     let paramCount = 3;
 
     if (filters.startDate && filters.endDate) {

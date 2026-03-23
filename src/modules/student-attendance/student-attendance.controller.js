@@ -24,6 +24,7 @@ class StudentAttendanceController {
       const attendance = await studentAttendanceService.getAttendanceBySchool(
         req.user.schoolId,
         req.query,
+        { callerId: req.user.id, callerRole: req.user.role },
       );
       return ApiResponse.success(res, attendance);
     } catch (error) {
