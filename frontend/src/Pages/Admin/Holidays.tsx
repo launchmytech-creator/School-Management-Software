@@ -4,7 +4,7 @@ import { useNotification } from '../../context/NotificationContext';
 import { holidayService, type Holiday } from '../../services/holidayService';
 import { academicYearService } from '../../services/academicYearService';
 import { Plus, ChevronLeft, ChevronRight, Search, Download, Printer, Trash2 } from 'lucide-react';
-import { formatDate } from '../../lib/utils';
+import { formatDate, getLocalDateString } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
 import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
@@ -127,7 +127,7 @@ const Holidays: React.FC = () => {
 
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const date = new Date(year, month, day);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(date);
       const holiday = holidays.find(h => h.holidayDate === dateStr);
       const isSunday = date.getDay() === 0;
       days.push({

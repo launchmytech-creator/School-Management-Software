@@ -66,8 +66,12 @@ export const teacherService = {
     return data.map(mapAllocationFromBackend);
   },
 
-  getAllocationsByTeacher: async (teacherId: number): Promise<TeacherAllocation[]> => {
-    const data = await apiRequest<BackendAllocation[]>(`/teacher-allocations/teacher/${teacherId}`);
+  getAllocationsByTeacher: async (teacherId: number, academicYearId?: number): Promise<TeacherAllocation[]> => {
+    let url = `/teacher-allocations/teacher/${teacherId}`;
+    if (academicYearId) {
+      url += `?academicYearId=${academicYearId}`;
+    }
+    const data = await apiRequest<BackendAllocation[]>(url);
     return data.map(mapAllocationFromBackend);
   },
 

@@ -9,7 +9,7 @@ import { attendanceService, type AttendanceRecord } from '../../services/attenda
 import { classService } from '../../services/classService';
 import type { Class } from '../../types/class';
 import { Users, CheckCircle, XCircle, Clock, CalendarCheck } from 'lucide-react';
-import { formatDate } from '../../lib/utils';
+import { formatDate, getLocalDateString } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
 import { SkeletonTable } from '../../components/common/Skeleton';
 
@@ -20,7 +20,7 @@ const Attendance: React.FC = () => {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
   const [showMarkModal, setShowMarkModal] = useState(false);
 
   const fetchClasses = useCallback(async () => {

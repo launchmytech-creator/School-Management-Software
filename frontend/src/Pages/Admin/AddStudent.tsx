@@ -13,6 +13,7 @@ import { classService } from '../../services/classService';
 import { parentService } from '../../services/parentService';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
+import { getLocalDateString } from '../../lib/utils';
 import type { Class } from '../../types/class';
 import type { Parent } from '../../types/parent';
 
@@ -35,7 +36,7 @@ const AddStudent: React.FC = () => {
     gender: 'male',
     address: '',
     phone: '',
-    admissionDate: new Date().toISOString().split('T')[0],
+    admissionDate: getLocalDateString(),
     currentClassId: '',
     parentId: '',
     rollNumber: ''

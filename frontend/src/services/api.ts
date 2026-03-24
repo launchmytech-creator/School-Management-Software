@@ -37,7 +37,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.USER);
-      window.location.href = '/login';
+      window.dispatchEvent(new CustomEvent('auth:error'));
     }
     return Promise.reject(error);
   }

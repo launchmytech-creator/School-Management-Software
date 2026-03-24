@@ -4,10 +4,11 @@ import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { teacherService } from '../../services/teacherService';
-import { syllabusService } from '../../services/syllabusService';
+import { syllabusService, type ChapterWithStatus } from '../../services/syllabusService';
 import { type TeacherAllocation } from '../../types/teacher';
-import { BookOpen, CheckCircle, Clock, BookMarked, Users } from 'lucide-react';
+import { BookOpen, CheckCircle, Clock, BookMarked, Users, Circle, Loader } from 'lucide-react';
 
 interface TeacherSubjectProgress {
   allocationId: number;
@@ -16,7 +17,6 @@ interface TeacherSubjectProgress {
   classSection?: string;
   subjectId: number;
   subjectName: string;
-  classSubjectId: number;
   totalChapters: number;
   completedChapters: number;
   inProgressChapters: number;
@@ -24,25 +24,66 @@ interface TeacherSubjectProgress {
   progressPercentage: number;
 }
 
+interface ClassSubjectCache {
+  [classId: number]: {
+    [subjectId: number]: number;
+  };
+}
+
 const TeacherSyllabus: React.FC = () => {
   const { showNotification } = useNotification();
   const { user } = useAuth();
+  const { selectedYear } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [allocations, setAllocations] = useState<TeacherAllocation[]>([]);
   const [subjectProgress, setSubjectProgress] = useState<TeacherSubjectProgress[]>([]);
-  const [expandedAllocation, setExpandedAllocation] = useState<number | null>(null);
+  const [chapterProgress, setChapterProgress] = useState<Record<number, ChapterWithStatus[]>>({});
+  const [chapterLoading, setChapterLoading] = useState<Set<number>>(new Set());
+  const [classSubjectCache, setClassSubjectCache] = useState<ClassSubjectCache>({});
+  const [cacheLoading, setCacheLoading] = useState<Set<number>>(new Set());
+  const [expandedClass, setExpandedClass] = useState<number | null>(null);
+  const [expandedSubject, setExpandedSubject] = useState<number | null>(null);
 
   const fetchAllocations = useCallback(async () => {
+    if (!user?.id || !selectedYear?.id) return;
     try {
       setLoading(true);
-      const data = await teacherService.getAllocationsByTeacher(user?.id as number);
+      const data = await teacherService.getAllocationsByTeacher(user.id as number, Number(selectedYear.id));
       setAllocations(data);
+      
+      const uniqueClassIds = [...new Set(data.map(a => a.classId))];
+      uniqueClassIds.forEach(classId => fetchClassSubjectCache(classId));
     } catch {
       showNotification('Failed to fetch your allocations', 'error');
     } finally {
       setLoading(false);
     }
-  }, [user?.id, showNotification]);
+  }, [user?.id, selectedYear?.id, showNotification]);
+
+  const fetchClassSubjectCache = async (classId: number) => {
+    if (classSubjectCache[classId] || cacheLoading.has(classId)) return;
+    
+    setCacheLoading(prev => new Set(prev).add(classId));
+    try {
+      const classSubjects = await syllabusService.getClassSubjectsByClass(classId, Number(selectedYear!.id));
+      const newCache: ClassSubjectCache = {};
+      classSubjects.forEach(cs => {
+        if (!newCache[cs.classId]) {
+          newCache[cs.classId] = {};
+        }
+        newCache[cs.classId][cs.subjectId] = cs.id;
+      });
+      setClassSubjectCache(prev => ({ ...prev, ...newCache }));
+    } catch {
+      showNotification('Failed to fetch class subjects', 'error');
+    } finally {
+      setCacheLoading(prev => {
+        const next = new Set(prev);
+        next.delete(classId);
+        return next;
+      });
+    }
+  };
 
   const fetchSubjectProgress = useCallback(async () => {
     if (allocations.length === 0) return;
@@ -50,7 +91,21 @@ const TeacherSyllabus: React.FC = () => {
     try {
       const progressPromises = allocations.map(async (allocation) => {
         try {
-          const progress = await syllabusService.getClassSubjectProgress(allocation.id);
+          // Use direct method: classId + subjectId + academicYearId
+          const chapters = await syllabusService.getChaptersWithStatusDirect(
+            allocation.classId,
+            allocation.subjectId,
+            Number(selectedYear!.id),
+          );
+          console.log('[Syllabus] getChaptersWithStatusDirect chapters:', chapters);
+
+          const completedChapters = chapters.filter(c => c.status === 'completed').length;
+          const inProgressChapters = chapters.filter(c => c.status === 'in-progress').length;
+          const totalChapters = chapters.length;
+          const progressPercentage = totalChapters > 0 
+            ? Math.round((completedChapters / totalChapters) * 100) 
+            : 0;
+
           return {
             allocationId: allocation.id,
             classId: allocation.classId,
@@ -58,12 +113,11 @@ const TeacherSyllabus: React.FC = () => {
             classSection: allocation.classSection,
             subjectId: allocation.subjectId,
             subjectName: allocation.subjectName,
-            classSubjectId: allocation.id,
-            totalChapters: progress.totalChapters,
-            completedChapters: progress.completedChapters,
-            inProgressChapters: 0,
-            pendingChapters: progress.totalChapters - progress.completedChapters,
-            progressPercentage: progress.progressPercentage,
+            totalChapters,
+            completedChapters,
+            inProgressChapters,
+            pendingChapters: totalChapters - completedChapters - inProgressChapters,
+            progressPercentage,
           } as TeacherSubjectProgress;
         } catch {
           return null;
@@ -76,20 +130,56 @@ const TeacherSyllabus: React.FC = () => {
     } catch {
       showNotification('Failed to fetch syllabus progress', 'error');
     }
-  }, [allocations]);
+  }, [allocations, classSubjectCache]);
+
+  const fetchChapters = async (subjectId: number, classId: number) => {
+    if (chapterProgress[subjectId]) return;
+    
+    setChapterLoading(prev => new Set(prev).add(subjectId));
+    try {
+      // Use direct method: classId + subjectId + academicYearId
+      const chapters = await syllabusService.getChaptersWithStatusDirect(
+        classId,
+        subjectId,
+        Number(selectedYear!.id),
+      );
+      console.log('[Syllabus fetchChapters] chapters:', chapters);
+      
+      setChapterProgress(prev => ({ ...prev, [subjectId]: chapters }));
+    } catch {
+      showNotification('Failed to fetch chapters', 'error');
+      setChapterProgress(prev => ({ ...prev, [subjectId]: [] }));
+    } finally {
+      setChapterLoading(prev => {
+        const next = new Set(prev);
+        next.delete(subjectId);
+        return next;
+      });
+    }
+  };
 
   useEffect(() => {
     fetchAllocations();
   }, [fetchAllocations]);
 
   useEffect(() => {
-    if (allocations.length > 0) {
+    if (allocations.length > 0 && Object.keys(classSubjectCache).length > 0) {
       fetchSubjectProgress();
     }
-  }, [allocations, fetchSubjectProgress]);
+  }, [allocations, classSubjectCache]);
 
-  const handleAllocationClick = (allocationId: number) => {
-    setExpandedAllocation(expandedAllocation === allocationId ? null : allocationId);
+  const toggleClass = (classId: number) => {
+    setExpandedClass(expandedClass === classId ? null : classId);
+    setExpandedSubject(null);
+  };
+
+  const toggleSubject = async (subjectId: number, classId: number) => {
+    if (expandedSubject === subjectId) {
+      setExpandedSubject(null);
+      return;
+    }
+    setExpandedSubject(subjectId);
+    await fetchChapters(subjectId, classId);
   };
 
   const getProgressColor = (percentage: number) => {
@@ -104,6 +194,28 @@ const TeacherSyllabus: React.FC = () => {
     return 'bg-red-500';
   };
 
+  const getStatusIcon = (status: string | null | undefined) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="w-4 h-4 text-emerald-500" />;
+      case 'in-progress':
+        return <Clock className="w-4 h-4 text-amber-500" />;
+      default:
+        return <Circle className="w-4 h-4 text-slate-400" />;
+    }
+  };
+
+  const getStatusBadge = (status: string | null | undefined) => {
+    switch (status) {
+      case 'completed':
+        return <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">Completed</span>;
+      case 'in-progress':
+        return <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">In Progress</span>;
+      default:
+        return <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-full">Pending</span>;
+    }
+  };
+
   const overallStats = {
     totalSubjects: subjectProgress.length,
     totalChapters: subjectProgress.reduce((sum, p) => sum + p.totalChapters, 0),
@@ -115,7 +227,12 @@ const TeacherSyllabus: React.FC = () => {
     ? Math.round((overallStats.completedChapters / overallStats.totalChapters) * 100)
     : 0;
 
-  type ClassGroup = { classId: number; className: string; classSection?: string; allocations: TeacherAllocation[] };
+  type ClassGroup = { 
+    classId: number; 
+    className: string; 
+    classSection?: string; 
+    allocations: TeacherAllocation[] 
+  };
   
   const groupedByClass = allocations.reduce((acc, allocation) => {
     const key = `${allocation.classId}-${allocation.className}`;
@@ -227,7 +344,7 @@ const TeacherSyllabus: React.FC = () => {
                 <div key={`${classGroup.classId}-${classGroup.className}`} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                   <div 
                     className="p-5 cursor-pointer hover:bg-slate-50 transition-colors"
-                    onClick={() => handleAllocationClick(classGroup.classId)}
+                    onClick={() => toggleClass(classGroup.classId)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -258,16 +375,22 @@ const TeacherSyllabus: React.FC = () => {
                     </div>
                   </div>
 
-                  {expandedAllocation === classGroup.classId && (
+                  {expandedClass === classGroup.classId && (
                     <div className="border-t border-slate-200 bg-slate-50 p-5">
                       <div className="space-y-3">
                         {classGroup.allocations.map((allocation) => {
                           const progress = subjectProgress.find(p => p.allocationId === allocation.id);
                           const percentage = progress?.progressPercentage || 0;
+                          const isSubjectExpanded = expandedSubject === allocation.subjectId;
+                          const isChaptersLoading = chapterLoading.has(allocation.subjectId);
+                          const chapters = chapterProgress[allocation.subjectId] || [];
 
                           return (
-                            <div key={allocation.id} className="bg-white rounded-lg p-4 border border-slate-200">
-                              <div className="flex items-center justify-between">
+                            <div key={allocation.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                              <div 
+                                className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                                onClick={() => toggleSubject(allocation.subjectId, allocation.classId)}
+                              >
                                 <div className="flex items-center gap-3">
                                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                                     percentage >= 80 ? 'bg-emerald-100' :
@@ -298,8 +421,49 @@ const TeacherSyllabus: React.FC = () => {
                                   <span className="text-sm font-semibold text-slate-700 w-12 text-right">
                                     {percentage}%
                                   </span>
+                                  {isChaptersLoading ? (
+                                    <Loader className="w-4 h-4 animate-spin text-slate-400" />
+                                  ) : isSubjectExpanded ? (
+                                    <svg className="w-4 h-4 text-slate-400 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  ) : (
+                                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  )}
                                 </div>
                               </div>
+
+                              {isSubjectExpanded && (
+                                <div className="border-t border-slate-200 p-4 bg-white">
+                                  <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Chapters</h5>
+                                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                                    {chapters.length === 0 ? (
+                                      <p className="text-sm text-slate-500 text-center py-4">
+                                        No chapters available for this subject
+                                      </p>
+                                    ) : (
+                                      chapters.map((chapter) => (
+                                        <div
+                                          key={chapter.chapterId}
+                                          className="flex items-center justify-between p-2 bg-slate-50 rounded-lg"
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            {getStatusIcon(chapter.status)}
+                                            <div>
+                                              <p className="text-sm font-medium text-slate-700">
+                                                Ch. {chapter.sequenceNumber}: {chapter.chapterName}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          {getStatusBadge(chapter.status)}
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}

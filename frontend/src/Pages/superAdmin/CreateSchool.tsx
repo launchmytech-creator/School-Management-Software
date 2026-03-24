@@ -4,7 +4,7 @@ import type { CreateSchoolRequest, SchoolCreateData, SubscriptionTier, School, F
 import { useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import { useNotification } from '../../context/NotificationContext';
-import { getCurrentAcademicYear } from '../../lib/utils';
+import { getCurrentAcademicYear, getLocalDateString } from '../../lib/utils';
 
 const generateSchoolCode = (name: string): string => {
   const prefix = name.substring(0, 3).toUpperCase();
@@ -42,7 +42,11 @@ const CreateSchool: React.FC = () => {
     adminPhone: '',
     // Subscription details
     subscriptionStatus: editSchool ? (editSchool.status ? 'active' : 'expired') : 'trial',
-    subscriptionEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+    subscriptionEndDate: (() => {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 1);
+      return getLocalDateString(d);
+    })(),
   });
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier>(editSchool?.plan || 'PREMIUM');
   const [feeTerm, setFeeTerm] = useState<FeeTerm>(editSchool?.feeTerm || 'YEARLY');

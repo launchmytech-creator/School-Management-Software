@@ -22,7 +22,7 @@ export interface ChapterWithStatus {
   chapterName: string;
   name?: string;
   sequenceNumber: number;
-  status: 'completed' | 'pending' | 'in-progress' | null;
+  status: 'completed' | 'pending' | 'in-progress' | null | undefined;
   completedDate?: string;
   completed_by?: number;
 }
@@ -71,28 +71,199 @@ export interface MarkCompletionDto {
   status: 'completed' | 'pending' | 'in-progress';
 }
 
+export interface ClassSubjectInfo {
+  id: number;
+  classId: number;
+  subjectId: number;
+  academicYearId: number;
+  className: string;
+  subjectName: string;
+}
+
+interface BackendClassSubject {
+  id: number;
+  class_id: number;
+  subject_id: number;
+  academic_year_id: number;
+  class_name: string;
+  subject_name: string;
+}
+
+const mapChapterFromBackend = (c: any): ChapterWithStatus => ({
+  id: c.id,
+  chapterId: c.id,
+  chapterName: c.name,
+  name: c.name,
+  sequenceNumber: c.sequence_number,
+  status: c.status === 'in_progress' ? 'in-progress' : (c.status || 'pending'),
+  completedDate: c.completed_date,
+  completed_by: c.completed_by,
+});
+
+const mapCompletionFromBackend = (c: any): SyllabusCompletion => ({
+  id: c.id,
+  classSubjectId: c.class_subject_id,
+  classId: c.class_id,
+  className: c.class_name,
+  subjectId: c.subject_id,
+  subjectName: c.subject_name,
+  chapterId: c.chapter_id,
+  chapterName: c.chapter_name,
+  status: c.status === 'in_progress' ? 'in-progress' : (c.status || 'pending'),
+  completedDate: c.completed_date,
+  completedBy: c.completed_by,
+});
+
+const normalizeStatus = (status: string): string => {
+  if (status === 'in-progress') return 'in_progress';
+  return status;
+};
+
 export const syllabusService = {
+  getClassSubjectId: async (classId: number, subjectId: number, academicYearId: number): Promise<number | null> => {
+    const response = await apiRequest<BackendClassSubject[]>(`/class-subjects/class/${classId}?academicYearId=${academicYearId}`);
+    const classSubject = response.find(cs => cs.subject_id === subjectId);
+    return classSubject ? classSubject.id : null;
+  },
+
+  getClassSubjectsByClass: async (classId: number, academicYearId: number): Promise<ClassSubjectInfo[]> => {
+    const response = await apiRequest<BackendClassSubject[]>(`/class-subjects/class/${classId}?academicYearId=${academicYearId}`);
+    return response.map(cs => ({
+      id: cs.id,
+      classId: cs.class_id,
+      subjectId: cs.subject_id,
+      academicYearId: cs.academic_year_id,
+      className: cs.class_name,
+      subjectName: cs.subject_name,
+    }));
+  },
+
+  getClassSubjectByClassAndSubject: async (classId: number, subjectId: number, academicYearId: number): Promise<ClassSubjectInfo | null> => {
+    const response = await apiRequest<BackendClassSubject[]>(`/class-subjects/class/${classId}?academicYearId=${academicYearId}`);
+    const found = response.find(cs => cs.subject_id === subjectId);
+    if (!found) return null;
+    return {
+      id: found.id,
+      classId: found.class_id,
+      subjectId: found.subject_id,
+      academicYearId: found.academic_year_id,
+      className: found.class_name,
+      subjectName: found.subject_name,
+    };
+  },
+
   markCompletion: async (data: MarkCompletionDto): Promise<SyllabusCompletion> => {
     return apiRequest<SyllabusCompletion>('/syllabus-completion', {
       method: 'POST',
-      data,
+      data: {
+        classSubjectId: data.classSubjectId,
+        chapters: [{
+          chapterId: data.chapterId,
+          status: normalizeStatus(data.status),
+        }],
+      },
     });
   },
 
   markBulkCompletion: async (data: MarkCompletionDto[]): Promise<void> => {
-    await apiRequest<void>('/syllabus-completion/bulk', {
-      method: 'POST',
-      data,
-    });
+    const groupedByClassSubject = data.reduce((acc, item) => {
+      const key = item.classSubjectId;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push({ chapterId: item.chapterId, status: normalizeStatus(item.status) });
+      return acc;
+    }, {} as Record<number, { chapterId: number; status: string }[]>);
+
+    for (const [classSubjectId, chapters] of Object.entries(groupedByClassSubject)) {
+      await apiRequest('/syllabus-completion', {
+        method: 'POST',
+        data: { classSubjectId: parseInt(classSubjectId), chapters },
+      });
+    }
   },
 
-  getCompletion: async (classId?: number, subjectId?: number): Promise<SyllabusCompletion[]> => {
+  getCompletion: async (classId?: number, subjectId?: number, classSubjectId?: number): Promise<SyllabusCompletion[]> => {
     const queryParams = new URLSearchParams();
     if (classId) queryParams.append('classId', String(classId));
     if (subjectId) queryParams.append('subjectId', String(subjectId));
+    if (classSubjectId) queryParams.append('classSubjectId', String(classSubjectId));
     
     const queryString = queryParams.toString();
-    return apiRequest<SyllabusCompletion[]>(`/syllabus-completion${queryString ? `?${queryString}` : ''}`);
+    console.log('[API] getCompletion - calling API with params:', queryString);
+    const response = await apiRequest<any[]>(`/syllabus-completion${queryString ? `?${queryString}` : ''}`);
+    console.log('[API] getCompletion - response:', response);
+    return response.map(mapCompletionFromBackend);
+  },
+
+  // NEW: Get chapters with status using classId + subjectId directly (no classSubjectId needed)
+  getChaptersWithStatusDirect: async (
+    classId: number, 
+    subjectId: number, 
+    academicYearId: number
+  ): Promise<ChapterWithStatus[]> => {
+    console.log('[API] getChaptersWithStatusDirect called:', { classId, subjectId, academicYearId });
+    
+    // 1. Get all chapters for this subject
+    const chapters = await syllabusService.getChaptersBySubject(subjectId);
+    console.log('[API] getChaptersBySubject returned:', chapters.length, 'chapters');
+    
+    // 2. Get completions using classId + subjectId filters (no classSubjectId needed!)
+    const completions = await syllabusService.getCompletion(classId, subjectId, undefined);
+    console.log('[API] getCompletion returned:', completions.length, 'completions');
+    
+    // 3. Combine - map completion status to each chapter
+    const chaptersWithStatus = chapters.map(chapter => {
+      const completion = completions.find(c => c.chapterId === chapter.chapterId);
+      const status: 'completed' | 'pending' | 'in-progress' = completion?.status || 'pending';
+      return {
+        ...chapter,
+        status,
+        completedDate: completion?.completedDate,
+      };
+    });
+    
+    console.log('[API] getChaptersWithStatusDirect result:', chaptersWithStatus);
+    return chaptersWithStatus;
+  },
+
+  // NEW: Mark completion by finding classSubjectId automatically
+  markCompletionDirect: async (
+    classId: number, 
+    subjectId: number, 
+    chapterId: number, 
+    status: 'completed' | 'pending' | 'in-progress',
+    academicYearId: number
+  ): Promise<void> => {
+    console.log('[API] markCompletionDirect called:', { classId, subjectId, chapterId, status, academicYearId });
+    
+    // Find classSubjectId from the API
+    const classSubjects = await syllabusService.getClassSubjectsByClass(classId, academicYearId);
+    console.log('[API] getClassSubjectsByClass returned:', classSubjects);
+    
+    const classSubject = classSubjects.find(cs => cs.subjectId === subjectId);
+    console.log('[API] Found classSubject:', classSubject);
+    
+    if (classSubject) {
+      await syllabusService.markCompletion({
+        classSubjectId: classSubject.id,
+        chapterId,
+        status,
+      });
+      console.log('[API] markCompletion completed successfully');
+    } else {
+      console.error('[API] Could not find classSubject for classId:', classId, 'subjectId:', subjectId);
+      throw new Error('Could not find class subject mapping');
+    }
+  },
+
+  getCompletionByClassAndSubject: async (classId: number, subjectId: number, academicYearId: number): Promise<SyllabusCompletion[]> => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('classId', String(classId));
+    queryParams.append('subjectId', String(subjectId));
+    queryParams.append('academicYearId', String(academicYearId));
+    
+    const queryString = queryParams.toString();
+    const response = await apiRequest<any[]>(`/syllabus-completion?${queryString}`);
+    return response.map(mapCompletionFromBackend);
   },
 
   getClassSubjectProgress: async (classSubjectId: number): Promise<ClassSubjectProgress> => {
@@ -100,7 +271,48 @@ export const syllabusService = {
   },
 
   getClassSubjectChapters: async (classSubjectId: number): Promise<ChapterWithStatus[]> => {
-    return apiRequest<ChapterWithStatus[]>(`/syllabus-completion/class-subject/${classSubjectId}/chapters`);
+    const response = await apiRequest<any[]>(`/syllabus-completion/class-subject/${classSubjectId}/chapters`);
+    return response.map(mapChapterFromBackend);
+  },
+
+  getChaptersBySubject: async (subjectId: number): Promise<ChapterWithStatus[]> => {
+    const response = await apiRequest<any[]>(`/chapters/subject/${subjectId}`);
+    return response.map((c: any): ChapterWithStatus => ({
+      id: c.id,
+      chapterId: c.id,
+      chapterName: c.name,
+      name: c.name,
+      sequenceNumber: c.sequence_number,
+      status: undefined,
+      completedDate: undefined,
+    }));
+  },
+
+  getChaptersWithStatus: async (classSubjectId: number, subjectId: number): Promise<ChapterWithStatus[]> => {
+    console.log('[getChaptersWithStatus] INPUT:', { classSubjectId, subjectId });
+    
+    // Get all chapters for this subject
+    const chapters = await syllabusService.getChaptersBySubject(subjectId);
+    console.log('[getChaptersWithStatus] chapters from API:', chapters);
+    
+    // Get completion records using classSubjectId filter
+    const completions = await syllabusService.getCompletion(undefined, undefined, classSubjectId);
+    console.log('[getChaptersWithStatus] completions from API:', completions);
+    
+    // Map completion status to chapters
+    const chaptersWithStatus = chapters.map(chapter => {
+      const completion = completions.find(c => c.chapterId === chapter.chapterId);
+      const status: 'completed' | 'pending' | 'in-progress' = completion?.status === 'in-progress' ? 'in-progress' : (completion?.status || 'pending');
+      console.log('[getChaptersWithStatus] mapping chapter:', chapter.chapterId, 'completion:', completion, 'status:', status);
+      return {
+        ...chapter,
+        status,
+        completedDate: completion?.completedDate,
+      };
+    });
+    
+    console.log('[getChaptersWithStatus] FINAL RESULT:', chaptersWithStatus);
+    return chaptersWithStatus;
   },
 
   getClassProgress: async (classId: number): Promise<SubjectProgress[]> => {

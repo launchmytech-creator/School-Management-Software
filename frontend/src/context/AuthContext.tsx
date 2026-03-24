@@ -25,25 +25,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const initAuth = async () => {
       try {
         if (authService.isAuthenticated()) {
           const profile = await authService.getProfile();
           setUser(profile);
         }
       } catch {
-        console.warn('Profile sync failed');
+        authService.logout();
+        setUser(null);
       } finally {
         setLoading(false);
       }
     };
     
-    if (authService.isAuthenticated() && !user) {
-      fetchProfile();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
+    initAuth();
+  }, []);
 
   const login = async (credentials: LoginCredentials): Promise<AuthUser> => {
     const response = await authService.login(credentials);

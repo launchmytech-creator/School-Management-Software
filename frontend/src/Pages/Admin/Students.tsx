@@ -9,6 +9,7 @@ import {
   FileText
 } from 'lucide-react';
 import { studentService } from '../../services/studentService';
+import { feeService } from '../../services/feeService';
 import { useNotification } from '../../context/NotificationContext';
 import type { Student, StudentFilters as IStudentFilters, FeeStatus } from '../../types/student';
 import PageHeader from '../../components/common/PageHeader';
@@ -27,16 +28,39 @@ const Students: React.FC = () => {
     try {
       setLoading(true);
       const data = await studentService.getStudents(filters);
-      
-      // Enriched data for visual consistency
+
+      // Fetch all fee transactions to compute per-student fee status
+      const feeStatusMap: Record<number, FeeStatus> = {};
+      try {
+        const transactions = await feeService.getFeeTransactions();
+        // Group by studentId
+        const byStudent = new Map<number, { total: number; paid: number; partial: number }>();
+        for (const t of transactions) {
+          const existing = byStudent.get(t.studentId) || { total: 0, paid: 0, partial: 0 };
+          existing.total += 1;
+          if (t.status === 'paid') existing.paid += 1;
+          else if (t.status === 'partial') existing.partial += 1;
+          byStudent.set(t.studentId, existing);
+        }
+        for (const [studentId, counts] of byStudent) {
+          if (counts.paid === counts.total) {
+            feeStatusMap[studentId] = 'Paid';
+          } else if (counts.paid > 0 || counts.partial > 0) {
+            feeStatusMap[studentId] = 'Partial';
+          } else {
+            feeStatusMap[studentId] = 'Pending';
+          }
+        }
+      } catch {
+        // Fee data unavailable — leave statuses empty
+      }
+
       const enrichedData = data.map(s => ({
         ...s,
-        className: s.className || 'Grade 10',
+        className: s.className || 'Unassigned',
         classSection: s.classSection || 'A',
-        parentName: s.parentName || 'Parent Name',
-        // TODO: Fetch real fee status from fees API when available
-        // feeStatus: await feeService.getStudentFeeStatus(s.id)
-        feeStatus: s.feeStatus || 'Pending' as FeeStatus
+        parentName: s.parentName || '—',
+        feeStatus: feeStatusMap[s.id] || ('N/A' as FeeStatus),
       }));
       
       setStudents(enrichedData);
@@ -46,6 +70,7 @@ const Students: React.FC = () => {
       setLoading(false);
     }
   }, [showNotification]);
+
 
   useEffect(() => {
     fetchStudents();

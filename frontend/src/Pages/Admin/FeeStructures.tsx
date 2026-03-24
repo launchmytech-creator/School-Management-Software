@@ -5,12 +5,13 @@ import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { feeStructureService, type FeeStructure, type CreateFeeStructureDto } from '../../services/feeStructureService';
+import { feeService } from '../../services/feeService';
 import { classService } from '../../services/classService';
 import { academicYearService } from '../../services/academicYearService';
 import type { Class } from '../../types/class';
 import type { AcademicYear } from '../../types/academicYear';
-import { Receipt, Plus, Edit2, Trash2, DollarSign } from 'lucide-react';
-import { formatCurrency } from '../../lib/utils';
+import { Receipt, Plus, Edit2, Trash2, DollarSign, PlayCircle } from 'lucide-react';
+import { formatCurrency, getLocalDateString } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
 import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
@@ -28,6 +29,12 @@ const FeeStructures: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingStructure, setEditingStructure] = useState<FeeStructure | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generateData, setGenerateData] = useState({
+    feeStructureId: 0,
+    academicYearStartDate: '',
+  });
+  const [generating, setGenerating] = useState(false);
   const [formData, setFormData] = useState<CreateFeeStructureDto>({
     classId: 0,
     academicYearId: 0,
@@ -162,6 +169,27 @@ const FeeStructures: React.FC = () => {
     }
   };
 
+
+
+  const handleGenerateTransactions = async () => {
+    if (!generateData.feeStructureId || !generateData.academicYearStartDate) {
+      showNotification('Please select academic year start date', 'error');
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      await feeService.generateFeeTransactions(generateData);
+      showNotification('Fee transactions generated successfully', 'success');
+      setShowGenerateModal(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to generate fee transactions';
+      showNotification(message, 'error');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <AdminLayout title="Fee Structures">
       <div className="space-y-6 pb-12">
@@ -179,6 +207,21 @@ const FeeStructures: React.FC = () => {
               label: "Add Structure",
               icon: Plus,
               onClick: handleOpenCreate
+            },
+            {
+              label: "Generate Transactions",
+              icon: PlayCircle,
+              onClick: () => {
+                if (feeStructures.length === 0) {
+                  showNotification('Please create fee structures first', 'warning');
+                  return;
+                }
+                setGenerateData({
+                  feeStructureId: 0,
+                  academicYearStartDate: getLocalDateString(),
+                });
+                setShowGenerateModal(true);
+              }
             }
           ]}
         />
@@ -389,6 +432,57 @@ const FeeStructures: React.FC = () => {
               </Button>
               <Button onClick={handleSave} loading={saving} className="flex-1">
                 {editingStructure ? 'Update' : 'Create'}
+              </Button>
+            </div>
+          </div>
+        </BaseModal>
+
+        <BaseModal
+          isOpen={showGenerateModal}
+          onClose={() => setShowGenerateModal(false)}
+          title="Generate Fee Transactions"
+          size="md"
+        >
+          <div className="p-6 space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p className="text-sm text-blue-700">
+                This will generate fee transactions for all students in the selected fee structure based on the school's fee terms.
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Fee Structure</label>
+              <select
+                value={generateData.feeStructureId}
+                onChange={(e) => setGenerateData({ ...generateData, feeStructureId: parseInt(e.target.value) })}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Fee Structure</option>
+                {feeStructures.map(structure => (
+                  <option key={structure.id} value={structure.id}>
+                    {structure.className} - {structure.feeType} ({formatCurrency(structure.amount)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Academic Year Start Date</label>
+              <input
+                type="date"
+                value={generateData.academicYearStartDate}
+                onChange={(e) => setGenerateData({ ...generateData, academicYearStartDate: e.target.value })}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-slate-500 mt-1">Used to calculate term due dates</p>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowGenerateModal(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleGenerateTransactions} loading={generating} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+                Generate
               </Button>
             </div>
           </div>

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { accountantService } from '../../services/accountantService';
 import { useNotification } from '../../context/NotificationContext';
+import { getLocalDateString } from '../../lib/utils';
 
 const EditAccountant: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -40,7 +41,7 @@ const EditAccountant: React.FC = () => {
         setFormData({
           fullName: accountant.fullName,
           phone: accountant.phone || '',
-          dateOfBirth: accountant.dateOfBirth ? new Date(accountant.dateOfBirth).toISOString().split('T')[0] : '',
+          dateOfBirth: accountant.dateOfBirth ? getLocalDateString(new Date(accountant.dateOfBirth)) : '',
           gender: accountant.gender || 'Male',
           address: accountant.address || '',
           isActive: accountant.isActive

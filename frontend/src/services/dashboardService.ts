@@ -3,6 +3,7 @@ import { studentService } from './studentService';
 import { teacherService } from './teacherService';
 import { classService } from './classService';
 import { attendanceService, type AttendanceRecord } from './attendanceService';
+import { getLocalDateString } from '../lib/utils';
 
 export interface AdminDashboardStats {
   totalStudents: number;
@@ -45,8 +46,7 @@ export interface FeeOverview {
 }
 
 const getTodayDate = (): string => {
-  const today = new Date();
-  return today.toISOString().split('T')[0];
+  return getLocalDateString();
 };
 
 export const dashboardService = {
@@ -59,13 +59,67 @@ export const dashboardService = {
     try {
       const today = getTodayDate();
       
-      const [students, teachers, classes, feeSummary] = await Promise.all([
+      // Fetch core data in parallel
+      const [students, teachers, classes] = await Promise.all([
         studentService.getStudents().catch(() => []),
         teacherService.getTeachers().catch(() => []),
         classService.getClasses().catch(() => []),
-        feeService.getFeeSummary().catch(() => null),
       ]);
 
+      // ── Fee overview: computed from real transactions ────────────
+      let feeOverview: FeeOverview = {
+        collected: 0,
+        pending: 0,
+        waived: 0,
+        total: 0,
+        collectionPercentage: 0,
+        byStatus: [],
+      };
+      let pendingDefaulters = 0;
+
+      try {
+        const [transactions, defaulters] = await Promise.all([
+          feeService.getFeeTransactions(),
+          feeService.getFeeDefaulters(),
+        ]);
+
+        let totalCollected = 0;
+        let totalPending = 0;
+        let totalWaived = 0;
+        let totalAmount = 0;
+        const statusCounts: Record<string, { count: number; amount: number }> = {};
+
+        for (const t of transactions) {
+          totalCollected += t.amountPaid;
+          totalPending += t.amountPending;
+          totalWaived += t.waiverAmount || 0;
+          totalAmount += t.amountDue;
+
+          const status = t.status;
+          if (!statusCounts[status]) statusCounts[status] = { count: 0, amount: 0 };
+          statusCounts[status].count += 1;
+          statusCounts[status].amount += t.amountDue;
+        }
+
+        feeOverview = {
+          collected: totalCollected,
+          pending: totalPending,
+          waived: totalWaived,
+          total: totalAmount,
+          collectionPercentage: totalAmount > 0 ? Math.round((totalCollected / totalAmount) * 100) : 0,
+          byStatus: Object.entries(statusCounts).map(([status, data]) => ({
+            status,
+            count: data.count,
+            amount: data.amount,
+          })),
+        };
+
+        pendingDefaulters = defaulters.length;
+      } catch {
+        // Fee data unavailable — keep zeros
+      }
+
+      // ── Attendance overview ─────────────────────────────────────
       let attendanceOverview: AttendanceOverview = {
         present: 0,
         absent: 0,
@@ -105,44 +159,31 @@ export const dashboardService = {
             percentage: c.total > 0 ? Math.round((c.present / c.total) * 100) : 0,
           }));
 
+          const attendanceTotal = totalPresent + totalAbsent;
           attendanceOverview = {
             present: totalPresent,
             absent: totalAbsent,
-            total: students.length,
-            percentage: students.length > 0 ? Math.round((totalPresent / students.length) * 100) : 0,
+            total: attendanceTotal > 0 ? attendanceTotal : students.length,
+            percentage: attendanceTotal > 0 ? Math.round((totalPresent / attendanceTotal) * 100) : 0,
             byClass,
           };
         } catch {
-          attendanceOverview = {
-            present: 0,
-            absent: students.length,
-            total: students.length,
-            percentage: 0,
-            byClass: [],
-          };
+          // Attendance data unavailable
         }
       }
 
+      // ── Build stats ─────────────────────────────────────────────
       const stats: AdminDashboardStats = {
         totalStudents: students.length,
         totalTeachers: teachers.length,
         totalClasses: classes.length,
         studentGrowth: 0,
         teacherGrowth: 0,
-        feeCollected: feeSummary?.collectedAmount || 0,
-        feePending: feeSummary?.pendingAmount || 0,
-        feeCollectionPercentage: feeSummary?.collectionPercentage || 0,
+        feeCollected: feeOverview.collected,
+        feePending: feeOverview.pending,
+        feeCollectionPercentage: feeOverview.collectionPercentage,
         attendancePercentage: attendanceOverview.percentage,
-        pendingDefaulters: 0,
-      };
-
-      const feeOverview: FeeOverview = {
-        collected: feeSummary?.collectedAmount || 0,
-        pending: feeSummary?.pendingAmount || 0,
-        waived: 0,
-        total: feeSummary?.totalAmount || 0,
-        collectionPercentage: feeSummary?.collectionPercentage || 0,
-        byStatus: feeSummary?.byStatus || [],
+        pendingDefaulters,
       };
 
       return {

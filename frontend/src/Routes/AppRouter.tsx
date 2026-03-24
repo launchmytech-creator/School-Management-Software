@@ -10,6 +10,7 @@ import AccountantFeeDefaulters from "../Pages/Accountant/FeeDefaulters";
 import FinancialReports from "../Pages/Accountant/FinancialReports";
 import AccountantStudents from "../Pages/Accountant/Students";
 import TeacherDashboard from "../Pages/Teacher/Dashboard";
+import TeacherMyClasses from "../Pages/Teacher/MyClasses";
 import StudentAttendance from "../Pages/Teacher/StudentAttendance";
 import TeacherSyllabus from "../Pages/Teacher/Syllabus";
 import ParentDashboard from "../Pages/Parent/Dashboard";
@@ -380,6 +381,14 @@ const AppRouter = () => {
           <ProtectedRoute allowedRoles={["teacher"]}>
             <Routes>
               <Route path="dashboard" element={<TeacherDashboard />} />
+              <Route
+                path="my-classes"
+                element={
+                  <RequiresActiveYear>
+                    <TeacherMyClasses />
+                  </RequiresActiveYear>
+                }
+              />
               <Route
                 path="attendance"
                 element={

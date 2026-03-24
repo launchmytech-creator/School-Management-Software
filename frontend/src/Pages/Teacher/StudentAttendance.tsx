@@ -13,7 +13,7 @@ import { type TeacherAllocation } from '../../types/teacher';
 import { studentService } from '../../services/studentService';
 import { type Student } from '../../types/student';
 import { Users, CheckCircle, XCircle, AlertCircle, CalendarCheck, Loader2 } from 'lucide-react';
-import { formatDate } from '../../lib/utils';
+import { formatDate, getLocalDateString } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
 
 type AttendanceStatus = 'present' | 'absent';
@@ -26,7 +26,7 @@ const StudentAttendance: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [allocations, setAllocations] = useState<TeacherAllocation[]>([]);
   const [selectedClass, setSelectedClass] = useState<TeacherAllocation | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
   const [students, setStudents] = useState<Student[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<Map<number, AttendanceStatus>>(new Map());
   const [existingAttendance, setExistingAttendance] = useState<AttendanceRecord[]>([]);
@@ -211,7 +211,7 @@ const StudentAttendance: React.FC = () => {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
+              max={getLocalDateString()}
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

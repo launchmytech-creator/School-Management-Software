@@ -31,7 +31,7 @@ const TeacherDashboard: React.FC = () => {
     if (!teacherId || !selectedYear?.id) return;
     try {
       setLoading(true);
-      const data = await teacherService.getAllocationsByTeacher(teacherId);
+      const data = await teacherService.getAllocationsByTeacher(teacherId, Number(selectedYear.id));
       setAllocations(data);
     } catch {
       showNotification('Failed to fetch your classes', 'error');

@@ -7,7 +7,7 @@ import { feeService, type FeeTransaction, type RecordPaymentDto } from '../../se
 import { classService } from '../../services/classService';
 import type { Class } from '../../types/class';
 import { DollarSign, CheckCircle, Clock, AlertTriangle, Receipt } from 'lucide-react';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency, getLocalDateString } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
 import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
@@ -25,9 +25,9 @@ const AccountantFeeCollection: React.FC = () => {
   const [selectedTransaction, setSelectedTransaction] = useState<FeeTransaction | null>(null);
   const [processing, setProcessing] = useState(false);
   const [paymentData, setPaymentData] = useState<RecordPaymentDto>({
-    amount: 0,
-    paymentDate: new Date().toISOString().split('T')[0],
-    paymentMethod: 'cash',
+    amountPaid: 0,
+    paymentMode: 'cash',
+    paymentDate: getLocalDateString(),
   });
 
   const fetchData = useCallback(async () => {
@@ -108,15 +108,15 @@ const AccountantFeeCollection: React.FC = () => {
     setSelectedTransaction(transaction);
     const remaining = (transaction.amountDue || 0) - (transaction.amountPaid || 0);
     setPaymentData({
-      amount: remaining,
-      paymentDate: new Date().toISOString().split('T')[0],
-      paymentMethod: 'cash',
+      amountPaid: remaining,
+      paymentMode: 'cash',
+      paymentDate: getLocalDateString(),
     });
     setShowPaymentModal(true);
   };
 
   const handleRecordPayment = async () => {
-    if (!selectedTransaction || !paymentData.amount) {
+    if (!selectedTransaction || !paymentData.amountPaid) {
       showNotification('Please enter payment amount', 'error');
       return;
     }
@@ -336,8 +336,8 @@ const AccountantFeeCollection: React.FC = () => {
               <InputField
                 label="Payment Amount"
                 type="number"
-                value={paymentData.amount || ''}
-                onChange={(e) => setPaymentData({ ...paymentData, amount: parseFloat(e.target.value) || 0 })}
+                value={paymentData.amountPaid || ''}
+                onChange={(e) => setPaymentData({ ...paymentData, amountPaid: parseFloat(e.target.value) || 0 })}
               />
 
               <InputField
@@ -348,16 +348,17 @@ const AccountantFeeCollection: React.FC = () => {
               />
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Method</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Mode</label>
                 <select
-                  value={paymentData.paymentMethod || 'cash'}
-                  onChange={(e) => setPaymentData({ ...paymentData, paymentMethod: e.target.value as any })}
+                  value={paymentData.paymentMode || 'cash'}
+                  onChange={(e) => setPaymentData({ ...paymentData, paymentMode: e.target.value as RecordPaymentDto['paymentMode'] })}
                   className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="cash">Cash</option>
                   <option value="card">Card</option>
-                  <option value="online">Online Transfer</option>
+                  <option value="upi">UPI</option>
                   <option value="cheque">Cheque</option>
+                  <option value="bank_transfer">Bank Transfer</option>
                 </select>
               </div>
 

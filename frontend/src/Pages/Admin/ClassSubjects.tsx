@@ -101,7 +101,7 @@ const ClassSubjects: React.FC = () => {
   };
 
   const filteredSubjects = classSubjects.filter(cs =>
-    cs.subjectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cs.subjectName?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
     getSubjectCode(cs.subjectId).toLowerCase().includes(searchTerm.toLowerCase())
   );
 

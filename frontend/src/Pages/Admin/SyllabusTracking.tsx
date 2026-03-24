@@ -94,7 +94,7 @@ const SyllabusTracking: React.FC = () => {
         const classSubject = classSubjects.find(cs => cs.subjectId === parseInt(selectedSubject));
         if (classSubject) {
           try {
-            const statuses = await syllabusService.getClassSubjectChapters(classSubject.id);
+            const statuses = await syllabusService.getChaptersWithStatus(classSubject.id, parseInt(selectedSubject));
             const statusMap: Record<number, ChapterWithStatus | null> = {};
             subjectChapters.forEach(chapter => {
               const status = statuses.find(s => s.chapterId === chapter.id);
@@ -141,7 +141,7 @@ const SyllabusTracking: React.FC = () => {
       });
       showNotification(`Chapter marked as ${status.replace('_', ' ')}`, 'success');
 
-      const updatedStatuses = await syllabusService.getClassSubjectChapters(selectedClassSubject.id);
+      const updatedStatuses = await syllabusService.getChaptersWithStatus(selectedClassSubject.id, parseInt(selectedSubject));
       const statusMap: Record<number, ChapterWithStatus | null> = {};
       chapters.forEach(chapter => {
         const statusData = updatedStatuses.find(s => s.chapterId === chapter.id);

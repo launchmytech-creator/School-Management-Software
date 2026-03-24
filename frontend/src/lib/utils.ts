@@ -122,3 +122,8 @@ export const getErrorMessage = (error: unknown, fallback: string = 'An error occ
   if (typeof error === 'string') return error;
   return fallback;
 };
+
+export const getLocalDateString = (date?: Date): string => {
+  const d = date || new Date();
+  return d.toLocaleDateString('en-CA');
+};

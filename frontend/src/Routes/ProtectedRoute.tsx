@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import type { UserRole } from '../types/auth';
@@ -9,8 +9,17 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, isAuthenticated, logout } = useAuth();
   const location = useLocation();
+
+  useEffect(() => {
+    const handleAuthError = () => {
+      logout();
+    };
+
+    window.addEventListener('auth:error', handleAuthError);
+    return () => window.removeEventListener('auth:error', handleAuthError);
+  }, [logout]);
 
   if (loading) {
     return (
@@ -25,7 +34,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Redirect to their own dashboard if they try to access something they shouldn't
     const dashboardMap: Record<UserRole, string> = {
       super_admin: '/super-admin/dashboard',
       school_admin: '/admin/dashboard',

@@ -13,6 +13,7 @@ import { holidayService, type Holiday } from "../../services/holidayService";
 import { useNotification } from "../../context/NotificationContext";
 import type { Teacher, TeacherAllocation } from "../../types/teacher";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import { getLocalDateString } from "../../lib/utils";
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'holiday' | 'sunday' | 'none';
 
@@ -70,8 +71,8 @@ const TeacherProfile: React.FC = () => {
       
       const data = await teacherAttendanceService.getAttendance({
         teacherId: parseInt(id),
-        startDate: monthStart.toISOString().split('T')[0],
-        endDate: monthEnd.toISOString().split('T')[0]
+        startDate: getLocalDateString(monthStart),
+        endDate: getLocalDateString(monthEnd)
       });
       setAttendanceRecords(data);
     } catch {
@@ -115,7 +116,7 @@ const TeacherProfile: React.FC = () => {
       const date = new Date(year, month, -i);
       days.push({
         date,
-        dateStr: date.toISOString().split('T')[0],
+        dateStr: getLocalDateString(date),
         status: 'none',
         isCurrentMonth: false
       });
@@ -123,7 +124,7 @@ const TeacherProfile: React.FC = () => {
 
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const date = new Date(year, month, day);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(date);
       const attendance = attendanceRecords.find(r => r.attendanceDate === dateStr);
       const holiday = holidays.find(h => h.holidayDate === dateStr);
       const isSunday = date.getDay() === 0;

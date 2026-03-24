@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import AccountantLayout from '../../layouts/AccountantLayout';
 import { feeService, type FeeTransaction } from '../../services/feeService';
 import { reportService } from '../../services/reportService';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency, getLocalDateString } from '../../lib/utils';
 
 interface FeeStats {
   todayCollection: number;
@@ -34,7 +34,7 @@ const AccountantDashboard: React.FC = () => {
         reportService.getFeesReport({}),
       ]);
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
 

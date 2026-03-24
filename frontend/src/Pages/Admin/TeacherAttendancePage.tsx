@@ -7,7 +7,7 @@ import { teacherAttendanceService, type TeacherAttendance } from '../../services
 import { teacherService } from '../../services/teacherService';
 import type { Teacher } from '../../types/teacher';
 import { Users, CheckCircle, XCircle, Clock, CalendarCheck } from 'lucide-react';
-import { formatDate } from '../../lib/utils';
+import { formatDate, getLocalDateString } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
 import { Button } from '../../components/ui/button';
 
@@ -16,7 +16,7 @@ const TeacherAttendance: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [attendance, setAttendance] = useState<TeacherAttendance[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showMarkModal, setShowMarkModal] = useState(false);
   const [markingStatus, setMarkingStatus] = useState<Record<number, 'present' | 'absent' | 'late'>>({});
@@ -75,7 +75,7 @@ const TeacherAttendance: React.FC = () => {
 
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const date = new Date(year, month, day);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(date);
       const hasAttendanceRecord = attendance.some(a => a.attendanceDate === dateStr);
       days.push({
         date,
@@ -238,7 +238,7 @@ const TeacherAttendance: React.FC = () => {
                 {calendarDays.map((day, index) => (
                   <div
                     key={index}
-                    onClick={() => day.isCurrentMonth && setSelectedDate(day.date.toISOString().split('T')[0])}
+                    onClick={() => day.isCurrentMonth && setSelectedDate(getLocalDateString(day.date))}
                     className={`
                       h-16 p-2 rounded-lg transition-colors cursor-pointer
                       ${!day.isCurrentMonth ? 'text-slate-300' : ''}
