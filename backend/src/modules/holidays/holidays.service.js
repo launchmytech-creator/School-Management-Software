@@ -128,7 +128,7 @@ class HolidaysService {
     let query = `
       SELECT COUNT(*) as working_days
       FROM generate_series($1::date, $2::date, '1 day'::interval) AS date
-      WHERE EXTRACT(DOW FROM date) NOT IN (0, 6)
+      WHERE EXTRACT(DOW FROM date) NOT IN (0)
         AND date NOT IN (
           SELECT holiday_date 
           FROM holidays 

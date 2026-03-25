@@ -171,7 +171,7 @@ class StudentAttendanceService {
     const query = `
       SELECT COUNT(*) AS school_open_days
       FROM generate_series($2::date, $3::date, interval '1 day') AS d(attendance_date)
-      WHERE EXTRACT(DOW FROM d.attendance_date) != 0
+      WHERE EXTRACT(DOW FROM d.attendance_date) NOT IN (0)
         AND d.attendance_date NOT IN (
           SELECT holiday_date FROM holidays WHERE school_id = $1
         )
