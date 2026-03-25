@@ -122,7 +122,10 @@ class ParentsController {
       const schoolId = req.user.schoolId;
       const { id } = req.params;
 
-      const children = await parentsService.getParentChildren(id, schoolId);
+      // Service-level: parents can only fetch their own record
+      const parentId = req.user.role === 'parent' ? req.user.id : id;
+
+      const children = await parentsService.getParentChildren(parentId, schoolId);
 
       return ApiResponse.success(
         res,

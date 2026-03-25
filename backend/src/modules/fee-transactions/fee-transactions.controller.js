@@ -46,6 +46,15 @@ class FeeTransactionsController {
 
   async getStudentFeeTransactions(req, res, next) {
     try {
+      // For parents, service verifies the student belongs to them before returning data
+      if (req.user.role === 'parent') {
+        await feeTransactionsService.verifyStudentBelongsToParent(
+          req.params.studentId,
+          req.user.id,
+          req.user.schoolId,
+        );
+      }
+
       const transactions =
         await feeTransactionsService.getStudentFeeTransactions(
           req.params.studentId,

@@ -21,13 +21,19 @@ router.post(
 
 router.get(
   "/",
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
   studentAttendanceController.getAttendance,
 );
 
 router.get(
+  "/school-open-days",
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
+  studentAttendanceController.getSchoolOpenDays,
+);
+
+router.get(
   "/student/:studentId/summary",
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
   studentAttendanceController.getStudentAttendanceSummary,
 );
 

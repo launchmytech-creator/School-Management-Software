@@ -190,6 +190,21 @@ class FeeTransactionsService {
     return result.rows;
   }
 
+  async verifyStudentBelongsToParent(studentId, parentId, schoolId) {
+    const result = await pool.query(
+      `SELECT id FROM students WHERE id = $1 AND parent_id = $2 AND school_id = $3`,
+      [studentId, parentId, schoolId],
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError(
+        ERROR_CODES.AUTH_UNAUTHORIZED,
+        "You can only access fee data for your own children",
+        403,
+      );
+    }
+  }
+
   async getFeeTransactionById(transactionId, schoolId) {
     const query = `
       SELECT ft.*, 

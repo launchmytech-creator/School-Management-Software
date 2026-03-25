@@ -35,7 +35,7 @@ router.get(
 
 router.get(
   "/student/:studentId",
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PARENT),
   feeTransactionsController.getStudentFeeTransactions,
 );
 

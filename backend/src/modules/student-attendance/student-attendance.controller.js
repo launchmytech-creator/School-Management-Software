@@ -60,6 +60,20 @@ class StudentAttendanceController {
     }
   }
 
+  async getSchoolOpenDays(req, res, next) {
+    try {
+      const { startDate, endDate } = req.query;
+      const count = await studentAttendanceService.getSchoolOpenDays(
+        req.user.schoolId,
+        startDate,
+        endDate,
+      );
+      return ApiResponse.success(res, { school_open_days: count });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async deleteAttendance(req, res, next) {
     try {
       await studentAttendanceService.deleteAttendance(

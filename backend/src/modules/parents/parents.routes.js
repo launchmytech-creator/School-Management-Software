@@ -72,11 +72,11 @@ router.delete(
   parentsController.unlinkStudent,
 );
 
-// Get parent's children (Admin, Accountant)
+// Get parent's children (Admin, Accountant, or the Parent themselves)
 router.get(
   "/:id/children",
   authenticate,
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.PARENT),
   parentsController.getChildren,
 );
 

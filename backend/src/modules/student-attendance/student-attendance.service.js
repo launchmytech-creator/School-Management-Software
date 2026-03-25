@@ -91,6 +91,14 @@ class StudentAttendanceService {
       params.push(parseInt(caller.callerId), schoolId);
     }
 
+    // Parents can only see attendance for their own children
+    if (caller.callerRole === "parent") {
+      query += ` AND sa.student_id IN (
+        SELECT id FROM students WHERE parent_id = $${paramCount++} AND school_id = $${paramCount++}
+      )`;
+      params.push(parseInt(caller.callerId), schoolId);
+    }
+
     if (filters.classId) {
       query += ` AND sa.class_id = $${paramCount++}`;
       params.push(parseInt(filters.classId));
@@ -157,6 +165,19 @@ class StudentAttendanceService {
 
     const result = await pool.query(query, [classId, attendanceDate, schoolId]);
     return result.rows;
+  }
+
+  async getSchoolOpenDays(schoolId, startDate, endDate) {
+    const query = `
+      SELECT COUNT(*) AS school_open_days
+      FROM generate_series($2::date, $3::date, interval '1 day') AS d(attendance_date)
+      WHERE EXTRACT(DOW FROM d.attendance_date) != 0
+        AND d.attendance_date NOT IN (
+          SELECT holiday_date FROM holidays WHERE school_id = $1
+        )
+    `;
+    const result = await pool.query(query, [schoolId, startDate, endDate]);
+    return parseInt(result.rows[0].school_open_days);
   }
 
   async deleteAttendance(attendanceId, schoolId) {
