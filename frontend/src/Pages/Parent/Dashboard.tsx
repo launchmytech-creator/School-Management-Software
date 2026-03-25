@@ -1,348 +1,387 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
-import PageHeader from '../../components/common/PageHeader';
+import ParentLayout from '../../layouts/ParentLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { parentService } from '../../services/parentService';
 import { feeService } from '../../services/feeService';
+import { attendanceService } from '../../services/attendanceService';
+import { announcementService } from '../../services/announcementService';
 import type { LinkedStudent } from '../../types/parent';
 import type { FeeTransaction } from '../../services/feeService';
-import { formatCurrency, formatDate } from '../../lib/utils';
-import { 
-  Users, 
-  CheckCircle, 
-  XCircle, 
-  Receipt, 
-  GraduationCap,
-  Wallet,
-  ChevronRight
-} from 'lucide-react';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import type { AttendanceRecord } from '../../services/attendanceService';
+import type { Announcement } from '../../services/announcementService';
+import { formatDate } from '../../lib/utils';
 
-interface ChildFeeSummary {
-  studentId: number;
-  totalFees: number;
-  paidFees: number;
-  pendingFees: number;
-  totalPending: number;
+const timeAgo = (dateStr: string): string => {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins} MINUTES AGO`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} HOURS AGO`;
+  return `${Math.floor(hrs / 24)} DAYS AGO`;
+};
+
+const WEEK_DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+const StatCard: React.FC<{
+  label: string;
+  icon: string;
+  iconColor: string;
+  children: React.ReactNode;
+}> = ({ label, icon, iconColor, children }) => (
+  <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+    <div className="flex items-start justify-between mb-3">
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
+      <span
+        className={`material-symbols-outlined text-[20px] ${iconColor}`}
+        style={{ fontVariationSettings: "'FILL' 1" }}
+      >
+        {icon}
+      </span>
+    </div>
+    {children}
+  </div>
+);
+
+interface AttendanceDayProps {
+  day: string;
+  date: string;
+  status: 'present' | 'absent' | 'late' | 'future' | null;
 }
+
+const AttendanceDay: React.FC<AttendanceDayProps> = ({ day, date, status }) => {
+  const base = 'w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2';
+  const circle =
+    status === 'present' ? `${base} bg-emerald-500 text-white` :
+    status === 'absent'  ? `${base} bg-rose-500 text-white` :
+    status === 'late'    ? `${base} bg-amber-400 text-white` :
+                           `${base} bg-slate-100 text-slate-300`;
+  const icon =
+    status === 'present' ? 'check' :
+    status === 'absent'  ? 'close' :
+    status === 'late'    ? 'schedule' : 'remove';
+
+  return (
+    <div className="text-center">
+      <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">{day}</p>
+      <div className={circle}>
+        <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+          {icon}
+        </span>
+      </div>
+      <p className="text-[11px] text-slate-500">{date}</p>
+    </div>
+  );
+};
 
 const ParentDashboard: React.FC = () => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
+
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState<LinkedStudent[]>([]);
-  const [feeSummaries, setFeeSummaries] = useState<Map<number, ChildFeeSummary>>(new Map());
   const [selectedChild, setSelectedChild] = useState<LinkedStudent | null>(null);
-  const [childFees, setChildFees] = useState<FeeTransaction[]>([]);
-  const [loadingFees, setLoadingFees] = useState(false);
+  const [fees, setFees] = useState<FeeTransaction[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   const fetchChildren = useCallback(async () => {
     if (!user?.id) return;
-    
     try {
-      const data = await parentService.getParentChildren(user.id);
+      const data = await parentService.getParentChildren(Number(user.id));
       setChildren(data);
-      if (data.length > 0 && !selectedChild) {
-        setSelectedChild(data[0]);
-      }
+      if (data.length > 0) setSelectedChild(data[0]);
     } catch {
-      showNotification('Failed to fetch children data', 'error');
+      showNotification('Failed to load children', 'error');
     }
-  }, [user?.id, showNotification, selectedChild]);
+  }, [user?.id, showNotification]);
 
-  const fetchFeeSummaries = useCallback(async () => {
-    if (!user?.id || children.length === 0) return;
-    
-    try {
-      const summaries = new Map<number, ChildFeeSummary>();
-      
-      for (const child of children) {
-        const fees = await feeService.getStudentFeeTransactions(child.id);
-        const paid = fees.filter(f => f.status === 'paid').length;
-        const pending = fees.filter(f => f.status !== 'paid').length;
-        const totalPending = fees
-          .filter(f => f.status !== 'paid')
-          .reduce((sum, f) => sum + (f.amountDue - f.amountPaid), 0);
-        
-        summaries.set(child.id, {
-          studentId: child.id,
-          totalFees: fees.length,
-          paidFees: paid,
-          pendingFees: pending,
-          totalPending,
-        });
-      }
-      
-      setFeeSummaries(summaries);
-    } catch {
-      showNotification('Failed to fetch fee summaries', 'error');
-    }
-  }, [user?.id, children, showNotification]);
-
-  const fetchChildFees = useCallback(async () => {
+  const fetchChildData = useCallback(async () => {
     if (!selectedChild) return;
-    
     try {
-      setLoadingFees(true);
-      const fees = await feeService.getStudentFeeTransactions(selectedChild.id);
-      setChildFees(fees);
+      const [feeData, attData] = await Promise.all([
+        feeService.getStudentFeeTransactions(selectedChild.id),
+        attendanceService.getAttendance({ studentId: selectedChild.id }),
+      ]);
+      setFees(feeData);
+      setAttendance(attData);
     } catch {
-      showNotification('Failed to fetch fee details', 'error');
-    } finally {
-      setLoadingFees(false);
+      // silently fail
     }
-  }, [selectedChild, showNotification]);
+  }, [selectedChild]);
+
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      const data = await announcementService.getAnnouncements({ isActive: true, limit: 3 });
+      setAnnouncements(data);
+    } catch {
+      // silently fail
+    }
+  }, []);
 
   useEffect(() => {
     const init = async () => {
       setLoading(true);
       await fetchChildren();
+      await fetchAnnouncements();
       setLoading(false);
     };
     init();
   }, []);
 
   useEffect(() => {
-    if (children.length > 0) {
-      fetchFeeSummaries();
-    }
-  }, [children]);
-
-  useEffect(() => {
-    if (selectedChild) {
-      fetchChildFees();
-    }
+    fetchChildData();
   }, [selectedChild]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return 'bg-emerald-100 text-emerald-700';
-      case 'pending':
-        return 'bg-rose-100 text-rose-700';
-      case 'partial':
-        return 'bg-amber-100 text-amber-700';
-      case 'waived':
-        return 'bg-purple-100 text-purple-700';
-      default:
-        return 'bg-slate-100 text-slate-700';
-    }
-  };
+  const totalDays   = attendance.length;
+  const presentDays = attendance.filter(a => a.status === 'present').length;
+  const pct         = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+
+  const feeStatus   = fees.length === 0 ? 'N/A' :
+                      fees.every(f => f.status === 'paid') ? 'Paid' :
+                      fees.some(f => f.status === 'partial') ? 'Partial' : 'Pending';
+  const feeIsPaid   = feeStatus === 'Paid';
+  const pendingFees = fees.filter(f => f.status !== 'paid' && f.status !== 'waived');
+  const latestFee   = fees[fees.length - 1] ?? null;
+
+  const recentAtt = attendance.slice(-6);
+  const weekSlots = WEEK_DAYS.map((day, i) => {
+    const rec = recentAtt[i];
+    if (!rec) return { day, date: '', status: 'future' as const };
+    const d = new Date(rec.attendanceDate);
+    const dateLabel = `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`;
+    return { day, date: dateLabel, status: rec.status as 'present' | 'absent' | 'late' };
+  });
 
   if (loading) {
     return (
-      <AdminLayout title="Parent Portal">
-        <div className="flex items-center justify-center h-96">
-          <LoadingSpinner size="lg" message="Loading dashboard..." />
+      <ParentLayout title="Parent Dashboard">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-4 border-[#4A9FD4] border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-slate-400 font-medium">Loading dashboard…</p>
+          </div>
         </div>
-      </AdminLayout>
+      </ParentLayout>
+    );
+  }
+
+  if (children.length === 0) {
+    return (
+      <ParentLayout title="Parent Dashboard">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <span className="material-symbols-outlined text-6xl text-slate-200 block mb-4">family_restroom</span>
+            <h3 className="text-lg font-bold text-slate-700 mb-1">No Students Linked</h3>
+            <p className="text-sm text-slate-400">Contact school administration to link your children.</p>
+          </div>
+        </div>
+      </ParentLayout>
     );
   }
 
   return (
-    <AdminLayout title="Parent Portal">
-      <div className="space-y-8 pb-12">
-        <PageHeader 
-          title="Welcome to Parent Portal"
-          subtitle={`Hello, ${user?.fullName || 'Parent'}! Track your child's academic progress and fee status.`}
-        />
+    <ParentLayout title="Parent Dashboard">
+      <div className="p-8 space-y-6 max-w-6xl mx-auto">
 
-        {/* Children Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {children.map((child) => {
-            const summary = feeSummaries.get(child.id);
-            return (
-              <div
-                key={child.id}
-                onClick={() => setSelectedChild(child)}
-                className={`bg-white rounded-xl border-2 p-5 cursor-pointer transition-all hover:shadow-lg ${
-                  selectedChild?.id === child.id 
-                    ? 'border-blue-500 shadow-blue-100' 
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <GraduationCap className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-900">{child.fullName}</h3>
-                    <p className="text-sm text-slate-500">
-                      {child.className} {child.classSection ? `- Section ${child.classSection}` : ''}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-2 bg-emerald-50 rounded-lg">
-                    <p className="text-lg font-bold text-emerald-600">{summary?.paidFees || 0}</p>
-                    <p className="text-xs text-emerald-600">Paid</p>
-                  </div>
-                  <div className="text-center p-2 bg-rose-50 rounded-lg">
-                    <p className="text-lg font-bold text-rose-600">{summary?.pendingFees || 0}</p>
-                    <p className="text-xs text-rose-600">Pending</p>
-                  </div>
-                  <div className="text-center p-2 bg-slate-50 rounded-lg">
-                    <p className="text-lg font-bold text-slate-600">{formatCurrency(summary?.totalPending || 0)}</p>
-                    <p className="text-xs text-slate-600">Due</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        {/* Child Tabs */}
+        <div className="flex items-center gap-1 border-b border-slate-200">
+          {children.map((child) => (
+            <button
+              key={child.id}
+              onClick={() => setSelectedChild(child)}
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-all -mb-px ${
+                selectedChild?.id === child.id
+                  ? 'border-[#4A9FD4] text-[#4A9FD4]'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                account_circle
+              </span>
+              {child.fullName.split(' ')[0]}
+            </button>
+          ))}
         </div>
 
-        {/* Fee Summary for Selected Child */}
         {selectedChild && (
-          <div className="space-y-6">
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-5 text-white">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-lg">
-                    <Receipt className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{childFees.length}</p>
-                    <p className="text-sm text-blue-100">Total Fees</p>
-                  </div>
+          <>
+            {/* Student Card */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex items-center gap-5">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200">
+                <img
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedChild.id}`}
+                  alt={selectedChild.fullName}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-black text-slate-900">{selectedChild.fullName}</h2>
+                <div className="flex items-center gap-4 mt-1 flex-wrap">
+                  <span className="flex items-center gap-1 text-xs text-slate-500">
+                    <span className="material-symbols-outlined text-[14px] text-[#4A9FD4]" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
+                    {selectedChild.className || 'N/A'}
+                    {selectedChild.rollNumber ? ` | Roll No: ${selectedChild.rollNumber}` : ''}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-slate-500">
+                    <span className="material-symbols-outlined text-[14px] text-[#4A9FD4]" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
+                    Academic Year 2023-2024
+                  </span>
                 </div>
               </div>
-
-              <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-5">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-emerald-100 rounded-lg">
-                    <CheckCircle className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-emerald-700">
-                      {childFees.filter(f => f.status === 'paid').length}
-                    </p>
-                    <p className="text-sm text-emerald-600">Paid</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-rose-50 rounded-xl border border-rose-200 p-5">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-rose-100 rounded-lg">
-                    <XCircle className="w-5 h-5 text-rose-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-rose-700">
-                      {childFees.filter(f => f.status !== 'paid').length}
-                    </p>
-                    <p className="text-sm text-rose-600">Pending</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-amber-50 rounded-xl border border-amber-200 p-5">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-100 rounded-lg">
-                    <Wallet className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-amber-700">
-                      {formatCurrency(
-                        childFees
-                          .filter(f => f.status !== 'paid')
-                          .reduce((sum, f) => sum + f.amountPending, 0)
-                      )}
-                    </p>
-                    <p className="text-sm text-amber-600">Amount Due</p>
-                  </div>
-                </div>
+              <div className="flex items-center gap-2">
+                <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                </button>
+                <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+                  <span className="material-symbols-outlined text-[18px]">share</span>
+                </button>
               </div>
             </div>
 
-            {/* Fee Details Table */}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                <h3 className="font-bold text-slate-900">
-                  Fee Details - {selectedChild.fullName}
-                </h3>
-                <p className="text-sm text-slate-500">
-                  {selectedChild.className} {selectedChild.classSection ? `- Section ${selectedChild.classSection}` : ''}
+            {/* Stat Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard label="Attendance Ratio" icon="person_check" iconColor="text-blue-400">
+                <p className="text-2xl font-black text-slate-900">
+                  {presentDays}/{totalDays}
+                  <span className="text-sm font-bold text-emerald-500 ml-2">{pct}%</span>
                 </p>
+                <div className="mt-3 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                </div>
+              </StatCard>
+
+              <StatCard label="Latest Exam Score" icon="star" iconColor="text-amber-400">
+                <p className="text-2xl font-black text-slate-900">—</p>
+                <p className="text-xs text-slate-400 mt-1">No exam data</p>
+              </StatCard>
+
+              <StatCard label="Fee Status" icon="account_balance_wallet" iconColor="text-teal-400">
+                <p className={`text-2xl font-black ${feeIsPaid ? 'text-slate-900' : 'text-rose-600'}`}>
+                  {feeStatus}
+                </p>
+                {feeIsPaid ? (
+                  <span className="inline-flex items-center gap-1 mt-2 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                    <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                    UP TO DATE
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 mt-2 text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
+                    <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+                    {pendingFees.length} PENDING
+                  </span>
+                )}
+              </StatCard>
+
+              <StatCard label="Syllabus" icon="menu_book" iconColor="text-purple-400">
+                <p className="text-2xl font-black text-slate-900">—</p>
+                <p className="text-xs text-slate-400 mt-1">No syllabus data</p>
+              </StatCard>
+            </div>
+
+            {/* Attendance + Fee Status */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="font-bold text-slate-900">Recent Attendance</h3>
+                  <div className="flex items-center gap-4 text-xs text-slate-500">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />Present
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />Absent
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-6 gap-2">
+                  {weekSlots.map((slot) => (
+                    <AttendanceDay
+                      key={slot.day}
+                      day={slot.day}
+                      date={slot.date}
+                      status={slot.status as 'present' | 'absent' | 'late' | 'future' | null}
+                    />
+                  ))}
+                </div>
               </div>
 
-              {loadingFees ? (
-                <div className="flex items-center justify-center py-12">
-                  <LoadingSpinner size="md" message="Loading fees..." />
-                </div>
-              ) : childFees.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-slate-50 border-b border-slate-200">
-                      <tr>
-                        <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase">Fee Type</th>
-                        <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase">Academic Year</th>
-                        <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase">Amount</th>
-                        <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase">Paid</th>
-                        <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase">Pending</th>
-                        <th className="px-6 py-3.5 text-center text-xs font-bold text-slate-500 uppercase">Due Date</th>
-                        <th className="px-6 py-3.5 text-center text-xs font-bold text-slate-500 uppercase">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {childFees.map((fee) => (
-                        <tr key={fee.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4">
-                            <span className="text-sm font-semibold text-slate-900">{fee.feeType}</span>
-                            {fee.amountPending > 0 && (
-                              <span className="block text-xs text-slate-500">Term {fee.amountPending}</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-slate-600">
-                            {fee.admissionNumber || 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-right font-semibold text-slate-900">
-                            {formatCurrency(fee.amountDue)}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-right font-semibold text-emerald-600">
-                            {formatCurrency(fee.amountPaid)}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-right font-semibold text-rose-600">
-                            {formatCurrency(fee.amountPending)}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-center text-slate-600">
-                            {fee.dueDate ? formatDate(fee.dueDate) : 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusColor(fee.status)}`}>
-                              {fee.status.charAt(0).toUpperCase() + fee.status.slice(1)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col items-center justify-center text-center">
+                {feeIsPaid ? (
+                  <>
+                    <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+                      <span className="material-symbols-outlined text-emerald-500 text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                    </div>
+                    <h4 className="font-bold text-slate-900 text-lg mb-1">All Clear!</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      There are no pending fee payments for {selectedChild.fullName.split(' ')[0]} this month. Great job!
+                    </p>
+                    <button className="mt-4 text-xs font-bold text-[#4A9FD4] hover:underline flex items-center gap-1">
+                      View Receipt History
+                      <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-14 h-14 rounded-full bg-rose-100 flex items-center justify-center mb-4">
+                      <span className="material-symbols-outlined text-rose-500 text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+                    </div>
+                    <h4 className="font-bold text-slate-900 text-lg mb-1">Payment Due</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      {pendingFees.length} fee{pendingFees.length > 1 ? 's' : ''} pending for {selectedChild.fullName.split(' ')[0]}.
+                    </p>
+                    {latestFee?.dueDate && (
+                      <p className="text-xs text-rose-500 font-semibold mt-1">Due: {formatDate(latestFee.dueDate)}</p>
+                    )}
+                    <button className="mt-4 text-xs font-bold text-[#4A9FD4] hover:underline flex items-center gap-1">
+                      View Fee Details
+                      <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Announcements */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <span className="text-xl">📢</span>
+                <h3 className="font-bold text-slate-900">Latest Announcements</h3>
+              </div>
+              {announcements.length === 0 ? (
+                <div className="text-center py-8">
+                  <span className="material-symbols-outlined text-4xl text-slate-200 block mb-2">campaign</span>
+                  <p className="text-sm text-slate-400">No announcements at this time.</p>
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <Receipt className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="text-slate-500">No fee records found</p>
+                <div className="space-y-4">
+                  {announcements.map((ann) => (
+                    <div key={ann.id} className="border-l-4 border-amber-400 pl-4 py-1">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-slate-900 text-sm">{ann.title}</h4>
+                          <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">{ann.content}</p>
+                          <div className="flex items-center gap-3 mt-3">
+                            <button className="text-xs font-semibold text-slate-600 border border-slate-200 px-3 py-1 rounded-lg hover:bg-slate-50 transition-colors">
+                              Download Circular
+                            </button>
+                            <button className="text-xs font-semibold text-[#4A9FD4] hover:underline">
+                              Read More
+                            </button>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap flex-shrink-0">
+                          {timeAgo(ann.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-          </div>
-        )}
-
-        {/* No Children Message */}
-        {children.length === 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-            <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-slate-900 mb-2">No Students Linked</h3>
-            <p className="text-slate-500">
-              No students are linked to your account. Please contact the school administration.
-            </p>
-          </div>
+          </>
         )}
       </div>
-    </AdminLayout>
+    </ParentLayout>
   );
 };
 

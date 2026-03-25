@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation } from 'react-router-dom';
 import AdminSidebar from '../components/layout/AdminSidebar';
 import SuperAdminSidebar from '../components/layout/SuperAdminSidebar';
+import ParentSidebar from '../components/layout/ParentSidebar';
 import AppHeader from '../components/common/AppHeader';
 
 interface AdminLayoutProps {

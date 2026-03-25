@@ -14,6 +14,8 @@ import TeacherMyClasses from "../Pages/Teacher/MyClasses";
 import StudentAttendance from "../Pages/Teacher/StudentAttendance";
 import TeacherSyllabus from "../Pages/Teacher/Syllabus";
 import ParentDashboard from "../Pages/Parent/Dashboard";
+import ParentAttendance from "../Pages/Parent/Attendance";
+import ParentFeeStatus from "../Pages/Parent/FeeStatus";
 import CreateSchool from "../Pages/superAdmin/CreateSchool";
 import Students from "../Pages/Admin/Students";
 import AddStudent from "../Pages/Admin/AddStudent";
@@ -416,7 +418,12 @@ const AppRouter = () => {
         element={
           <ProtectedRoute allowedRoles={["parent"]}>
             <Routes>
-              <Route path="dashboard" element={<ParentDashboard />} />
+              <Route path="dashboard"  element={<ParentDashboard />} />
+              <Route path="attendance" element={<ParentAttendance />} />
+              <Route path="academics"  element={<ParentDashboard />} />
+              <Route path="fees"       element={<ParentFeeStatus />} />
+              <Route path="schedule"   element={<ParentDashboard />} />
+              <Route path="settings"   element={<ParentDashboard />} />
             </Routes>
           </ProtectedRoute>
         }

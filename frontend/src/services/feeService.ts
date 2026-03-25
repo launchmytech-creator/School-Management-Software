@@ -207,9 +207,10 @@ const aggregateByStudent = (transactions: FeeTransaction[]): StudentFeeSummary[]
     }
   });
   
-  summary.totalPending = summary.totalAmount - summary.totalPaid;
-  
-  return Array.from(map.values()).sort((a, b) => 
+  return Array.from(map.values()).map(s => ({
+    ...s,
+    totalPending: s.totalAmount - s.totalPaid,
+  })).sort((a, b) => 
     a.studentName.localeCompare(b.studentName)
   );
 };
