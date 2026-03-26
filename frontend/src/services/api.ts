@@ -49,8 +49,13 @@ const extractErrorMessage = (error: unknown): string => {
       return NOTIFICATION_MESSAGES.ERROR.NETWORK;
     }
     
-    const data = error.response.data as { message?: string; error?: string };
+    console.error('API Error Response:', error.response.data);
     
+    const data = error.response.data as { message?: string; error?: string; errors?: Array<{message: string}> };
+    
+    if (data?.errors && Array.isArray(data.errors)) {
+      return data.errors.map(e => e.message).join(', ');
+    }
     if (data?.message) return data.message;
     if (data?.error) return data.error;
     

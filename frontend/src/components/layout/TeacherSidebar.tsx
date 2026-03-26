@@ -12,6 +12,7 @@ const TeacherSidebar: React.FC = () => {
     { name: 'Mark Attendance', icon: 'how_to_reg', path: '/teacher/attendance' },
     { name: 'My Students', icon: 'group', path: '/teacher/students' },
     { name: 'Syllabus Progress', icon: 'playlist_add_check', path: '/teacher/syllabus' },
+    { name: 'Announcements', icon: 'campaign', path: '/teacher/announcements' },
   ];
 
   const handleLogout = () => {

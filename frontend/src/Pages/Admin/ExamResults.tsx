@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
@@ -9,12 +10,12 @@ import { classService } from '../../services/classService';
 import { examService } from '../../services/examService';
 import type { Class } from '../../types/class';
 import type { Exam } from '../../services/examService';
-import { GraduationCap, TrendingUp, Award, BarChart3, Download } from 'lucide-react';
-import { formatDate } from '../../lib/utils';
+import { GraduationCap, TrendingUp, Award, BarChart3, Download, BookOpen, CheckCircle, XCircle } from 'lucide-react';
 import { SkeletonTable } from '../../components/common/Skeleton';
 
 const ExamResults: React.FC = () => {
   const { showNotification } = useNotification();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<ExamResult[]>([]);
   const [performance, setPerformance] = useState<ClassPerformance[]>([]);
@@ -33,45 +34,42 @@ const ExamResults: React.FC = () => {
     }
   }, [showNotification]);
 
-  const fetchExams = useCallback(async () => {
+  const fetchExams = useCallback(async (classId?: number) => {
     try {
-      const data = await examService.getExams();
+      const data = await examService.getExams(classId);
       setExams(data);
     } catch {
       showNotification('Failed to fetch exams', 'error');
     }
   }, [showNotification]);
 
-  const fetchResults = useCallback(async () => {
+  const fetchResults = useCallback(async (examId?: number, classId?: number) => {
     try {
       setLoading(true);
+      
       const filters: {
-        classId?: number;
         examId?: number;
+        classId?: number;
       } = {};
       
-      if (selectedClass) filters.classId = parseInt(selectedClass);
-      if (selectedExam) filters.examId = parseInt(selectedExam);
+      if (examId) filters.examId = examId;
+      if (classId) filters.classId = classId;
       
-      const data = await examResultService.getResults(filters);
-      setResults(data);
-
-      if (selectedExam) {
-        try {
-          const perfData = await examResultService.getClassPerformance(parseInt(selectedExam));
-          setPerformance(perfData);
-        } catch {
-          setPerformance([]);
-        }
-      } else {
-        setPerformance([]);
-      }
+      const [resultsData, perfData] = await Promise.all([
+        examResultService.getResults(filters),
+        examId ? examResultService.getClassPerformance(examId).catch(() => []) : Promise.resolve([])
+      ]);
+      
+      setResults(resultsData);
+      setPerformance(Array.isArray(perfData) ? perfData : []);
     } catch {
       showNotification('Failed to fetch results', 'error');
+      setResults([]);
+      setPerformance([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, selectedExam, showNotification]);
+  }, [showNotification]);
 
   useEffect(() => {
     fetchClasses();
@@ -79,14 +77,58 @@ const ExamResults: React.FC = () => {
   }, [fetchClasses, fetchExams]);
 
   useEffect(() => {
-    fetchResults();
-  }, [fetchResults]);
+    const examIdParam = searchParams.get('examId');
+    const classIdParam = searchParams.get('classId');
+    
+    if (examIdParam) {
+      const examId = parseInt(examIdParam);
+      const classId = classIdParam ? parseInt(classIdParam) : undefined;
+      setSelectedExam(examIdParam);
+      setSelectedClass(classIdParam || '');
+      fetchResults(examId, classId);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!searchParams.get('examId') && (selectedExam || selectedClass)) {
+      const examId = selectedExam ? parseInt(selectedExam) : undefined;
+      const classId = selectedClass ? parseInt(selectedClass) : undefined;
+      fetchResults(examId, classId);
+    }
+  }, [selectedClass, selectedExam, searchParams, fetchResults]);
+
+  const handleClassChange = (classId: string) => {
+    setSelectedClass(classId);
+    setSelectedExam('');
+    if (classId) {
+      fetchExams(parseInt(classId));
+    } else {
+      setExams([]);
+    }
+  };
+
+  const handleExamChange = (examId: string) => {
+    setSelectedExam(examId);
+  };
 
   const filteredResults = results.filter(r =>
     r.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.admissionNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.subjectName.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const resultsBySubject = useMemo(() => {
+    const grouped: Record<string, ExamResult[]> = {};
+    filteredResults.forEach(result => {
+      const key = result.subjectName;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(result);
+    });
+    Object.values(grouped).forEach(students => {
+      students.sort((a, b) => (a.rollNumber || 999) - (b.rollNumber || 999));
+    });
+    return grouped;
+  }, [filteredResults]);
 
   const stats = {
     total: results.length,
@@ -112,15 +154,27 @@ const ExamResults: React.FC = () => {
     }
   };
 
+  const selectedExamData = exams.find(e => e.id.toString() === selectedExam);
+
+  const getSubjectStats = (subjectResults: ExamResult[]) => {
+    const evaluated = subjectResults.filter(r => !r.isAbsent && r.marksObtained > 0).length;
+    const absent = subjectResults.filter(r => r.isAbsent).length;
+    const avgMarks = evaluated > 0 
+      ? subjectResults.filter(r => !r.isAbsent).reduce((sum, r) => sum + r.marksObtained, 0) / evaluated
+      : 0;
+    return { evaluated, absent, total: subjectResults.length, avgMarks };
+  };
+
   return (
     <AdminLayout title="Exam Results">
       <div className="space-y-6 pb-12">
         <PageHeader 
           title="Exam Results"
-          subtitle="View and analyze student examination results"
+          subtitle={selectedExamData ? `Results for: ${selectedExamData.name}` : "View and analyze student examination results"}
           breadcrumb={{
             links: [
               { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Exams", href: "/admin/exams" },
               { label: "Results", active: true }
             ]
           }}
@@ -187,12 +241,12 @@ const ExamResults: React.FC = () => {
         <FilterBar 
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          onReset={() => { setSearchTerm(''); setSelectedClass(''); setSelectedExam(''); }}
+          onReset={() => { setSearchTerm(''); setSelectedClass(''); setSelectedExam(''); setExams([]); }}
           searchPlaceholder="Search by student, admission number, or subject..."
         >
           <select
             value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
+            onChange={(e) => handleClassChange(e.target.value)}
             className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 min-w-48"
           >
             <option value="">All Classes</option>
@@ -202,7 +256,7 @@ const ExamResults: React.FC = () => {
           </select>
           <select
             value={selectedExam}
-            onChange={(e) => setSelectedExam(e.target.value)}
+            onChange={(e) => handleExamChange(e.target.value)}
             className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 min-w-48"
           >
             <option value="">All Exams</option>
@@ -212,114 +266,160 @@ const ExamResults: React.FC = () => {
           </select>
         </FilterBar>
 
-        {performance.length > 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h3 className="font-bold text-lg text-slate-900 mb-4">Class Performance Summary</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {performance.map((perf, index) => (
-                <div key={index} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold text-slate-900">{perf.subjectName}</span>
-                    <span className="text-xs text-slate-500">{perf.subjectCode}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Avg:</span>
-                      <span className="font-semibold">{perf.averageMarks.toFixed(1)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Highest:</span>
-                      <span className="font-semibold text-emerald-600">{perf.highestMarks}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Lowest:</span>
-                      <span className="font-semibold text-red-600">{perf.lowestMarks}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Appeared:</span>
-                      <span className="font-semibold">{perf.studentsAppeared}/{perf.totalStudents}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {loading ? (
-          <SkeletonTable columns={7} rows={10} />
+          <SkeletonTable columns={6} rows={10} />
         ) : filteredResults.length > 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Student</th>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Class</th>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Subject</th>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Exam</th>
-                    <th className="px-6 py-3.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Marks</th>
-                    <th className="px-6 py-3.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Grade</th>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredResults.map((result) => (
-                    <tr key={result.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4">
+          <>
+            {performance.length > 0 && (
+              <div className="bg-white rounded-xl border border-slate-200 p-6">
+                <h3 className="font-bold text-lg text-slate-900 mb-4 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-blue-500" />
+                  Subject-wise Performance
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {performance.map((perf, index) => {
+                    const subjectResults = resultsBySubject[perf.subjectName] || [];
+                    const subjectStats = getSubjectStats(subjectResults);
+                    return (
+                      <div key={index} className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <span className="font-bold text-slate-900">{perf.subjectName}</span>
+                            <span className="text-xs text-slate-400 ml-2">{perf.subjectCode}</span>
+                          </div>
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg">
+                            {perf.maxMarks} marks
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <p className="text-slate-500 text-xs">Average</p>
+                            <p className="font-bold text-slate-900">
+                              {perf.averageMarks != null && !isNaN(perf.averageMarks) ? perf.averageMarks.toFixed(1) : '-'}
+                            </p>
+                          </div>
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <p className="text-slate-500 text-xs">Highest</p>
+                            <p className="font-bold text-emerald-600">{perf.highestMarks || '-'}</p>
+                          </div>
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <p className="text-slate-500 text-xs">Lowest</p>
+                            <p className="font-bold text-red-600">{perf.lowestMarks || '-'}</p>
+                          </div>
+                          <div className="bg-white rounded-lg p-2.5 border border-slate-200">
+                            <p className="text-slate-500 text-xs">Evaluated</p>
+                            <p className="font-bold text-slate-900">{subjectStats.evaluated}/{subjectStats.total}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-6">
+              {Object.entries(resultsBySubject).map(([subjectName, subjectResults]) => {
+                const subjectStats = getSubjectStats(subjectResults);
+                return (
+                  <div key={subjectName} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
+                      <div className="flex flex-wrap items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center text-xs font-bold text-slate-600">
-                            {result.studentName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                          <div className="p-2 bg-blue-100 rounded-lg">
+                            <BookOpen className="w-5 h-5 text-blue-600" />
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-slate-900">{result.studentName}</p>
-                            <p className="text-xs text-slate-500 font-mono">{result.admissionNumber}</p>
+                            <h3 className="font-bold text-lg text-slate-900">{subjectName}</h3>
+                            <p className="text-sm text-slate-500">{subjectStats.total} students</p>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        {result.className} {result.classSection && `- ${result.classSection}`}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        <div>
-                          <p className="font-medium">{result.subjectName}</p>
-                          <p className="text-xs text-slate-400">{result.subjectCode}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        <div>
-                          <p className="font-medium">{result.examName}</p>
-                          <p className="text-xs text-slate-400">{result.examType}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`text-sm font-semibold ${result.isAbsent ? 'text-red-500' : 'text-slate-900'}`}>
-                          {result.isAbsent ? 'Absent' : `${result.marksObtained}/${result.maxMarks}`}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {result.isAbsent ? (
-                          <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">AB</span>
-                        ) : (
-                          <span className={`px-3 py-1 text-xs font-bold rounded-full ${getGradeColor(result.grade)}`}>
-                            {result.grade}
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-full">
+                            <CheckCircle className="w-4 h-4" />
+                            {subjectStats.evaluated} Evaluated
                           </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        {formatDate(result.examDate)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          {subjectStats.absent > 0 && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-700 text-sm font-medium rounded-full">
+                              <XCircle className="w-4 h-4" />
+                              {subjectStats.absent} Absent
+                            </span>
+                          )}
+                          {subjectStats.avgMarks > 0 && (
+                            <span className="px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-medium rounded-full">
+                              Avg: {subjectStats.avgMarks.toFixed(1)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-white border-b border-slate-200">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Roll No</th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Student Name</th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Admission No</th>
+                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Marks</th>
+                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Grade</th>
+                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {subjectResults.map((result) => (
+                            <tr key={result.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-6 py-4 text-sm font-medium text-slate-700">
+                                {result.rollNumber || '-'}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-xs font-bold text-slate-600">
+                                    {result.studentName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                                  </div>
+                                  <span className="text-sm font-semibold text-slate-900">{result.studentName}</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-600 font-mono">
+                                {result.admissionNumber}
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <span className={`text-sm font-semibold ${result.isAbsent ? 'text-red-500' : 'text-slate-900'}`}>
+                                  {result.isAbsent ? '-' : `${result.marksObtained}/${result.maxMarks}`}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                {result.isAbsent ? (
+                                  <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">AB</span>
+                                ) : (
+                                  <span className={`px-3 py-1 text-xs font-bold rounded-full ${getGradeColor(result.grade)}`}>
+                                    {result.grade}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                {result.isAbsent ? (
+                                  <span className="inline-flex items-center gap-1 text-red-600 text-sm font-medium">
+                                    <XCircle className="w-4 h-4" />
+                                    Absent
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-emerald-600 text-sm font-medium">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Evaluated
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
-              <p className="text-xs text-slate-500 font-medium">
-                Showing {filteredResults.length} of {results.length} results
-              </p>
-            </div>
-          </div>
+          </>
         ) : (
           <EmptyState
             icon={GraduationCap}

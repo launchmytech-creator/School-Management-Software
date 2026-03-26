@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { classService } from '../../services/classService';
-import { examService, type Exam } from '../../services/examService';
+import { examService, type Exam, type ExamSubject } from '../../services/examService';
 import { examResultService, type ExamSubjectResult } from '../../services/examResultService';
 import { studentService } from '../../services/studentService';
 import type { Class } from '../../types/class';
-import type { Student } from '../../types/student';
 import { Save, CheckCircle, XCircle, GraduationCap } from 'lucide-react';
 import { BaseModal } from '../../components/common/BaseModal';
 import { Button } from '../../components/ui/button';
@@ -25,15 +25,17 @@ interface StudentMarks {
 
 const MarksEntry: React.FC = () => {
   const { showNotification } = useNotification();
+  const [searchParams] = useSearchParams();
   const [classes, setClasses] = useState<Class[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedExam, setSelectedExam] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [examSubjects, setExamSubjects] = useState<ExamSubject[]>([]);
   const [studentMarks, setStudentMarks] = useState<StudentMarks[]>([]);
   const [saving, setSaving] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [loadingFromUrl, setLoadingFromUrl] = useState(false);
 
   const fetchClasses = useCallback(async () => {
     try {
@@ -56,7 +58,6 @@ const MarksEntry: React.FC = () => {
   const fetchStudents = useCallback(async (classId: string) => {
     try {
       const data = await studentService.getStudents({ classId });
-      setStudents(data);
       
       const marksData: StudentMarks[] = data.map(s => ({
         studentId: s.id,
@@ -73,6 +74,7 @@ const MarksEntry: React.FC = () => {
   }, [showNotification]);
 
   const fetchExistingResults = useCallback(async (examSubjectId: string) => {
+    if (!examSubjectId) return;
     try {
       const data = await examResultService.getExamSubjectResults(parseInt(examSubjectId));
       
@@ -81,7 +83,7 @@ const MarksEntry: React.FC = () => {
         if (existing) {
           return {
             ...sm,
-            marksObtained: existing.marksObtained.toString(),
+            marksObtained: existing.marksObtained !== null ? existing.marksObtained.toString() : '',
             isAbsent: existing.isAbsent,
             existingResult: existing,
           };
@@ -93,45 +95,110 @@ const MarksEntry: React.FC = () => {
     }
   }, []);
 
+  const fetchExamDirectly = useCallback(async (examId: number) => {
+    try {
+      setLoadingFromUrl(true);
+      const exam = await examService.getExamById(examId);
+      
+      setSelectedClass(exam.classId.toString());
+      setSelectedExam(exam.id.toString());
+      setExamSubjects(exam.subjects || []);
+      
+      const studentsData = await studentService.getStudents({ classId: exam.classId.toString() });
+      
+      const marksData: StudentMarks[] = studentsData.map(s => ({
+        studentId: s.id,
+        studentName: s.fullName,
+        admissionNumber: s.admissionNumber,
+        rollNumber: s.rollNumber ?? null,
+        marksObtained: '',
+        isAbsent: false,
+      }));
+      setStudentMarks(marksData);
+      
+      if (exam.subjects && exam.subjects.length > 0) {
+        setSelectedSubject(exam.subjects[0].id.toString());
+        const existingResults = await examResultService.getExamSubjectResults(exam.subjects[0].id);
+        
+        setStudentMarks(prev => prev.map(sm => {
+          const existing = existingResults.find(r => r.studentId === sm.studentId);
+          if (existing) {
+            return {
+              ...sm,
+              marksObtained: existing.marksObtained !== null ? existing.marksObtained.toString() : '',
+              isAbsent: existing.isAbsent,
+              existingResult: existing,
+            };
+          }
+          return sm;
+        }));
+      }
+    } catch {
+      showNotification('Failed to load exam data', 'error');
+    } finally {
+      setLoadingFromUrl(false);
+    }
+  }, [showNotification]);
+
   useEffect(() => {
     fetchClasses();
   }, [fetchClasses]);
 
   useEffect(() => {
-    if (selectedClass) {
-      fetchExams(parseInt(selectedClass));
-    } else {
-      setExams([]);
+    const examIdParam = searchParams.get('examId');
+    if (examIdParam) {
+      fetchExamDirectly(parseInt(examIdParam));
     }
+  }, []);
+
+  useEffect(() => {
+    if (!loadingFromUrl && selectedClass) {
+      fetchExams(parseInt(selectedClass));
+    }
+  }, [selectedClass, fetchExams, loadingFromUrl]);
+
+  useEffect(() => {
+    if (!loadingFromUrl && selectedClass && !searchParams.get('examId')) {
+      fetchStudents(selectedClass);
+    }
+  }, [selectedClass, fetchStudents, loadingFromUrl, searchParams]);
+
+  useEffect(() => {
+    if (!loadingFromUrl && selectedSubject) {
+      fetchExistingResults(selectedSubject);
+    }
+  }, [selectedSubject, fetchExistingResults, loadingFromUrl]);
+
+  const handleClassChange = (classId: string) => {
+    setSelectedClass(classId);
     setSelectedExam('');
     setSelectedSubject('');
-  }, [selectedClass, fetchExams]);
-
-  useEffect(() => {
-    if (selectedClass) {
-      fetchStudents(selectedClass);
-    } else {
-      setStudents([]);
-      setStudentMarks([]);
+    setExamSubjects([]);
+    setStudentMarks([]);
+    if (classId) {
+      fetchExams(parseInt(classId));
+      fetchStudents(classId);
     }
-  }, [selectedClass, fetchStudents]);
+  };
 
-  useEffect(() => {
-    if (selectedSubject) {
-      fetchExistingResults(selectedSubject);
-    } else {
-      if (students.length > 0) {
-        setStudentMarks(prev => prev.map(sm => ({
-          ...sm,
-          marksObtained: '',
-          isAbsent: false,
-          existingResult: undefined,
-        })));
+  const handleExamChange = (examId: string) => {
+    setSelectedExam(examId);
+    setSelectedSubject('');
+    if (examId) {
+      const selectedExamData = exams.find(e => e.id.toString() === examId);
+      if (selectedExamData) {
+        setExamSubjects(selectedExamData.subjects || []);
       }
+    } else {
+      setExamSubjects([]);
     }
-  }, [selectedSubject, fetchExistingResults, students]);
+  };
 
-  const examSubjects = exams.find(e => e.id === parseInt(selectedExam))?.subjects || [];
+  const handleSubjectChange = (subjectId: string) => {
+    setSelectedSubject(subjectId);
+  };
+
+  const selectedSubjectData = examSubjects.find(s => s.id.toString() === selectedSubject);
 
   const calculateGrade = (marks: number, maxMarks: number): string => {
     const percentage = (marks / maxMarks) * 100;
@@ -173,7 +240,7 @@ const MarksEntry: React.FC = () => {
       return;
     }
 
-    const selectedSubjectData = examSubjects.find(s => s.id === parseInt(selectedSubject));
+    const selectedSubjectData = examSubjects.find(s => s.id.toString() === selectedSubject);
     if (!selectedSubjectData) return;
 
     const marksData = studentMarks
@@ -206,17 +273,18 @@ const MarksEntry: React.FC = () => {
     }
   };
 
-  const selectedSubjectData = examSubjects.find(s => s.id === parseInt(selectedSubject));
+  const selectedExamData = exams.find(e => e.id.toString() === selectedExam);
 
   return (
     <AdminLayout title="Marks Entry">
       <div className="space-y-6 pb-12">
         <PageHeader 
           title="Marks Entry"
-          subtitle="Enter and manage student examination marks"
+          subtitle={selectedExamData ? `Entering marks for: ${selectedExamData.name}` : "Enter and manage student examination marks"}
           breadcrumb={{
             links: [
               { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Exams", href: "/admin/exams" },
               { label: "Marks Entry", active: true }
             ]
           }}
@@ -227,7 +295,7 @@ const MarksEntry: React.FC = () => {
             <label className="block text-sm font-semibold text-slate-700 mb-2">Select Class</label>
             <select
               value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
+              onChange={(e) => handleClassChange(e.target.value)}
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Class</option>
@@ -243,7 +311,7 @@ const MarksEntry: React.FC = () => {
             <label className="block text-sm font-semibold text-slate-700 mb-2">Select Exam</label>
             <select
               value={selectedExam}
-              onChange={(e) => { setSelectedExam(e.target.value); setSelectedSubject(''); }}
+              onChange={(e) => handleExamChange(e.target.value)}
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={!selectedClass}
             >
@@ -258,7 +326,7 @@ const MarksEntry: React.FC = () => {
             <label className="block text-sm font-semibold text-slate-700 mb-2">Select Subject</label>
             <select
               value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
+              onChange={(e) => handleSubjectChange(e.target.value)}
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={!selectedExam}
             >

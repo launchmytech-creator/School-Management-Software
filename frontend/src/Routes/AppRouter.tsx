@@ -13,6 +13,7 @@ import TeacherDashboard from "../Pages/Teacher/Dashboard";
 import TeacherMyClasses from "../Pages/Teacher/MyClasses";
 import StudentAttendance from "../Pages/Teacher/StudentAttendance";
 import TeacherSyllabus from "../Pages/Teacher/Syllabus";
+import TeacherAnnouncements from "../Pages/Teacher/Announcements";
 import ParentDashboard from "../Pages/Parent/Dashboard";
 import CreateSchool from "../Pages/superAdmin/CreateSchool";
 import Students from "../Pages/Admin/Students";
@@ -404,6 +405,10 @@ const AppRouter = () => {
                     <TeacherSyllabus />
                   </RequiresActiveYear>
                 }
+              />
+              <Route
+                path="announcements"
+                element={<TeacherAnnouncements />}
               />
             </Routes>
           </ProtectedRoute>

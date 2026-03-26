@@ -7,6 +7,7 @@ import {
   Users, MapPin,
   Briefcase
 } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { teacherService } from "../../services/teacherService";
 import { teacherAttendanceService, type TeacherAttendance } from "../../services/teacherAttendanceService";
 import { holidayService, type Holiday } from "../../services/holidayService";
@@ -74,13 +75,14 @@ const TeacherProfile: React.FC = () => {
         startDate: getLocalDateString(monthStart),
         endDate: getLocalDateString(monthEnd)
       });
+      
       setAttendanceRecords(data);
     } catch {
       setAttendanceRecords([]);
     } finally {
       setLoadingAttendance(false);
     }
-  }, [id, currentMonth]);
+  }, [currentMonth, id]);
 
   const fetchHolidays = useCallback(async () => {
     try {
@@ -125,7 +127,7 @@ const TeacherProfile: React.FC = () => {
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const date = new Date(year, month, day);
       const dateStr = getLocalDateString(date);
-      const attendance = attendanceRecords.find(r => r.attendanceDate === dateStr);
+      const attendance = attendanceRecords.find(r => getLocalDateString(new Date(r.attendanceDate)) === dateStr);
       const holiday = holidays.find(h => h.holidayDate === dateStr);
       const isSunday = date.getDay() === 0;
 
@@ -168,15 +170,35 @@ const TeacherProfile: React.FC = () => {
     return { totalDays, holidayCount, sundayCount, workingDays, presentCount, absentCount, lateCount, percentage };
   }, [calendarDays, attendanceRecords]);
 
+  const pieChartData = useMemo(() => {
+    const data = [
+      { name: "Present", value: attendanceStats.presentCount, color: "#10B981" },
+      { name: "Late", value: attendanceStats.lateCount, color: "#F59E0B" },
+      { name: "Absent", value: attendanceStats.absentCount, color: "#EF4444" },
+    ].filter(d => d.value > 0);
+    
+    if (attendanceStats.workingDays > 0 && data.length > 0) {
+      const attendedDays = attendanceStats.presentCount + attendanceStats.lateCount + attendanceStats.absentCount;
+      const unrecordedDays = attendanceStats.workingDays - attendedDays;
+      if (unrecordedDays > 0) {
+        data.push({ name: "Working Days", value: unrecordedDays, color: "#f1f5f9" });
+      }
+    }
+    
+    return data;
+  }, [attendanceStats]);
+
   const canGoPrev = useMemo(() => {
     const prevMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
-    const year = new Date().getFullYear();
-    return prevMonth >= new Date(year - 2, 0, 1);
+    return prevMonth >= new Date(new Date().getFullYear() - 1, 0, 1);
   }, [currentMonth]);
 
   const canGoNext = useMemo(() => {
     const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
-    return nextMonth <= new Date();
+    const today = new Date();
+    today.setDate(1);
+    today.setHours(0, 0, 0, 0);
+    return nextMonth <= today;
   }, [currentMonth]);
 
   const prevMonth = () => {
@@ -414,44 +436,84 @@ const TeacherProfile: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 flex flex-col items-center justify-center text-center">
-                  <h3 className="text-lg font-black text-slate-900 mb-6">Attendance Rate</h3>
-                  <div className="relative size-40 mb-6">
-                    <svg className="size-full transform -rotate-90">
-                      <circle cx="80" cy="80" r="70" className="stroke-slate-50" strokeWidth="12" fill="transparent" />
-                      <circle 
-                        cx="80" cy="80" r="70" 
-                        className={`stroke-${attendanceStats.percentage >= 75 ? 'emerald' : attendanceStats.percentage >= 50 ? 'amber' : 'rose'}-500`}
-                        strokeWidth="12"
-                        fill="transparent"
-                        strokeDasharray={2 * Math.PI * 70}
-                        strokeDashoffset={2 * Math.PI * 70 * (1 - attendanceStats.percentage / 100)}
-                        strokeLinecap="round"
-                      />
-                    </svg>
+                <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight mb-8">
+                    Attendance Summary
+                  </h3>
+
+                  <div className="relative w-48 h-48 mb-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {pieChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-4xl font-black text-slate-800">{attendanceStats.percentage}%</span>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rate</span>
+                      <span className="text-4xl font-black text-slate-800 tracking-tight">
+                        {attendanceStats.percentage}%
+                      </span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Attendance
+                      </span>
                     </div>
                   </div>
-                  <div className="w-full space-y-2">
+
+                  <div className="w-full space-y-3 mb-6">
                     <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl">
-                      <span className="text-xs font-bold text-emerald-600">Working Days</span>
-                      <span className="text-lg font-black text-emerald-700">{attendanceStats.workingDays}</span>
+                      <span className="text-xs font-bold text-emerald-600">
+                        Working Days
+                      </span>
+                      <span className="text-lg font-black text-emerald-700">
+                        {attendanceStats.workingDays}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl">
-                      <span className="text-xs font-bold text-emerald-600">Present</span>
-                      <span className="text-lg font-black text-emerald-700">{attendanceStats.presentCount}</span>
+                      <span className="text-xs font-bold text-emerald-600">
+                        Present Days
+                      </span>
+                      <span className="text-lg font-black text-emerald-700">
+                        {attendanceStats.presentCount}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-amber-50 rounded-xl">
-                      <span className="text-xs font-bold text-amber-600">Late</span>
-                      <span className="text-lg font-black text-amber-700">{attendanceStats.lateCount}</span>
+                      <span className="text-xs font-bold text-amber-600">
+                        Late Days
+                      </span>
+                      <span className="text-lg font-black text-amber-700">
+                        {attendanceStats.lateCount}
+                      </span>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-rose-50 rounded-xl">
-                      <span className="text-xs font-bold text-rose-600">Absent</span>
-                      <span className="text-lg font-black text-rose-700">{attendanceStats.absentCount}</span>
+                    <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                      <span className="text-xs font-bold text-slate-500">
+                        Absent Days
+                      </span>
+                      <span className="text-lg font-black text-slate-700">
+                        {attendanceStats.absentCount}
+                      </span>
                     </div>
                   </div>
+
+                  <p className="text-xs font-bold text-slate-400 leading-relaxed px-4">
+                    {teacher.fullName?.split(" ")[0]} has{" "}
+                    {attendanceStats.percentage >= 90
+                      ? "excellent"
+                      : attendanceStats.percentage >= 75
+                        ? "good"
+                        : "needs improvement"}{" "}
+                    attendance this month.
+                  </p>
                 </div>
               </div>
             )}

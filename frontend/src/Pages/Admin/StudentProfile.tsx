@@ -16,6 +16,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  PieChart,
+  Pie,
 } from "recharts";
 import { studentService } from "../../services/studentService";
 import {
@@ -45,7 +47,6 @@ const StudentProfile: React.FC = () => {
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [currentAcademicYear, setCurrentAcademicYear] =
     useState<AcademicYear | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -58,37 +59,27 @@ const StudentProfile: React.FC = () => {
   const fetchAcademicYears = useCallback(async () => {
     try {
       const years = await academicYearService.getAllYears();
-      setAcademicYears(years);
       const current = years.find((y) => y.isCurrent) || years[0];
       setCurrentAcademicYear(current);
-      if (current) {
-        const startDate = new Date(current.startDate);
-        setCurrentMonth(
-          new Date(startDate.getFullYear(), startDate.getMonth(), 1),
-        );
-      }
     } catch {
       setCurrentAcademicYear(null);
     }
   }, []);
 
   const fetchHolidays = useCallback(async () => {
-    if (!currentAcademicYear) return;
     try {
-      const startYear = new Date(currentAcademicYear.startDate).getFullYear();
-      const data = await holidayService.getHolidays(startYear);
+      const year = currentMonth.getFullYear();
+      const data = await holidayService.getHolidays(year);
       setHolidays(data);
     } catch {
       setHolidays([]);
     }
-  }, [currentAcademicYear]);
+  }, [currentMonth]);
 
   const fetchAttendance = useCallback(async () => {
-    if (!id || !currentAcademicYear) return;
+    if (!id) return;
     try {
       setLoadingAttendance(true);
-      const yearStart = new Date(currentAcademicYear.startDate);
-      const yearEnd = new Date(currentAcademicYear.endDate);
       const monthStart = new Date(
         currentMonth.getFullYear(),
         currentMonth.getMonth(),
@@ -100,24 +91,19 @@ const StudentProfile: React.FC = () => {
         0,
       );
 
-      const startDate = monthStart < yearStart ? yearStart : monthStart;
-      const endDate = monthEnd > yearEnd ? yearEnd : monthEnd;
-
       const data = await attendanceService.getAttendance({
         studentId: parseInt(id),
-        startDate: getLocalDateString(startDate),
-        endDate: getLocalDateString(endDate),
+        startDate: getLocalDateString(monthStart),
+        endDate: getLocalDateString(monthEnd),
       });
       
-      console.log(id)
-      console.log(data);
       setAttendanceRecords(data);
     } catch {
       setAttendanceRecords([]);
     } finally {
       setLoadingAttendance(false);
     }
-  }, [id, currentAcademicYear, currentMonth]);
+  }, [id, currentMonth]);
 
   useEffect(() => {
     const fetchStudent = async () => {
@@ -231,26 +217,25 @@ const StudentProfile: React.FC = () => {
   }, [calendarDays, attendanceRecords]);
 
   const canGoPrev = useMemo(() => {
-    if (!currentAcademicYear) return false;
-    const yearStart = new Date(currentAcademicYear.startDate);
     const prevMonth = new Date(
       currentMonth.getFullYear(),
       currentMonth.getMonth() - 1,
       1,
     );
-    return prevMonth >= yearStart;
-  }, [currentAcademicYear, currentMonth]);
+    return prevMonth >= new Date(new Date().getFullYear() - 1, 0, 1);
+  }, [currentMonth]);
 
   const canGoNext = useMemo(() => {
-    if (!currentAcademicYear) return false;
-    const yearEnd = new Date(currentAcademicYear.endDate);
     const nextMonth = new Date(
       currentMonth.getFullYear(),
       currentMonth.getMonth() + 1,
       1,
     );
-    return nextMonth <= yearEnd;
-  }, [currentAcademicYear, currentMonth]);
+    const today = new Date();
+    today.setDate(1);
+    today.setHours(0, 0, 0, 0);
+    return nextMonth <= today;
+  }, [currentMonth]);
 
   const prevMonth = () => {
     if (canGoPrev) {
@@ -264,17 +249,6 @@ const StudentProfile: React.FC = () => {
     if (canGoNext) {
       setCurrentMonth(
         new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1),
-      );
-    }
-  };
-
-  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const year = academicYears.find((y) => y.id.toString() === e.target.value);
-    if (year) {
-      setCurrentAcademicYear(year);
-      const startDate = new Date(year.startDate);
-      setCurrentMonth(
-        new Date(startDate.getFullYear(), startDate.getMonth(), 1),
       );
     }
   };
@@ -419,17 +393,6 @@ const StudentProfile: React.FC = () => {
                   <div className="flex items-center justify-between mb-10">
                     <div className="flex items-center gap-4">
                       <CalendarDays size={20} className="text-blue-500" />
-                      <select
-                        value={currentAcademicYear?.id?.toString() || ""}
-                        onChange={handleYearChange}
-                        className="text-sm font-bold text-slate-500 bg-slate-50 border-none rounded-lg px-3 py-1.5 cursor-pointer focus:ring-2 focus:ring-blue-500"
-                      >
-                        {academicYears.map((year) => (
-                          <option key={year.id} value={year.id.toString()}>
-                            {year.name}
-                          </option>
-                        ))}
-                      </select>
                       <h3 className="text-xl font-black text-slate-900 tracking-tight">
                         {monthYear} Attendance
                       </h3>
@@ -541,33 +504,27 @@ const StudentProfile: React.FC = () => {
                     Attendance Summary
                   </h3>
 
-                  <div className="relative size-48 mb-6">
-                    <svg className="size-full transform -rotate-90">
-                      <circle
-                        cx="96"
-                        cy="96"
-                        r="80"
-                        className="stroke-slate-50"
-                        strokeWidth="16"
-                        fill="transparent"
-                      />
-                      <circle
-                        cx="96"
-                        cy="96"
-                        r="80"
-                        className={`stroke-${attendanceSummary.percentage >= 75 ? "emerald" : attendanceSummary.percentage >= 50 ? "amber" : "rose"}-500`}
-                        strokeWidth="16"
-                        fill="transparent"
-                        strokeDasharray={2 * Math.PI * 80}
-                        strokeDashoffset={
-                          2 *
-                          Math.PI *
-                          80 *
-                          (1 - attendanceSummary.percentage / 100)
-                        }
-                        strokeLinecap="round"
-                      />
-                    </svg>
+                  <div className="relative w-48 h-48 mb-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: "Present", value: attendanceSummary.presentCount, color: "#10B981" },
+                            { name: "Absent", value: Math.max(0, attendanceSummary.workingDays - attendanceSummary.presentCount), color: "#F1F5F9" },
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          <Cell fill="#10B981" />
+                          <Cell fill="#F1F5F9" />
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-4xl font-black text-slate-800 tracking-tight">
                         {attendanceSummary.percentage}%

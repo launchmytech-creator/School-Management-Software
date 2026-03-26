@@ -165,11 +165,11 @@ const mapClassPerformance = (data: BackendClassPerformance): ClassPerformance =>
   subjectName: data.subject_name,
   subjectCode: data.subject_code,
   maxMarks: data.max_marks,
-  totalStudents: data.total_students,
-  studentsAppeared: data.students_appeared,
-  averageMarks: data.average_marks,
-  highestMarks: data.highest_marks,
-  lowestMarks: data.lowest_marks,
+  totalStudents: Number(data.total_students) || 0,
+  studentsAppeared: Number(data.students_appeared) || 0,
+  averageMarks: Number(data.average_marks) || 0,
+  highestMarks: Number(data.highest_marks) || 0,
+  lowestMarks: Number(data.lowest_marks) || 0,
 });
 
 const mapStudentResult = (data: BackendStudentResult): StudentResult => ({

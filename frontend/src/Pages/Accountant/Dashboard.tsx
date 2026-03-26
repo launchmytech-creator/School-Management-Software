@@ -38,9 +38,9 @@ const AccountantDashboard: React.FC = () => {
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
 
-      const todayReceipts = transactions.filter(t => t.paidDate?.startsWith(today));
+      const todayReceipts = transactions.filter(t => t.paymentDate?.startsWith(today));
       const monthReceipts = transactions.filter(t => {
-        const date = new Date(t.paidDate || '');
+        const date = new Date(t.paymentDate || '');
         return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
       });
 
@@ -218,14 +218,14 @@ const AccountantDashboard: React.FC = () => {
                           <div>
                             <p className="text-sm font-bold text-slate-800">{receipt.studentName || 'Student'}</p>
                             <p className="text-xs text-slate-500">
-                              {receipt.className || 'Class'} • #{receipt.transactionId || receipt.id}
+                              {receipt.className || 'Class'} • #{receipt.receiptNumber || receipt.id}
                             </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-6">
                           <div className="text-right">
                             <p className="text-sm font-bold text-primary">{formatCurrency(receipt.amountPaid || 0)}</p>
-                            <p className="text-xs text-slate-400">{formatDate(receipt.paidDate)}</p>
+                            <p className="text-xs text-slate-400">{formatDate(receipt.paymentDate || '')}</p>
                           </div>
                           <button className="size-8 flex items-center justify-center text-slate-400 hover:text-accent-sky transition-colors">
                             <span className="material-symbols-outlined">download</span>

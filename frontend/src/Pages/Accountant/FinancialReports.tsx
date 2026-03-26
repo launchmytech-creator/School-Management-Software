@@ -51,23 +51,33 @@ const FinancialReports: React.FC = () => {
     try {
       setLoading(true);
       
-      const [summaryData, transactionsData] = await Promise.all([
-        feeService.getFeeSummary(selectedClass ? parseInt(selectedClass) : undefined),
-        feeService.getFeeTransactions({
-          classId: selectedClass ? parseInt(selectedClass) : undefined,
-          startDate: dateFrom || undefined,
-          endDate: dateTo || undefined,
-        })
-      ]);
+      const transactionsData = await feeService.getFeeTransactions({
+        classId: selectedClass ? parseInt(selectedClass) : undefined,
+      });
       
-      setSummary(summaryData);
+      const uniqueStudents = new Set(transactionsData.map(t => t.studentId));
+      const totalAmount = transactionsData.reduce((sum, t) => sum + t.amountDue, 0);
+      const collectedAmount = transactionsData.reduce((sum, t) => sum + t.amountPaid, 0);
+      const pendingAmount = transactionsData.reduce((sum, t) => sum + (t.amountDue - t.amountPaid), 0);
+      const collectionPercentage = totalAmount > 0 ? Math.round((collectedAmount / totalAmount) * 100) : 0;
+      
+      const computedSummary: FeeSummary = {
+        totalStudents: uniqueStudents.size,
+        totalAmount,
+        collectedAmount,
+        pendingAmount,
+        collectionPercentage,
+        byStatus: [],
+      };
+      
+      setSummary(computedSummary);
       setTransactions(transactionsData);
     } catch {
       showNotification('Failed to fetch report data', 'error');
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, dateFrom, dateTo, showNotification]);
+  }, [selectedClass, showNotification]);
 
   useEffect(() => {
     fetchDropdowns();

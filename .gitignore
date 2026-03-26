@@ -1,3 +1,5 @@
 nul
 *.pdf
 backend
+*.md
+documentation

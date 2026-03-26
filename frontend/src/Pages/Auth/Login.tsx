@@ -5,8 +5,6 @@ import InputField from '../../components/ui/InputField';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 
-// --- Main Page Component ---
-
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -55,7 +53,6 @@ const Login: React.FC = () => {
       
       showNotification('Welcome back! Login successful.', 'success');
       
-      // Redirect based on role
       const role = user.role;
       const dashboardMap: Record<string, string> = {
         super_admin: '/super-admin/dashboard',
@@ -76,34 +73,34 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-full bg-white font-body overflow-hidden selection:bg-accent/20">
+    <div className="flex h-screen w-full bg-white font-body overflow-hidden">
       
       {/* SHARED SIDEBAR */}
       <AuthSidebar />
 
-      {/* RIGHT CONTENT */}
-      <div className="flex-1 lg:w-[40%] flex flex-col px-8 md:px-16 py-6 overflow-hidden">
+      {/* RIGHT CONTENT - White Area */}
+      <div className="flex-1 lg:w-[40%] flex flex-col px-8 md:px-16 py-6 overflow-hidden bg-white">
         {/* Header Link */}
-        <div className="flex justify-end mb-8">
-          <p className="text-slate-400 text-xs">
+        <div className="flex justify-end mb-12">
+          <p className="text-[#133257]/50 text-xs">
             Don't have an account? 
-            <Link to="/register" className="text-accent font-bold ml-1 hover:underline">Sign Up</Link>
+            <Link to="/register" className="text-[#133257] font-bold ml-1 hover:underline">Sign Up</Link>
           </p>
         </div>
 
         {/* Form Area */}
         <div className="max-w-[400px] mx-auto w-full flex-1 flex flex-col justify-center">
-          <h3 className="text-slate-900 text-3xl font-display font-bold mb-1 flex items-center gap-2">
-            Welcome Back 👋
-          </h3>
-          <p className="text-slate-400 text-sm mb-10 leading-relaxed">
-            Sign in to your school portal. Your role will be detected automatically.
-          </p>
+          <div className="mb-8">
+            <h3 className="text-[#133257] text-4xl font-bold mb-2">Welcome Back</h3>
+            <p className="text-[#133257]/50 text-sm leading-relaxed">
+              Sign in to your school portal
+            </p>
+          </div>
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-5" onSubmit={handleSubmit}>
             <InputField 
               label="Email Address" 
-              placeholder="example@edumanage.com" 
+              placeholder="Enter your email" 
               type="email" 
               name="email"
               value={formData.email}
@@ -116,7 +113,7 @@ const Login: React.FC = () => {
             <div className="space-y-1.5">
               <InputField 
                 label="Password" 
-                placeholder="••••••••" 
+                placeholder="Enter your password" 
                 type={showPassword ? 'text' : 'password'} 
                 name="password"
                 value={formData.password}
@@ -126,29 +123,44 @@ const Login: React.FC = () => {
                 onToggleEye={() => setShowPassword(!showPassword)}
                 error={errors.password}
               />
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 cursor-pointer select-none">
-                  <input type="checkbox" className="w-4 h-4 rounded border-slate-200 text-accent focus:ring-accent transition-all" id="remember" />
-                  <label htmlFor="remember" className="text-[10px] text-slate-500 font-medium cursor-pointer">Remember me</label>
-                </div>
-                <Link to="/forgot-password" title="Forgot Password?" className="text-[10px] text-accent font-bold hover:underline">Forgot Password?</Link>
+              <div className="flex justify-end">
+                <Link to="/forgot-password" className="text-xs text-[#133257]/60 hover:text-[#133257] font-medium">
+                  Forgot Password?
+                </Link>
               </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="remember" className="w-4 h-4 rounded border-[#133257]/30 text-[#133257] focus:ring-[#133257]" />
+              <label htmlFor="remember" className="text-xs text-[#133257]/60 font-medium cursor-pointer">Remember me</label>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className={`w-full h-11 bg-accent hover:bg-accent/90 text-white font-bold rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-accent/25 transition-all transform active:scale-[0.98] mt-8 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+              className={`w-full h-12 bg-[#133257] hover:bg-[#133257]/90 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-all duration-200 shadow-lg shadow-[#133257]/20 mt-6 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              {loading ? 'Signing In...' : 'Sign In'}
-              {!loading && <span className="material-symbols-outlined text-lg">arrow_forward</span>}
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  Sign In
+                  <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                </>
+              )}
             </button>
           </form>
 
           {/* Copyright */}
-          <div className="mt-auto pt-16 text-center">
-            <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest">
-              © 2024 EDUMANAGE SMS. ALL RIGHTS RESERVED.
+          <div className="mt-auto pt-12 text-center">
+            <p className="text-[#133257]/30 text-[10px] font-medium uppercase tracking-wider">
+              © 2024 EduManage SMS
             </p>
           </div>
         </div>

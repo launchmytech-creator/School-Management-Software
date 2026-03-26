@@ -26,6 +26,30 @@ export interface ClassSubject {
   academicYearName: string;
 }
 
+interface BackendClassSubject {
+  id: number;
+  school_id: number;
+  class_id: number;
+  subject_id: number;
+  academic_year_id: number;
+  max_marks: number | null;
+  subject_name: string;
+  subject_code: string;
+  class_name: string;
+  class_section: string | null;
+  year_name: string;
+}
+
+const mapClassSubjectFromBackend = (data: BackendClassSubject): ClassSubject => ({
+  id: data.id,
+  classId: data.class_id,
+  className: data.class_name,
+  subjectId: data.subject_id,
+  subjectName: data.subject_name,
+  academicYearId: data.academic_year_id,
+  academicYearName: data.year_name,
+});
+
 export interface CreateSubjectDto {
   name: string;
   code: string;
@@ -106,18 +130,29 @@ export const subjectService = {
 
   // Class Subjects
   assignSubjectToClass: async (data: AssignSubjectToClassDto): Promise<ClassSubject> => {
-    return apiRequest<ClassSubject>('/class-subjects', {
+    const response = await apiRequest<BackendClassSubject>('/class-subjects', {
       method: 'POST',
       data,
     });
+    return mapClassSubjectFromBackend(response);
   },
 
-  getSubjectsByClass: async (classId: number): Promise<ClassSubject[]> => {
-    return apiRequest<ClassSubject[]>(`/class-subjects/class/${classId}`);
+  getSubjectsByClass: async (classId: number, academicYearId?: number): Promise<ClassSubject[]> => {
+    let url = `/class-subjects/class/${classId}`;
+    if (academicYearId) {
+      url += `?academicYearId=${academicYearId}`;
+    }
+    const data = await apiRequest<BackendClassSubject[]>(url);
+    return data.map(mapClassSubjectFromBackend);
   },
 
-  getClassesBySubject: async (subjectId: number): Promise<ClassSubject[]> => {
-    return apiRequest<ClassSubject[]>(`/class-subjects/subject/${subjectId}`);
+  getClassesBySubject: async (subjectId: number, academicYearId?: number): Promise<ClassSubject[]> => {
+    let url = `/class-subjects/subject/${subjectId}`;
+    if (academicYearId) {
+      url += `?academicYearId=${academicYearId}`;
+    }
+    const data = await apiRequest<BackendClassSubject[]>(url);
+    return data.map(mapClassSubjectFromBackend);
   },
 
   removeSubjectFromClass: async (id: number): Promise<void> => {
