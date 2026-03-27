@@ -20,19 +20,19 @@ router.post(
 
 router.get(
   "/",
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
   syllabusCompletionController.getCompletion,
 );
 
 router.get(
   "/class-subject/:classSubjectId/progress",
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
   syllabusCompletionController.getClassSubjectProgress,
 );
 
 router.get(
   "/class-subject/:classSubjectId/chapters",
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
   syllabusCompletionController.getSubjectChapters,
 );
 

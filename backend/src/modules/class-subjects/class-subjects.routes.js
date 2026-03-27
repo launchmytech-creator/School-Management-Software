@@ -21,7 +21,7 @@ router.post(
 router.get(
   "/class/:classId",
   authenticate,
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
   classSubjectsController.getSubjectsByClass,
 );
 

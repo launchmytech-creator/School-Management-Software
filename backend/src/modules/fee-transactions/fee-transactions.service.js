@@ -99,10 +99,17 @@ class FeeTransactionsService {
   }
 
   calculateDueDate(startDate, termNumber, totalTerms) {
-    const start = new Date(startDate);
+    // Parse date parts directly to avoid UTC vs local timezone shift
+    const [year, month] = startDate.toString().split("T")[0].split("-").map(Number);
     const monthsPerTerm = 12 / totalTerms;
-    const dueDate = new Date(start.getFullYear(), start.getMonth() + (termNumber - 1) * monthsPerTerm, start.getDate());
-    return dueDate.toISOString().split("T")[0];
+    // Due date = last day of the term (start of next term - 1 day)
+    const termEndMonth = month - 1 + termNumber * monthsPerTerm; // 0-indexed month after term ends
+    // Day 0 of next month = last day of current month
+    const dueDate = new Date(year, termEndMonth, 0);
+    const y = dueDate.getFullYear();
+    const m = String(dueDate.getMonth() + 1).padStart(2, "0");
+    const d = String(dueDate.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
   }
 
   async getFeeTransactionsBySchool(schoolId, filters = {}) {
