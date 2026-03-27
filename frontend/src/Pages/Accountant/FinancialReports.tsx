@@ -4,6 +4,7 @@ import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { feeService, type FeeTransaction } from '../../services/feeService';
+import { feeStructureService } from '../../services/feeStructureService';
 import { classService } from '../../services/classService';
 import type { Class } from '../../types/class';
 import { 
@@ -33,10 +34,24 @@ const FinancialReports: React.FC = () => {
   const [summary, setSummary] = useState<FeeSummary | null>(null);
   const [transactions, setTransactions] = useState<FeeTransaction[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [feeTypes, setFeeTypes] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
+  const [feeTypeFilter, setFeeTypeFilter] = useState<string>('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const fetchFeeTypes = async () => {
+      try {
+        const types = await feeStructureService.getUniqueFeeTypes();
+        setFeeTypes(types);
+      } catch {
+        // Ignore error
+      }
+    };
+    fetchFeeTypes();
+  }, []);
 
   const fetchDropdowns = useCallback(async () => {
     try {
@@ -53,6 +68,7 @@ const FinancialReports: React.FC = () => {
       
       const transactionsData = await feeService.getFeeTransactions({
         classId: selectedClass ? parseInt(selectedClass) : undefined,
+        feeType: feeTypeFilter || undefined,
       });
       
       const uniqueStudents = new Set(transactionsData.map(t => t.studentId));
@@ -77,7 +93,7 @@ const FinancialReports: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, showNotification]);
+  }, [selectedClass, feeTypeFilter, showNotification]);
 
   useEffect(() => {
     fetchDropdowns();
@@ -165,7 +181,7 @@ const FinancialReports: React.FC = () => {
               Export
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Class</label>
               <select
@@ -176,6 +192,19 @@ const FinancialReports: React.FC = () => {
                 <option value="">All Classes</option>
                 {classes.map(cls => (
                   <option key={cls.id} value={cls.id}>{cls.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Fee Type</label>
+              <select
+                value={feeTypeFilter}
+                onChange={(e) => setFeeTypeFilter(e.target.value)}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Fee Types</option>
+                {feeTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
                 ))}
               </select>
             </div>
@@ -205,7 +234,7 @@ const FinancialReports: React.FC = () => {
             </div>
             <div className="flex items-end">
               <button
-                onClick={() => { setSelectedClass(''); setDateFrom(''); setDateTo(''); }}
+                onClick={() => { setSelectedClass(''); setDateFrom(''); setDateTo(''); setFeeTypeFilter(''); }}
                 className="w-full px-4 py-2.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200 transition-colors"
               >
                 Clear Filters

@@ -4,11 +4,15 @@ import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { feeService, type FeeDefaulter } from '../../services/feeService';
+import { notificationService } from '../../services/notificationService';
+import { parentService } from '../../services/parentService';
 import { classService } from '../../services/classService';
 import type { Class } from '../../types/class';
-import { AlertTriangle, Phone, AlertCircle } from 'lucide-react';
-import { formatCurrency } from '../../lib/utils';
+import { AlertTriangle, Phone, AlertCircle, Send } from 'lucide-react';
+import { formatCurrency, getLocalDateString } from '../../lib/utils';
 import { SkeletonTable } from '../../components/common/Skeleton';
+import { BaseModal } from '../../components/common/BaseModal';
+import { Button } from '../../components/ui/button';
 
 const AccountantFeeDefaulters: React.FC = () => {
   const { showNotification } = useNotification();
@@ -17,6 +21,10 @@ const AccountantFeeDefaulters: React.FC = () => {
   const [classes, setClasses] = useState<Class[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [selectedDefaulter, setSelectedDefaulter] = useState<FeeDefaulter | null>(null);
+  const [sendingReminder, setSendingReminder] = useState(false);
+  const [parentLookupLoading, setParentLookupLoading] = useState(false);
 
   const fetchClasses = useCallback(async () => {
     try {
@@ -56,6 +64,67 @@ const AccountantFeeDefaulters: React.FC = () => {
     d.admissionNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     d.parentName.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleSendReminder = (defaulter: FeeDefaulter) => {
+    setSelectedDefaulter(defaulter);
+    setShowReminderModal(true);
+  };
+
+  const findParentByStudent = async (studentId: number): Promise<number | null> => {
+    try {
+      const parents = await parentService.getParents();
+      
+      for (const parent of parents) {
+        try {
+          const children = await parentService.getParentChildren(parent.id);
+          if (children.some(c => c.id === studentId)) {
+            return parent.id;
+          }
+        } catch {
+          continue;
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const sendReminder = async () => {
+    if (!selectedDefaulter) return;
+    
+    if (!selectedDefaulter.parentEmail && !selectedDefaulter.parentPhone) {
+      showNotification('No contact information available for this parent', 'error');
+      return;
+    }
+    
+    try {
+      setSendingReminder(true);
+      setParentLookupLoading(true);
+      
+      const parentId = await findParentByStudent(selectedDefaulter.studentId);
+      
+      if (!parentId) {
+        showNotification('No parent account linked to this student. Please contact administrator to link parent account.', 'error');
+        return;
+      }
+      
+      await notificationService.sendFeeReminder({
+        parentId: parentId,
+        studentName: selectedDefaulter.studentName,
+        amountDue: formatCurrency(selectedDefaulter.totalDue),
+        dueDate: getLocalDateString(),
+      });
+      showNotification('Fee reminder sent successfully', 'success');
+      setShowReminderModal(false);
+    } catch (error) {
+      console.error('Failed to send reminder:', error);
+      showNotification('Failed to send reminder. Please try again or contact administrator.', 'error');
+    } finally {
+      setSendingReminder(false);
+      setParentLookupLoading(false);
+    }
+  };
 
   return (
     <AccountantLayout title="Fee Defaulters">
@@ -130,6 +199,7 @@ const AccountantFeeDefaulters: React.FC = () => {
                     <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Class</th>
                     <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Parent</th>
                     <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Amount Due</th>
+                    <th className="px-6 py-3.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -163,6 +233,18 @@ const AccountantFeeDefaulters: React.FC = () => {
                           {formatCurrency(defaulter.totalDue)}
                         </span>
                       </td>
+                      <td className="px-6 py-4 text-center">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSendReminder(defaulter)}
+                          className="gap-1.5 border-amber-500 text-amber-600 hover:bg-amber-50"
+                          disabled={!defaulter.parentEmail && !defaulter.parentPhone}
+                        >
+                          <Send className="w-3 h-3" />
+                          {defaulter.parentEmail || defaulter.parentPhone ? 'Remind' : 'No Contact'}
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -176,6 +258,66 @@ const AccountantFeeDefaulters: React.FC = () => {
             description="All students have cleared their fees"
           />
         )}
+
+        <BaseModal
+          isOpen={showReminderModal}
+          onClose={() => setShowReminderModal(false)}
+          title="Send Fee Reminder"
+          size="md"
+        >
+          {selectedDefaulter && (
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500">Student</p>
+                    <p className="font-semibold text-slate-900">{selectedDefaulter.studentName}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Class</p>
+                    <p className="font-semibold text-slate-900">{selectedDefaulter.className}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Parent</p>
+                    <p className="font-semibold text-slate-900">{selectedDefaulter.parentName}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Contact</p>
+                    <p className="font-semibold text-slate-900">
+                      {selectedDefaulter.parentPhone || selectedDefaulter.parentEmail || 'N/A'}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-slate-500">Amount Due</p>
+                    <p className="font-bold text-rose-600 text-lg">
+                      {formatCurrency(selectedDefaulter.totalDue)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                <p className="text-sm text-amber-800">
+                  A fee reminder notification will be sent to the parent's email address.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" onClick={() => setShowReminderModal(false)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={sendReminder} 
+                  loading={sendingReminder || parentLookupLoading} 
+                  className="flex-1 bg-amber-600 hover:bg-amber-700"
+                  disabled={!selectedDefaulter?.parentEmail && !selectedDefaulter?.parentPhone}
+                >
+                  {parentLookupLoading ? 'Finding Parent...' : 'Send Reminder'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </BaseModal>
       </div>
     </AccountantLayout>
   );

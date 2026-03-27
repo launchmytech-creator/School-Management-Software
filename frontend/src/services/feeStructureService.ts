@@ -98,6 +98,27 @@ export const feeStructureService = {
       method: 'DELETE',
     });
   },
+
+  getUniqueFeeTypes: async (): Promise<string[]> => {
+    const structures = await feeStructureService.getFeeStructures({});
+    const types = structures.map(s => s.feeType);
+    const uniqueTypes = [...new Set(types)];
+    
+    if (uniqueTypes.length === 0) {
+      return [
+        'Tuition Fee',
+        'Transport Fee',
+        'Exam Fee',
+        'Hostel Fee',
+        'Library Fee',
+        'Registration Fee',
+        'Annual Fee',
+        'Lab Fee',
+      ];
+    }
+    
+    return uniqueTypes.sort();
+  },
 };
 
 export default feeStructureService;

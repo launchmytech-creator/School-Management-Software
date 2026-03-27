@@ -49,6 +49,15 @@ const getTodayDate = (): string => {
   return getLocalDateString();
 };
 
+let dashboardCache: {
+  data: Awaited<ReturnType<typeof dashboardService.getAdminDashboard>> | null;
+  timestamp: number;
+} = {
+  data: null,
+  timestamp: 0,
+};
+const CACHE_DURATION = 30000;
+
 export const dashboardService = {
   getAdminDashboard: async (): Promise<{
     stats: AdminDashboardStats;
@@ -56,6 +65,11 @@ export const dashboardService = {
     attendanceOverview: AttendanceOverview;
     feeOverview: FeeOverview;
   }> => {
+    const now = Date.now();
+    if (dashboardCache.data && (now - dashboardCache.timestamp) < CACHE_DURATION) {
+      return dashboardCache.data;
+    }
+
     try {
       const today = getTodayDate();
       
@@ -132,26 +146,27 @@ export const dashboardService = {
         try {
           const todayAttendance = await attendanceService.getAttendance({ date: today });
           
-          const byClassMap = new Map<string, { className: string; present: number; total: number }>();
-          
-          let totalPresent = 0;
-          let totalAbsent = 0;
-
-          todayAttendance.forEach((record: AttendanceRecord) => {
+          const countedStudents = new Set<number>();
+          const attendanceResult = todayAttendance.reduce((acc, record) => {
+            if (countedStudents.has(record.studentId)) return acc;
+            countedStudents.add(record.studentId);
+            
             const classKey = `${record.classId}-${record.className}`;
-            if (!byClassMap.has(classKey)) {
-              byClassMap.set(classKey, { className: record.className, present: 0, total: 0 });
+            if (!acc.byClassMap.has(classKey)) {
+              acc.byClassMap.set(classKey, { className: record.className, present: 0, total: 0 });
             }
-            const classData = byClassMap.get(classKey)!;
+            const classData = acc.byClassMap.get(classKey)!;
             classData.total += 1;
             if (record.status === 'present' || record.status === 'late') {
               classData.present += 1;
-              totalPresent += 1;
+              acc.totalPresent += 1;
             } else {
-              totalAbsent += 1;
+              acc.totalAbsent += 1;
             }
-          });
+            return acc;
+          }, { byClassMap: new Map<string, { className: string; present: number; total: number }>(), totalPresent: 0, totalAbsent: 0 });
 
+          const { totalPresent, totalAbsent, byClassMap } = attendanceResult;
           const byClass = Array.from(byClassMap.values()).map((c) => ({
             className: c.className,
             present: c.present,
@@ -159,12 +174,11 @@ export const dashboardService = {
             percentage: c.total > 0 ? Math.round((c.present / c.total) * 100) : 0,
           }));
 
-          const attendanceTotal = totalPresent + totalAbsent;
           attendanceOverview = {
             present: totalPresent,
             absent: totalAbsent,
-            total: attendanceTotal > 0 ? attendanceTotal : students.length,
-            percentage: attendanceTotal > 0 ? Math.round((totalPresent / attendanceTotal) * 100) : 0,
+            total: students.length,
+            percentage: students.length > 0 ? Math.round((totalPresent / students.length) * 100) : 0,
             byClass,
           };
         } catch {
@@ -186,12 +200,15 @@ export const dashboardService = {
         pendingDefaulters,
       };
 
-      return {
+      const dashboardData = {
         stats,
         recentActivity: [],
         attendanceOverview,
         feeOverview,
       };
+
+      dashboardCache = { data: dashboardData, timestamp: now };
+      return dashboardData;
     } catch {
       throw new Error('Failed to fetch dashboard data');
     }
@@ -215,6 +232,10 @@ export const dashboardService = {
   getFeeOverview: async (): Promise<FeeOverview> => {
     const data = await dashboardService.getAdminDashboard();
     return data.feeOverview;
+  },
+
+  invalidateCache: (): void => {
+    dashboardCache = { data: null, timestamp: 0 };
   },
 };
 

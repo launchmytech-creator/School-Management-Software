@@ -6,6 +6,7 @@ import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { feeService, type FeeTransaction, type RecordPaymentDto } from '../../services/feeService';
+import { feeStructureService } from '../../services/feeStructureService';
 import { classService } from '../../services/classService';
 import type { Class } from '../../types/class';
 import { CheckCircle, XCircle, AlertTriangle, Receipt, Wallet, Percent, Calendar } from 'lucide-react';
@@ -21,8 +22,10 @@ const FeeCollection: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<FeeTransaction[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [feeTypes, setFeeTypes] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [feeTypeFilter, setFeeTypeFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showWaiverModal, setShowWaiverModal] = useState(false);
@@ -34,6 +37,18 @@ const FeeCollection: React.FC = () => {
   const [waiverAmount, setWaiverAmount] = useState('');
   const [waiverReason, setWaiverReason] = useState('');
   const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    const fetchFeeTypes = async () => {
+      try {
+        const types = await feeStructureService.getUniqueFeeTypes();
+        setFeeTypes(types);
+      } catch {
+        // Ignore error
+      }
+    };
+    fetchFeeTypes();
+  }, []);
 
   const fetchClasses = useCallback(async () => {
     try {
@@ -50,6 +65,7 @@ const FeeCollection: React.FC = () => {
       const data = await feeService.getFeeTransactions({
         classId: selectedClass ? parseInt(selectedClass) : undefined,
         status: statusFilter || undefined,
+        feeType: feeTypeFilter || undefined,
       });
       setTransactions(data);
     } catch {
@@ -57,7 +73,7 @@ const FeeCollection: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, statusFilter, showNotification]);
+  }, [selectedClass, statusFilter, feeTypeFilter, showNotification]);
 
   useEffect(() => {
     fetchClasses();
@@ -234,12 +250,24 @@ const FeeCollection: React.FC = () => {
               setSelectedClass(e.target.value);
               setStatusFilter('');
               setSearchTerm('');
+              setFeeTypeFilter('');
             }}
             className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 min-w-48"
           >
             <option value="">Select Class</option>
             {classes.map(cls => (
               <option key={cls.id} value={cls.id}>{cls.name} {cls.section ? `- Section ${cls.section}` : ''}</option>
+            ))}
+          </select>
+          
+          <select
+            value={feeTypeFilter}
+            onChange={(e) => setFeeTypeFilter(e.target.value)}
+            className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 min-w-40"
+          >
+            <option value="">All Fee Types</option>
+            {feeTypes.map(type => (
+              <option key={type} value={type}>{type}</option>
             ))}
           </select>
           
@@ -272,7 +300,7 @@ const FeeCollection: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => { setSearchTerm(''); setStatusFilter(''); setSelectedClass(''); }}
+                onClick={() => { setSearchTerm(''); setStatusFilter(''); setSelectedClass(''); setFeeTypeFilter(''); }}
               >
                 Reset
               </Button>
@@ -387,7 +415,7 @@ const FeeCollection: React.FC = () => {
           <EmptyState
             icon={Receipt}
             title="No transactions found"
-            description={searchTerm || selectedClass || statusFilter ? "Try adjusting your filters" : "No fee transactions recorded yet"}
+            description={searchTerm || selectedClass || statusFilter || feeTypeFilter ? "Try adjusting your filters" : "No fee transactions recorded yet"}
           />
         )}
 

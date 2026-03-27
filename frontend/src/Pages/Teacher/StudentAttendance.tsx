@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import TeacherLayout from '../../layouts/TeacherLayout';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
@@ -136,11 +136,16 @@ const StudentAttendance: React.FC = () => {
     }
   };
 
-  const stats = {
-    total: students.length,
-    present: students.filter(s => attendanceRecords.get(s.id) === 'present').length,
-    absent: students.filter(s => attendanceRecords.get(s.id) === 'absent').length,
-  };
+  const stats = useMemo(() => {
+    let present = 0;
+    let absent = 0;
+    students.forEach(s => {
+      const status = attendanceRecords.get(s.id);
+      if (status === 'present') present++;
+      else if (status === 'absent') absent++;
+    });
+    return { total: students.length, present, absent };
+  }, [students, attendanceRecords]);
 
   const handleSaveAttendance = async () => {
     if (!selectedClass || !selectedDate) return;
@@ -162,7 +167,15 @@ const StudentAttendance: React.FC = () => {
       showNotification('Attendance marked successfully!', 'success');
       setHasChanges(false);
       setShowConfirmModal(false);
-      fetchExistingAttendance();
+      setExistingAttendance(records.map((r, i) => ({
+        id: Date.now() + i,
+        studentId: r.studentId,
+        studentName: students.find(s => s.id === r.studentId)?.fullName || '',
+        classId: selectedClass.classId,
+        className: selectedClass.className,
+        attendanceDate: selectedDate,
+        status: r.status,
+      })));
     } catch {
       showNotification('Failed to mark attendance', 'error');
     } finally {

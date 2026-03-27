@@ -6,6 +6,7 @@ import { useNotification } from '../../context/NotificationContext';
 import { studentService } from '../../services/studentService';
 import { classService } from '../../services/classService';
 import { feeService } from '../../services/feeService';
+import { feeStructureService } from '../../services/feeStructureService';
 import type { Class } from '../../types/class';
 import { Users, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
@@ -40,8 +41,22 @@ const AccountantStudents: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<StudentWithFees[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [feeTypes, setFeeTypes] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
+  const [feeTypeFilter, setFeeTypeFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const fetchFeeTypes = async () => {
+      try {
+        const types = await feeStructureService.getUniqueFeeTypes();
+        setFeeTypes(types);
+      } catch {
+        // Ignore error
+      }
+    };
+    fetchFeeTypes();
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -60,7 +75,7 @@ const AccountantStudents: React.FC = () => {
           const classIdStr = String(s.currentClassId || '');
           
           try {
-            const transactions = await feeService.getStudentFeeTransactions(parseInt(studentId));
+            const transactions = await feeService.getStudentFeeTransactions(parseInt(studentId), feeTypeFilter || undefined);
             
             const totalDue = transactions.reduce((sum, t) => sum + (t.amountDue || 0), 0);
             const totalPaid = transactions.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
@@ -107,7 +122,7 @@ const AccountantStudents: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, showNotification]);
+  }, [selectedClass, feeTypeFilter, showNotification]);
 
   useEffect(() => {
     fetchData();
@@ -219,7 +234,7 @@ const AccountantStudents: React.FC = () => {
         <FilterBar 
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          onReset={() => { setSearchTerm(''); setSelectedClass(''); }}
+          onReset={() => { setSearchTerm(''); setSelectedClass(''); setFeeTypeFilter(''); }}
           searchPlaceholder="Search by student, parent, or admission number..."
         >
           <div className="flex items-center gap-3">
@@ -231,6 +246,16 @@ const AccountantStudents: React.FC = () => {
               <option value="">All Classes</option>
               {classes.map(cls => (
                 <option key={cls.id} value={cls.id}>{cls.name}</option>
+              ))}
+            </select>
+            <select
+              value={feeTypeFilter}
+              onChange={(e) => setFeeTypeFilter(e.target.value)}
+              className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700"
+            >
+              <option value="">All Fee Types</option>
+              {feeTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </div>

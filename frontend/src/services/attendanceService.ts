@@ -31,6 +31,26 @@ export interface MarkAttendanceDto {
   }[];
 }
 
+interface RawAttendanceRecord {
+  id: number;
+  student_id: number;
+  student_name: string;
+  class_id: number;
+  class_name: string;
+  attendance_date: string;
+  status: string;
+}
+
+const mapAttendanceRecord = (r: RawAttendanceRecord, className?: string): AttendanceRecord => ({
+  id: r.id,
+  studentId: r.student_id,
+  studentName: r.student_name,
+  classId: r.class_id,
+  className: className !== undefined ? className : r.class_name,
+  attendanceDate: r.attendance_date,
+  status: r.status as AttendanceRecord['status'],
+});
+
 export const attendanceService = {
   markAttendance: async (data: MarkAttendanceDto): Promise<void> => {
     await apiRequest<void>('/student-attendance', {
@@ -56,16 +76,8 @@ export const attendanceService = {
     const queryString = queryParams.toString();
     const url = `/student-attendance${queryString ? `?${queryString}` : ''}`;
     
-    const response = await apiRequest<any[]>(url);
-    return response.map((r) => ({
-      id: r.id,
-      studentId: r.student_id,
-      studentName: r.student_name,
-      classId: r.class_id,
-      className: r.class_name,
-      attendanceDate: r.attendance_date,
-      status: r.status,
-    }));
+    const response = await apiRequest<RawAttendanceRecord[]>(url);
+    return response.map(r => mapAttendanceRecord(r));
   },
 
   getStudentAttendanceSummary: async (studentId: number): Promise<StudentAttendanceSummary> => {
@@ -84,16 +96,8 @@ export const attendanceService = {
   },
 
   getClassAttendanceByDate: async (classId: number, date: string): Promise<AttendanceRecord[]> => {
-    const response = await apiRequest<any[]>(`/student-attendance/class/${classId}?date=${date}`);
-    return response.map((r) => ({
-      id: r.id,
-      studentId: r.student_id,
-      studentName: r.student_name,
-      classId: r.class_id,
-      className: '',
-      attendanceDate: r.attendance_date,
-      status: r.status,
-    }));
+    const response = await apiRequest<RawAttendanceRecord[]>(`/student-attendance/class/${classId}?date=${date}`);
+    return response.map(r => mapAttendanceRecord(r, ''));
   },
 
   deleteAttendance: async (id: number): Promise<void> => {

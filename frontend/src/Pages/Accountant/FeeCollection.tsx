@@ -4,6 +4,7 @@ import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { feeService, type FeeTransaction, type RecordPaymentDto } from '../../services/feeService';
+import { feeStructureService } from '../../services/feeStructureService';
 import { classService } from '../../services/classService';
 import type { Class } from '../../types/class';
 import { DollarSign, CheckCircle, Clock, AlertTriangle, Receipt } from 'lucide-react';
@@ -18,8 +19,10 @@ const AccountantFeeCollection: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<FeeTransaction[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [feeTypes, setFeeTypes] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [feeTypeFilter, setFeeTypeFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<FeeTransaction | null>(null);
@@ -30,13 +33,26 @@ const AccountantFeeCollection: React.FC = () => {
     paymentDate: getLocalDateString(),
   });
 
+  useEffect(() => {
+    const fetchFeeTypes = async () => {
+      try {
+        const types = await feeStructureService.getUniqueFeeTypes();
+        setFeeTypes(types);
+      } catch {
+        // Ignore error, use empty array
+      }
+    };
+    fetchFeeTypes();
+  }, []);
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const filters: { classId?: number; status?: string } = {};
+      const filters: { classId?: number; status?: string; feeType?: string } = {};
       
       if (selectedClass) filters.classId = parseInt(selectedClass);
       if (statusFilter) filters.status = statusFilter;
+      if (feeTypeFilter) filters.feeType = feeTypeFilter;
       
       const data = await feeService.getFeeTransactions(filters);
       setTransactions(data);
@@ -45,7 +61,7 @@ const AccountantFeeCollection: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, statusFilter, showNotification]);
+  }, [selectedClass, statusFilter, feeTypeFilter, showNotification]);
 
   useEffect(() => {
     const fetchDropdowns = async () => {
@@ -187,7 +203,7 @@ const AccountantFeeCollection: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">Class</label>
             <select
@@ -198,6 +214,19 @@ const AccountantFeeCollection: React.FC = () => {
               <option value="">All Classes</option>
               {classes.map(cls => (
                 <option key={cls.id} value={cls.id}>{cls.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Fee Type</label>
+            <select
+              value={feeTypeFilter}
+              onChange={(e) => setFeeTypeFilter(e.target.value)}
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Fee Types</option>
+              {feeTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </div>
@@ -215,7 +244,7 @@ const AccountantFeeCollection: React.FC = () => {
             </select>
           </div>
           <div className="flex items-end">
-            <Button variant="outline" onClick={() => { setSelectedClass(''); setStatusFilter(''); }} className="w-full">
+            <Button variant="outline" onClick={() => { setSelectedClass(''); setStatusFilter(''); setFeeTypeFilter(''); }} className="w-full">
               Clear Filters
             </Button>
           </div>

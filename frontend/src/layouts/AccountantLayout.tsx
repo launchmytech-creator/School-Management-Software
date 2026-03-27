@@ -19,6 +19,7 @@ const AccountantLayout: React.FC<AccountantLayoutProps> = ({ children, title }) 
     if (path.includes('fees')) return 'Fee Collection';
     if (path.includes('fee-defaulters')) return 'Fee Defaulters';
     if (path.includes('students')) return 'Students';
+    if (path.includes('fee-structures')) return 'Fee Structures';
     if (path.includes('reports')) return 'Reports';
     return 'Accountant Portal';
   };

@@ -11,6 +11,7 @@ const AccountantSidebar: React.FC = () => {
     { name: 'Fee Collection', icon: 'payments', path: '/accountant/fees' },
     { name: 'Fee Defaulters', icon: 'warning', path: '/accountant/fee-defaulters' },
     { name: 'Students', icon: 'group', path: '/accountant/students' },
+    { name: 'Fee Structures', icon: 'receipt_long', path: '/accountant/fee-structures' },
     { name: 'Reports', icon: 'analytics', path: '/accountant/reports' },
   ];
 

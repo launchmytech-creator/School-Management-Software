@@ -4,6 +4,7 @@ import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import { useNotification } from '../../context/NotificationContext';
 import { feeService, type FeeDefaulter } from '../../services/feeService';
+import { feeStructureService } from '../../services/feeStructureService';
 import { classService } from '../../services/classService';
 import type { Class } from '../../types/class';
 import { AlertTriangle, Phone, User, AlertCircle } from 'lucide-react';
@@ -15,8 +16,22 @@ const FeeDefaulters: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [defaulters, setDefaulters] = useState<FeeDefaulter[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [feeTypes, setFeeTypes] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
+  const [feeTypeFilter, setFeeTypeFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const fetchFeeTypes = async () => {
+      try {
+        const types = await feeStructureService.getUniqueFeeTypes();
+        setFeeTypes(types);
+      } catch {
+        // Ignore error
+      }
+    };
+    fetchFeeTypes();
+  }, []);
 
   const fetchClasses = useCallback(async () => {
     try {
@@ -125,6 +140,16 @@ const FeeDefaulters: React.FC = () => {
             <option value="">All Classes</option>
             {classes.map(cls => (
               <option key={cls.id} value={cls.id}>{cls.name}</option>
+            ))}
+          </select>
+          <select
+            value={feeTypeFilter}
+            onChange={(e) => setFeeTypeFilter(e.target.value)}
+            className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700"
+          >
+            <option value="">All Fee Types</option>
+            {feeTypes.map(type => (
+              <option key={type} value={type}>{type}</option>
             ))}
           </select>
         </FilterBar>

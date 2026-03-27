@@ -9,6 +9,7 @@ import AccountantFeeCollection from "../Pages/Accountant/FeeCollection";
 import AccountantFeeDefaulters from "../Pages/Accountant/FeeDefaulters";
 import FinancialReports from "../Pages/Accountant/FinancialReports";
 import AccountantStudents from "../Pages/Accountant/Students";
+import AccountantFeeStructures from "../Pages/Accountant/FeeStructures";
 import TeacherDashboard from "../Pages/Teacher/Dashboard";
 import TeacherMyClasses from "../Pages/Teacher/MyClasses";
 import StudentAttendance from "../Pages/Teacher/StudentAttendance";
@@ -53,6 +54,7 @@ import Timetables from "../Pages/Admin/Timetables";
 // import Assignments from "../Pages/Admin/Assignments";
 import SchoolSettingsPage from "../Pages/Admin/SchoolSettingsPage";
 import Reports from "../Pages/Admin/Reports";
+// import Attendance from "@/Pages/Admin/Attendance";
 
 const AppRouter = () => {
   return (
@@ -335,14 +337,16 @@ const AppRouter = () => {
                   </RequiresActiveYear>
                 }
               /> */}
-              <Route
+
+              {/* Report */}
+              {/* <Route
                 path="reports"
                 element={
                   <RequiresActiveYear>
                     <Reports />
                   </RequiresActiveYear>
                 }
-              />
+              /> */}
               <Route
                 path="school-settings"
                 element={
@@ -370,6 +374,7 @@ const AppRouter = () => {
               />
               <Route path="reports" element={<FinancialReports />} />
               <Route path="students" element={<AccountantStudents />} />
+              <Route path="fee-structures" element={<AccountantFeeStructures />} />
             </Routes>
           </ProtectedRoute>
         }
@@ -406,10 +411,7 @@ const AppRouter = () => {
                   </RequiresActiveYear>
                 }
               />
-              <Route
-                path="announcements"
-                element={<TeacherAnnouncements />}
-              />
+              <Route path="announcements" element={<TeacherAnnouncements />} />
             </Routes>
           </ProtectedRoute>
         }

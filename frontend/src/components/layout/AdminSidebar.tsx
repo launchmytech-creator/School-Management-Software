@@ -20,7 +20,7 @@ const navGroups: NavGroup[] = [
     icon: 'grid_view',
     items: [
       { name: 'Dashboard', icon: 'dashboard', path: '/admin/dashboard' },
-      { name: 'Reports', icon: 'analytics', path: '/admin/reports' },
+      // { name: 'Reports', icon: 'analytics', path: '/admin/reports' },
     ],
   },
   {

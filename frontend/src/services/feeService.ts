@@ -230,6 +230,7 @@ export const feeService = {
     studentId?: number;
     academicYearId?: number;
     status?: string;
+    feeType?: string;
   } = {}): Promise<FeeTransaction[]> => {
     const qp = new URLSearchParams();
     if (params.classId) qp.append('classId', String(params.classId));
@@ -239,7 +240,14 @@ export const feeService = {
 
     const qs = qp.toString();
     const rows = await apiRequest<BackendFeeTransaction[]>(`/fee-transactions${qs ? `?${qs}` : ''}`);
-    return rows.map(mapTransaction);
+    let transactions = rows.map(mapTransaction);
+
+    // Frontend filter for feeType
+    if (params.feeType) {
+      transactions = transactions.filter(t => t.feeType === params.feeType);
+    }
+
+    return transactions;
   },
 
   // Fee defaulters (grouped by student)
@@ -250,9 +258,15 @@ export const feeService = {
   },
 
   // Single student transactions
-  getStudentFeeTransactions: async (studentId: number): Promise<FeeTransaction[]> => {
+  getStudentFeeTransactions: async (studentId: number, feeType?: string): Promise<FeeTransaction[]> => {
     const rows = await apiRequest<BackendFeeTransaction[]>(`/fee-transactions/student/${studentId}`);
-    return rows.map(mapTransaction);
+    let transactions = rows.map(mapTransaction);
+    
+    if (feeType) {
+      transactions = transactions.filter(t => t.feeType === feeType);
+    }
+    
+    return transactions;
   },
 
   // Single transaction detail

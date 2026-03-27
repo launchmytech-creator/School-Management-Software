@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
@@ -74,12 +74,17 @@ const Attendance: React.FC = () => {
     }
   };
 
-  const stats = {
-    total: attendance.length,
-    present: attendance.filter(a => a.status === 'present').length,
-    absent: attendance.filter(a => a.status === 'absent').length,
-    late: attendance.filter(a => a.status === 'late').length,
-  };
+  const stats = useMemo(() => {
+    let present = 0;
+    let absent = 0;
+    let late = 0;
+    attendance.forEach(a => {
+      if (a.status === 'present') present++;
+      else if (a.status === 'absent') absent++;
+      else if (a.status === 'late') late++;
+    });
+    return { total: attendance.length, present, absent, late };
+  }, [attendance]);
 
   const getPercentage = (value: number) => {
     if (stats.total === 0) return 0;

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AccountantLayout from '../../layouts/AccountantLayout';
+import { useNotification } from '../../context/NotificationContext';
 import { feeService, type FeeTransaction } from '../../services/feeService';
-import { reportService } from '../../services/reportService';
+import { notificationService } from '../../services/notificationService';
 import { formatCurrency, getLocalDateString } from '../../lib/utils';
 
 interface FeeStats {
@@ -10,43 +12,105 @@ interface FeeStats {
   pendingAmount: number;
   defaulterCount: number;
   receiptsToday: number;
+  yesterdayCollection: number;
+  lastMonthCollection: number;
+  todayPercentChange: number;
+  monthPercentChange: number;
+}
+
+interface NotificationItem {
+  id: number;
+  notificationType: string;
+  message: string;
+  status: string;
+  createdAt: string;
 }
 
 const AccountantDashboard: React.FC = () => {
+  const { showNotification } = useNotification();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [chartFilter, setChartFilter] = useState('6months');
   const [stats, setStats] = useState<FeeStats>({
     todayCollection: 0,
     monthCollection: 0,
     pendingAmount: 0,
     defaulterCount: 0,
     receiptsToday: 0,
+    yesterdayCollection: 0,
+    lastMonthCollection: 0,
+    todayPercentChange: 0,
+    monthPercentChange: 0,
   });
   const [recentReceipts, setRecentReceipts] = useState<FeeTransaction[]>([]);
   const [chartData, setChartData] = useState<{ month: string; amount: number }[]>([]);
+  const [remindersSent, setRemindersSent] = useState<NotificationItem[]>([]);
 
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       
-      const [transactions, defaulters, feesReport] = await Promise.all([
-        feeService.getFeeTransactions({ status: 'paid' }),
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth();
+      
+      // Get yesterday and last month dates
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      
+      const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+      const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+      
+      // Fetch all transactions (not just paid) for accurate stats
+      const [allTransactions, defaulters, notifications] = await Promise.all([
+        feeService.getFeeTransactions({}),
         feeService.getFeeDefaulters(),
-        reportService.getFeesReport({}),
+        notificationService.getMyNotifications({ type: 'fee_reminder', limit: 10 }),
       ]);
 
+      // Get paid transactions for collection calculations
+      const paidTransactions = allTransactions.filter(t => t.status === 'paid');
+      
       const today = getLocalDateString();
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-
-      const todayReceipts = transactions.filter(t => t.paymentDate?.startsWith(today));
-      const monthReceipts = transactions.filter(t => {
+      
+      // Today's stats
+      const todayReceipts = paidTransactions.filter(t => t.paymentDate?.startsWith(today));
+      const todayTotal = todayReceipts.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
+      
+      // Yesterday's stats
+      const yesterdayReceipts = paidTransactions.filter(t => t.paymentDate?.startsWith(yesterdayStr));
+      const yesterdayTotal = yesterdayReceipts.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
+      
+      // This month stats
+      const monthReceipts = paidTransactions.filter(t => {
         const date = new Date(t.paymentDate || '');
         return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
       });
-
-      const todayTotal = todayReceipts.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
       const monthTotal = monthReceipts.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
-      const pendingTotal = feesReport.reduce((sum, r) => sum + (r.pendingAmount || 0), 0);
+      
+      // Last month stats
+      const lastMonthReceipts = paidTransactions.filter(t => {
+        const date = new Date(t.paymentDate || '');
+        return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
+      });
+      const lastMonthTotal = lastMonthReceipts.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
+      
+      // Pending amounts (from all transactions)
+      const pendingTotal = allTransactions.reduce((sum, t) => {
+        const pending = (t.amountDue || 0) - (t.amountPaid || 0);
+        return sum + (pending > 0 ? pending : 0);
+      }, 0);
+      
+      // Calculate percentage changes
+      const calculatePercentChange = (current: number, previous: number): number => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return Math.round(((current - previous) / previous) * 100);
+      };
+      
+      const todayPercentChange = calculatePercentChange(todayTotal, yesterdayTotal);
+      const monthPercentChange = calculatePercentChange(monthTotal, lastMonthTotal);
+      
+      const todayReminders = notifications.filter(n => n.createdAt.startsWith(today));
 
       setStats({
         todayCollection: todayTotal,
@@ -54,29 +118,46 @@ const AccountantDashboard: React.FC = () => {
         pendingAmount: pendingTotal,
         defaulterCount: defaulters.length,
         receiptsToday: todayReceipts.length,
+        yesterdayCollection: yesterdayTotal,
+        lastMonthCollection: lastMonthTotal,
+        todayPercentChange,
+        monthPercentChange,
       });
 
-      setRecentReceipts(transactions.slice(0, 5));
+      setRecentReceipts(paidTransactions.slice(0, 5));
+      setRemindersSent(todayReminders);
 
-      const monthlyData = [
-        { month: 'Jan', amount: monthTotal * 0.6 },
-        { month: 'Feb', amount: monthTotal * 0.7 },
-        { month: 'Mar', amount: monthTotal * 0.5 },
-        { month: 'Apr', amount: monthTotal * 0.85 },
-        { month: 'May', amount: monthTotal * 0.75 },
-        { month: 'Jun', amount: monthTotal },
-      ];
-      const maxAmount = Math.max(...monthlyData.map(d => d.amount));
+      // Build monthly data for chart
+      const monthlyMap = new Map<string, number>();
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      paidTransactions.forEach(t => {
+        if (t.paymentDate) {
+          const date = new Date(t.paymentDate);
+          if (date.getFullYear() === currentYear) {
+            const monthName = monthNames[date.getMonth()];
+            monthlyMap.set(monthName, (monthlyMap.get(monthName) || 0) + (t.amountPaid || 0));
+          }
+        }
+      });
+
+      const monthlyData = monthNames.map(month => ({
+        month,
+        amount: monthlyMap.get(month) || 0,
+      }));
+
+      const maxAmount = Math.max(...monthlyData.map(d => d.amount), 1);
       setChartData(monthlyData.map(d => ({
         ...d,
-        height: maxAmount > 0 ? (d.amount / maxAmount) * 100 : 0,
+        height: (d.amount / maxAmount) * 100,
       })));
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
+      showNotification('Failed to load dashboard data', 'error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showNotification]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -91,12 +172,81 @@ const AccountantDashboard: React.FC = () => {
     });
   };
 
+  // Filter chart data based on dropdown selection
+  const filteredChartData = React.useMemo(() => {
+    if (chartFilter === '6months') {
+      const currentMonth = new Date().getMonth();
+      return chartData.slice(Math.max(0, currentMonth - 5), currentMonth + 1);
+    }
+    return chartData;
+  }, [chartData, chartFilter]);
+
+  const handlePrintReceipt = (receipt: FeeTransaction) => {
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) return;
+    
+    const receiptHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Receipt #${receipt.receiptNumber || receipt.id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; max-width: 600px; margin: 0 auto; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .header p { margin: 5px 0; color: #666; }
+          .details { margin-bottom: 30px; }
+          .details table { width: 100%; }
+          .details td { padding: 8px 0; }
+          .details td:first-child { font-weight: bold; width: 40%; }
+          .total { font-size: 20px; font-weight: bold; text-align: right; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #666; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Fee Receipt</h1>
+          <p>Receipt No: ${receipt.receiptNumber || receipt.id}</p>
+        </div>
+        <div class="details">
+          <table>
+            <tr><td>Student Name:</td><td>${receipt.studentName || 'N/A'}</td></tr>
+            <tr><td>Admission Number:</td><td>${receipt.admissionNumber || 'N/A'}</td></tr>
+            <tr><td>Class:</td><td>${receipt.className || 'N/A'}</td></tr>
+            <tr><td>Fee Type:</td><td>${receipt.feeType || 'N/A'}</td></tr>
+            <tr><td>Amount Due:</td><td>${formatCurrency(receipt.amountDue || 0)}</td></tr>
+            <tr><td>Amount Paid:</td><td>${formatCurrency(receipt.amountPaid || 0)}</td></tr>
+            <tr><td>Payment Date:</td><td>${formatDate(receipt.paymentDate)}</td></tr>
+            <tr><td>Payment Mode:</td><td>${receipt.paymentMode || 'N/A'}</td></tr>
+          </table>
+        </div>
+        <div class="total">Pending: ${formatCurrency((receipt.amountDue || 0) - (receipt.amountPaid || 0))}</div>
+        <div class="footer">
+          <p>Thank you for your payment!</p>
+          <p>Generated on ${new Date().toLocaleDateString()}</p>
+        </div>
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(receiptHtml);
+    printWindow.document.close();
+  };
+
   return (
     <AccountantLayout title="Dashboard">
       <div className="space-y-8 pb-12">
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-pulse text-slate-400">Loading dashboard...</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white p-6 rounded-card border border-slate-200">
+                <div className="h-4 bg-slate-200 rounded w-24 mb-3 animate-pulse"></div>
+                <div className="h-8 bg-slate-200 rounded w-32 mb-2 animate-pulse"></div>
+                <div className="h-3 bg-slate-200 rounded w-20 animate-pulse"></div>
+              </div>
+            ))}
           </div>
         ) : (
           <>
@@ -106,9 +256,9 @@ const AccountantDashboard: React.FC = () => {
                 <h3 className="text-2xl font-bold text-primary mt-1 font-display">
                   {formatCurrency(stats.todayCollection)}
                 </h3>
-                <p className="text-emerald-600 text-xs mt-2 flex items-center gap-1 font-semibold">
-                  <span className="material-symbols-outlined text-sm">trending_up</span>
-                  +12% from yesterday
+                <p className={`text-xs mt-2 flex items-center gap-1 font-semibold ${stats.todayPercentChange >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  <span className="material-symbols-outlined text-sm">{stats.todayPercentChange >= 0 ? 'trending_up' : 'trending_down'}</span>
+                  {stats.todayPercentChange >= 0 ? '+' : ''}{stats.todayPercentChange}% from yesterday
                 </p>
               </div>
 
@@ -117,9 +267,9 @@ const AccountantDashboard: React.FC = () => {
                 <h3 className="text-2xl font-bold text-primary mt-1 font-display">
                   {formatCurrency(stats.monthCollection)}
                 </h3>
-                <p className="text-emerald-600 text-xs mt-2 flex items-center gap-1 font-semibold">
-                  <span className="material-symbols-outlined text-sm">trending_up</span>
-                  +5.2% from last month
+                <p className={`text-xs mt-2 flex items-center gap-1 font-semibold ${stats.monthPercentChange >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  <span className="material-symbols-outlined text-sm">{stats.monthPercentChange >= 0 ? 'trending_up' : 'trending_down'}</span>
+                  {stats.monthPercentChange >= 0 ? '+' : ''}{stats.monthPercentChange}% from last month
                 </p>
               </div>
 
@@ -146,24 +296,29 @@ const AccountantDashboard: React.FC = () => {
               <div className="lg:col-span-8 bg-white p-6 rounded-card border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-8">
                   <h3 className="text-lg font-bold text-primary font-display">Monthly Fee Collection Trend</h3>
-                  <select className="text-sm border-slate-200 rounded-button text-slate-500 px-3 py-1">
-                    <option>Last 6 Months</option>
-                    <option>Yearly</option>
+                  <select 
+                    value={chartFilter}
+                    onChange={(e) => setChartFilter(e.target.value)}
+                    className="text-sm border-slate-200 rounded-button text-slate-500 px-3 py-1"
+                  >
+                    <option value="6months">Last 6 Months</option>
+                    <option value="yearly">Yearly</option>
                   </select>
                 </div>
                 <div className="flex items-end justify-between h-64 gap-4 px-2">
-                  {chartData.map((data, index) => (
+                  {filteredChartData.map((data, index) => (
                     <div key={data.month} className="flex-1 flex flex-col items-center gap-2 group">
                       <div
                         className={`w-full rounded-t-lg transition-all ${
-                          index === chartData.length - 1
+                          index === filteredChartData.length - 1
                             ? 'bg-primary rounded-t-lg shadow-lg'
                             : 'bg-accent-sky/30 group-hover:bg-accent-sky/50'
                         }`}
-                        style={{ height: `${Math.max(data.amount / 1000, 10)}%` }}
+                        style={{ height: `${Math.max(data.height, 5)}%` }}
+                        title={`${data.month}: ${formatCurrency(data.amount)}`}
                       ></div>
                       <span className={`text-xs font-semibold ${
-                        index === chartData.length - 1 ? 'font-bold text-primary' : 'text-slate-500'
+                        index === filteredChartData.length - 1 ? 'font-bold text-primary' : 'text-slate-500'
                       }`}>
                         {data.month}
                       </span>
@@ -175,21 +330,33 @@ const AccountantDashboard: React.FC = () => {
               <div className="lg:col-span-4 bg-white p-6 rounded-card border border-slate-200 shadow-sm flex flex-col">
                 <h3 className="text-lg font-bold text-primary font-display mb-6">Quick Actions</h3>
                 <div className="space-y-4 flex-1">
-                  <button className="w-full bg-accent-sky hover:bg-accent-sky/90 text-white font-bold py-3 px-4 rounded-button flex items-center justify-center gap-2 transition-colors">
+                  <button 
+                    className="w-full bg-accent-sky hover:bg-accent-sky/90 text-white font-bold py-3 px-4 rounded-button flex items-center justify-center gap-2 transition-colors"
+                    onClick={() => navigate('/accountant/fees')}
+                  >
                     <span className="material-symbols-outlined text-xl">add_card</span>
                     Generate Receipt
                   </button>
-                  <button className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 px-4 rounded-button flex items-center justify-center gap-2 transition-colors">
-                    <span className="material-symbols-outlined text-xl">cloud_upload</span>
-                    Upload Marks
+                  <button 
+                    className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 px-4 rounded-button flex items-center justify-center gap-2 transition-colors"
+                    onClick={() => navigate('/accountant/students')}
+                  >
+                    <span className="material-symbols-outlined text-xl">group</span>
+                    View Students
                   </button>
-                  <button className="w-full border-2 border-accent-orange text-accent-orange hover:bg-accent-orange/5 font-bold py-3 px-4 rounded-button flex items-center justify-center gap-2 transition-colors">
+                  <button 
+                    className="w-full border-2 border-accent-orange text-accent-orange hover:bg-accent-orange/5 font-bold py-3 px-4 rounded-button flex items-center justify-center gap-2 transition-colors"
+                    onClick={() => navigate('/accountant/fee-defaulters')}
+                  >
                     <span className="material-symbols-outlined text-xl">notifications_active</span>
                     Send Fee Reminder
                   </button>
-                  <button className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-button flex items-center justify-center gap-2 transition-colors">
-                    <span className="material-symbols-outlined text-xl">person_add</span>
-                    Add New Student
+                  <button 
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-button flex items-center justify-center gap-2 transition-colors"
+                    onClick={() => navigate('/accountant/reports')}
+                  >
+                    <span className="material-symbols-outlined text-xl">download</span>
+                    View Reports
                   </button>
                 </div>
               </div>
@@ -199,7 +366,10 @@ const AccountantDashboard: React.FC = () => {
               <div className="bg-white p-6 rounded-card border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-bold text-primary font-display">Recent Receipts</h3>
-                  <button className="text-accent-sky text-sm font-semibold hover:underline">
+                  <button 
+                    className="text-accent-sky text-sm font-semibold hover:underline"
+                    onClick={() => navigate('/accountant/fees')}
+                  >
                     View All
                   </button>
                 </div>
@@ -227,7 +397,11 @@ const AccountantDashboard: React.FC = () => {
                             <p className="text-sm font-bold text-primary">{formatCurrency(receipt.amountPaid || 0)}</p>
                             <p className="text-xs text-slate-400">{formatDate(receipt.paymentDate || '')}</p>
                           </div>
-                          <button className="size-8 flex items-center justify-center text-slate-400 hover:text-accent-sky transition-colors">
+                          <button 
+                            className="size-8 flex items-center justify-center text-slate-400 hover:text-accent-sky transition-colors"
+                            onClick={() => handlePrintReceipt(receipt)}
+                            title="Print Receipt"
+                          >
                             <span className="material-symbols-outlined">download</span>
                           </button>
                         </div>
@@ -242,12 +416,36 @@ const AccountantDashboard: React.FC = () => {
               <div className="bg-white p-6 rounded-card border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-bold text-primary font-display">Fee Reminders Sent Today</h3>
-                  <button className="text-accent-sky text-sm font-semibold hover:underline">
-                    History
+                    <button 
+                    className="text-accent-sky text-sm font-semibold hover:underline"
+                    onClick={() => navigate('/accountant/fee-defaulters')}
+                  >
+                    Send Reminders
                   </button>
                 </div>
                 <div className="space-y-4">
-                  {stats.defaulterCount > 0 ? (
+                  {remindersSent.length > 0 ? (
+                    remindersSent.slice(0, 3).map((reminder) => (
+                      <div key={reminder.id} className="flex items-center justify-between p-3 rounded-lg border-l-2 border-l-amber-500 bg-amber-50/30">
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 truncate max-w-[200px]">
+                            {reminder.message}
+                          </p>
+                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                            <span className="material-symbols-outlined text-[14px]">send</span>
+                            {formatDate(reminder.createdAt)}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-1 text-xs font-bold rounded-full ${
+                          reminder.status === 'sent' ? 'bg-emerald-100 text-emerald-700' :
+                          reminder.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {reminder.status}
+                        </span>
+                      </div>
+                    ))
+                  ) : stats.defaulterCount > 0 ? (
                     <div className="flex items-center justify-between p-3 rounded-lg border-l-2 border-l-amber-500 bg-amber-50/30">
                       <div>
                         <p className="text-sm font-bold text-slate-800">
@@ -258,7 +456,10 @@ const AccountantDashboard: React.FC = () => {
                           Total pending: {formatCurrency(stats.pendingAmount)}
                         </p>
                       </div>
-                      <button className="px-3 py-1.5 bg-accent-orange text-white text-xs font-bold rounded-button hover:bg-accent-orange/90">
+                      <button 
+                        className="px-3 py-1.5 bg-accent-orange text-white text-xs font-bold rounded-button hover:bg-accent-orange/90"
+                        onClick={() => navigate('/accountant/fee-defaulters')}
+                      >
                         Send Reminders
                       </button>
                     </div>
