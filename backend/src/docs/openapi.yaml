@@ -323,11 +323,6 @@ components:
               enum: [1, 2, 3]
               default: 1
               example: 2
-            feeTerms:
-              type: integer
-              enum: [1, 2, 4, 12]
-              default: 1
-              example: 4
             contactEmail:
               type: string
               format: email
@@ -377,10 +372,6 @@ components:
           type: integer
           enum: [1, 2, 3]
           example: 3
-        feeTerms:
-          type: integer
-          enum: [1, 2, 4, 12]
-          example: 12
         subscriptionStatus:
           type: string
           enum: [active, suspended, expired, trial]
@@ -1090,8 +1081,12 @@ components:
 
     FeeStructure:
       type: object
+      description: A single fee component row (one fee type, annual amount)
       properties:
         id:
+          type: integer
+          example: 1
+        schoolId:
           type: integer
           example: 1
         classId:
@@ -1100,6 +1095,10 @@ components:
         className:
           type: string
           example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
         academicYearId:
           type: integer
           example: 1
@@ -1112,15 +1111,17 @@ components:
         amount:
           type: number
           format: decimal
-          example: 25000.00
-        termNumber:
+          example: 30000.00
+          description: Annual amount for this fee type
+        feeTerms:
           type: integer
-          nullable: true
-          example: 1
+          enum: [1, 2, 4, 12]
+          description: Payment frequency for the class+year group
+          example: 4
 
-    CreateFeeStructure:
+    FeeStructureGroup:
       type: object
-      required: [classId, academicYearId, feeType, amount]
+      description: Grouped view of all fee components for a class+year with totals
       properties:
         classId:
           type: integer
@@ -1128,6 +1129,68 @@ components:
         academicYearId:
           type: integer
           example: 1
+        className:
+          type: string
+          example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
+        academicYearName:
+          type: string
+          example: "2024-2025"
+        feeTerms:
+          type: integer
+          enum: [1, 2, 4, 12]
+          description: "1=Yearly, 2=Half-yearly, 4=Quarterly, 12=Monthly"
+          example: 4
+        totalAnnualFee:
+          type: number
+          format: decimal
+          description: Sum of all fee component annual amounts
+          example: 50000.00
+        perTermAmount:
+          type: number
+          format: decimal
+          description: totalAnnualFee / feeTerms — what each student pays per term
+          example: 12500.00
+        components:
+          type: array
+          description: Individual fee type breakdown
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 1
+              fee_type:
+                type: string
+                example: "Tuition Fee"
+              annual_amount:
+                type: number
+                format: decimal
+                example: 30000.00
+
+    CreateFeeStructure:
+      type: object
+      required: [classId, academicYearId, feeTerms, feeType, amount]
+      description: |
+        Add one fee component to a class+year group.
+        - `amount` is the **annual amount** for this fee type
+        - `feeTerms` must be the same for all components in the same class+year group
+        - System auto-calculates per-term = annual / feeTerms at transaction generation
+      properties:
+        classId:
+          type: integer
+          example: 1
+        academicYearId:
+          type: integer
+          example: 1
+        feeTerms:
+          type: integer
+          enum: [1, 2, 4, 12]
+          example: 4
+          description: "1=Yearly, 2=Half-yearly, 4=Quarterly, 12=Monthly"
         feeType:
           type: string
           maxLength: 50
@@ -1135,12 +1198,8 @@ components:
         amount:
           type: number
           format: decimal
-          example: 25000.00
-        termNumber:
-          type: integer
-          minimum: 1
-          maximum: 12
-          example: 1
+          example: 30000.00
+          description: Annual amount for this fee type
 
     UpdateFeeStructure:
       type: object
@@ -1148,10 +1207,11 @@ components:
         amount:
           type: number
           format: decimal
-          example: 30000.00
+          example: 32000.00
+          description: Updated annual amount
         feeType:
           type: string
-          example: "Annual Fee"
+          example: "Tuition Fee"
 
     FeeTransaction:
       type: object
@@ -1168,17 +1228,32 @@ components:
         admissionNumber:
           type: string
           example: "2024001"
+        className:
+          type: string
+          example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
+        academicYearName:
+          type: string
+          example: "2024-2025"
         feeType:
           type: string
           example: "Tuition Fee"
+        termNumber:
+          type: integer
+          nullable: true
+          description: Term number (null for yearly, 1–N for multi-term)
+          example: 1
         originalAmount:
           type: number
           format: decimal
-          example: 25000.00
+          example: 6250.00
         amountDue:
           type: number
           format: decimal
-          example: 25000.00
+          example: 6250.00
         amountPaid:
           type: number
           format: decimal
@@ -1187,6 +1262,10 @@ components:
           type: number
           format: decimal
           example: 0.00
+        pendingAmount:
+          type: number
+          format: decimal
+          example: 12500.00
         dueDate:
           type: string
           format: date
@@ -1195,27 +1274,110 @@ components:
           type: string
           enum: [pending, partial, paid]
           example: "pending"
+        feeBreakdown:
+          type: object
+          nullable: true
+          description: Per-component breakdown of this term's amount
+          example:
+            "Tuition Fee": 7500
+            "Transport Fee": 2500
+            "Exam Fee": 1250
+            "Extra Fee": 1250
         paymentMode:
           type: string
           enum: [cash, card, upi, cheque, bank_transfer]
           nullable: true
-          example: "upi"
+          example: "cash"
         receiptNumber:
           type: string
           nullable: true
-          example: "RCP-2024-001"
+          example: "RCP-001"
+        paymentDate:
+          type: string
+          format: date
+          nullable: true
+          example: "2024-04-05"
+        parentName:
+          type: string
+          nullable: true
+          example: "Jane Doe"
+        parentPhone:
+          type: string
+          nullable: true
+          example: "+1234567890"
+
+    FeeDefaulter:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        studentId:
+          type: integer
+          example: 10
+        studentName:
+          type: string
+          example: "John Doe"
+        admissionNumber:
+          type: string
+          example: "2024001"
+        className:
+          type: string
+          example: "Class 5"
+        classSection:
+          type: string
+          nullable: true
+          example: "A"
+        termNumber:
+          type: integer
+          nullable: true
+          example: 2
+        amountDue:
+          type: number
+          format: decimal
+          example: 6250.00
+        amountPaid:
+          type: number
+          format: decimal
+          example: 0.00
+        pendingAmount:
+          type: number
+          format: decimal
+          example: 6250.00
+        dueDate:
+          type: string
+          format: date
+          example: "2024-07-01"
+        status:
+          type: string
+          enum: [pending, partial]
+          example: "pending"
+        parentName:
+          type: string
+          nullable: true
+          example: "Jane Doe"
+        parentPhone:
+          type: string
+          nullable: true
+          example: "+1234567890"
+        parentEmail:
+          type: string
+          nullable: true
+          example: "parent@example.com"
 
     GenerateFeeTransactions:
       type: object
-      required: [feeStructureId, academicYearStartDate]
+      required: [classId, academicYearId]
+      description: |
+        Provide the class and academic year. The system loads all fee components,
+        sums them, divides by feeTerms, and creates one combined transaction per term per student.
       properties:
-        feeStructureId:
+        classId:
           type: integer
           example: 1
-        academicYearStartDate:
-          type: string
-          format: date
-          example: "2024-04-01"
+        academicYearId:
+          type: integer
+          example: 1
 
     RecordPayment:
       type: object

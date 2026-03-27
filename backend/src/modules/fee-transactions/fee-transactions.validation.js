@@ -1,17 +1,13 @@
 const { body } = require("express-validator");
 
 const generateFeeTransactionsValidation = [
-  body("feeStructureId")
-    .notEmpty()
-    .withMessage("Fee structure ID is required")
-    .isInt()
-    .withMessage("Fee structure ID must be an integer"),
+  body("classId")
+    .notEmpty().withMessage("Class ID is required")
+    .isInt().withMessage("Class ID must be an integer"),
 
-  body("academicYearStartDate")
-    .notEmpty()
-    .withMessage("Academic year start date is required")
-    .isISO8601()
-    .withMessage("Invalid date format, use ISO 8601 (YYYY-MM-DD)"),
+  body("academicYearId")
+    .notEmpty().withMessage("Academic year ID is required")
+    .isInt().withMessage("Academic year ID must be an integer"),
 ];
 
 const recordPaymentValidation = [
@@ -30,9 +26,7 @@ const recordPaymentValidation = [
     .notEmpty()
     .withMessage("Payment mode is required")
     .isIn(["cash", "card", "upi", "cheque", "bank_transfer"])
-    .withMessage(
-      "Payment mode must be one of: cash, card, upi, cheque, bank_transfer",
-    ),
+    .withMessage("Payment mode must be one of: cash, card, upi, cheque, bank_transfer"),
 
   body("receiptNumber")
     .optional()

@@ -14,16 +14,15 @@ class StudentAttendanceService {
       for (const record of attendanceData.records) {
         // Check if attendance already exists
         const existingQuery = await client.query(
-          "SELECT id FROM student_attendance WHERE student_id = $1 AND attendance_date = $2",
+          "SELECT id FROM student_attendance WHERE student_id = $1 AND attendance_date = $2::date",
           [record.studentId, attendanceData.attendanceDate],
         );
 
         if (existingQuery.rows.length > 0) {
-          // Update existing record
           const updateQuery = `
             UPDATE student_attendance 
             SET status = $1, marked_by = $2
-            WHERE student_id = $3 AND attendance_date = $4
+            WHERE student_id = $3 AND attendance_date = $4::date
             RETURNING *
           `;
           const result = await client.query(updateQuery, [
@@ -34,12 +33,11 @@ class StudentAttendanceService {
           ]);
           records.push(result.rows[0]);
         } else {
-          // Insert new record
           const insertQuery = `
             INSERT INTO student_attendance (
               school_id, student_id, class_id, attendance_date, status, marked_by
             )
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES ($1, $2, $3, $4::date, $5, $6)
             RETURNING *
           `;
           const result = await client.query(insertQuery, [
@@ -167,7 +165,11 @@ class StudentAttendanceService {
     return result.rows;
   }
 
-  async getSchoolOpenDays(schoolId, startDate, endDate) {
+  async getSchoolOpenDays(schoolId, year, month) {
+    // Build the first and last day of the requested month
+    const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+    const endDate = `${year}-${String(month).padStart(2, "0")}-${new Date(year, month, 0).getDate()}`;
+
     const query = `
       SELECT COUNT(*) AS school_open_days
       FROM generate_series($2::date, $3::date, interval '1 day') AS d(attendance_date)

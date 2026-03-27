@@ -20,12 +20,6 @@ const createSchoolValidation = [
       "Subscription plan ID must be 1 (Basic), 2 (Premium), or 3 (Business)",
     ),
 
-  body("school.feeTerms")
-    .optional()
-    .isIn([1, 2, 4, 12])
-    .withMessage(
-      "Fee terms must be 1 (yearly), 2 (half-yearly), 4 (quarterly), or 12 (monthly)",
-    ),
 
   body("school.contactEmail")
     .isEmail()
@@ -59,13 +53,6 @@ const updateSchoolValidation = [
     .isInt({ min: 1, max: 3 })
     .withMessage(
       "Subscription plan ID must be 1 (Basic), 2 (Premium), or 3 (Business)",
-    ),
-
-  body("feeTerms")
-    .optional()
-    .isIn([1, 2, 4, 12])
-    .withMessage(
-      "Fee terms must be 1 (yearly), 2 (half-yearly), 4 (quarterly), or 12 (monthly)",
     ),
 
   body("subscriptionStatus")

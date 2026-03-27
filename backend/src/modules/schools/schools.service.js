@@ -14,10 +14,10 @@ class SchoolsService {
       const schoolQuery = `
         INSERT INTO schools (
           name, code, subscription_plan_id, subscription_status, 
-          subscription_end_date, fee_terms, contact_email, 
+          subscription_end_date, contact_email, 
           contact_phone, address
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
       `;
 
@@ -27,7 +27,6 @@ class SchoolsService {
         schoolData.subscriptionPlanId || 1, // Default to Basic plan
         schoolData.subscriptionStatus || "trial",
         schoolData.subscriptionEndDate || null,
-        schoolData.feeTerms || 1, // Default to yearly
         schoolData.contactEmail,
         schoolData.contactPhone || null,
         schoolData.address || null,
@@ -44,13 +43,6 @@ class SchoolsService {
         school.id,
         school.subscription_plan_id,
       ]);
-
-      // Record fee terms history
-      const feeTermsHistoryQuery = `
-        INSERT INTO fee_terms_history (school_id, fee_terms, start_date)
-        VALUES ($1, $2, CURRENT_DATE)
-      `;
-      await client.query(feeTermsHistoryQuery, [school.id, school.fee_terms]);
 
       // Hash admin password
       const hashedPassword = await bcrypt.hash(adminData.password, 10);
@@ -173,30 +165,6 @@ class SchoolsService {
 
         fields.push(`subscription_plan_id = $${paramCount++}`);
         values.push(updateData.subscriptionPlanId);
-      }
-      if (updateData.feeTerms !== undefined) {
-        // Get current fee terms for history
-        const currentSchool = await client.query(
-          "SELECT fee_terms FROM schools WHERE id = $1",
-          [schoolId],
-        );
-
-        if (currentSchool.rows[0].fee_terms !== updateData.feeTerms) {
-          // Close current fee terms history
-          await client.query(
-            "UPDATE fee_terms_history SET end_date = CURRENT_DATE WHERE school_id = $1 AND end_date IS NULL",
-            [schoolId],
-          );
-
-          // Create new fee terms history
-          await client.query(
-            "INSERT INTO fee_terms_history (school_id, fee_terms, start_date) VALUES ($1, $2, CURRENT_DATE)",
-            [schoolId, updateData.feeTerms],
-          );
-        }
-
-        fields.push(`fee_terms = $${paramCount++}`);
-        values.push(updateData.feeTerms);
       }
       if (updateData.subscriptionStatus !== undefined) {
         fields.push(`subscription_status = $${paramCount++}`);

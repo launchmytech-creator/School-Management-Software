@@ -1,157 +1,314 @@
 /fee-transactions/generate:
   post:
     tags:
-    - Fee Transactions
+      - Fee Transactions
     summary: Generate fee transactions
-    description: Auto-generate fee transactions for all students in a class based
-      on fee structure and school fee terms (School Admin only)
+    description: |
+      Generates fee transactions for all active students in a class for a given academic year.
+
+      **Due date spacing by feeTerms:**
+      | feeTerms | Mode | Due dates (academic year starts Apr 1) |
+      |---|---|---|
+      | `1` | Yearly | Apr 1 |
+      | `2` | Half-yearly | Apr 1, Oct 1 |
+      | `4` | Quarterly | Apr 1, Jul 1, Oct 1, Jan 1 |
+      | `12` | Monthly | Apr 1, May 1, Jun 1 ... Mar 1 |
+
+      Students who already have transactions for this class+year are skipped — safe to re-run.
     security:
-    - BearerAuth: []
+      - BearerAuth: []
     requestBody:
       required: true
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/GenerateFeeTransactions'
+          example:
+            classId: 1
+            academicYearId: 1
     responses:
       '201':
         description: Fee transactions generated successfully
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Success'
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        feeTerms:
+                          type: integer
+                          enum: [1, 2, 4, 12]
+                          example: 4
+                        totalAnnualFee:
+                          type: number
+                          example: 50000
+                        perTermAmount:
+                          type: number
+                          example: 12500
+                        termBreakdown:
+                          type: object
+                          description: Per-component amount per term
+                          example:
+                            "Tuition Fee": 7500
+                            "Transport Fee": 2500
+                            "Exam Fee": 1250
+                            "Extra Fee": 1250
+                        generated:
+                          type: integer
+                          description: Total transactions created (students × feeTerms)
+                          example: 120
+                        skippedStudents:
+                          type: integer
+                          description: Students skipped — transactions already existed
+                          example: 0
+                        transactions:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/FeeTransaction'
+            examples:
+              quarterly50k:
+                summary: 30 students × 4 terms, total annual = 50,000
+                value:
+                  success: true
+                  message: "Generated 120 fee transactions successfully"
+                  data:
+                    feeTerms: 4
+                    totalAnnualFee: 50000
+                    perTermAmount: 12500
+                    termBreakdown:
+                      "Tuition Fee": 7500
+                      "Transport Fee": 2500
+                      "Exam Fee": 1250
+                      "Extra Fee": 1250
+                    generated: 120
+                    skippedStudents: 0
+                    transactions:
+                      - id: 1
+                        student_id: 5
+                        term_number: 1
+                        amount_due: "12500.00"
+                        due_date: "2024-04-01"
+                        status: "pending"
+                        fee_breakdown: { "Tuition Fee": 7500, "Transport Fee": 2500, "Exam Fee": 1250, "Extra Fee": 1250 }
+                      - id: 2
+                        student_id: 5
+                        term_number: 2
+                        amount_due: "12500.00"
+                        due_date: "2024-07-01"
+                        status: "pending"
+                        fee_breakdown: { "Tuition Fee": 7500, "Transport Fee": 2500, "Exam Fee": 1250, "Extra Fee": 1250 }
+                      - id: 3
+                        student_id: 5
+                        term_number: 3
+                        amount_due: "12500.00"
+                        due_date: "2024-10-01"
+                        status: "pending"
+                      - id: 4
+                        student_id: 5
+                        term_number: 4
+                        amount_due: "12500.00"
+                        due_date: "2025-01-01"
+                        status: "pending"
+              yearly50k:
+                summary: 30 students × 1 term, total annual = 50,000 (Yearly)
+                value:
+                  success: true
+                  message: "Generated 30 fee transactions successfully"
+                  data:
+                    feeTerms: 1
+                    totalAnnualFee: 50000
+                    perTermAmount: 50000
+                    termBreakdown:
+                      "Tuition Fee": 30000
+                      "Transport Fee": 10000
+                      "Exam Fee": 5000
+                      "Extra Fee": 5000
+                    generated: 30
+                    skippedStudents: 0
+                    transactions:
+                      - id: 1
+                        student_id: 5
+                        term_number: null
+                        amount_due: "50000.00"
+                        due_date: "2024-04-01"
+                        status: "pending"
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':
         $ref: '#/components/responses/Unauthorized'
       '403':
         $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
+
 /fee-transactions:
   get:
     tags:
-    - Fee Transactions
+      - Fee Transactions
     summary: Get all fee transactions
-    description: Get all fee transactions for the school (School Admin or Accountant)
+    description: Returns all fee transactions for the school with optional filters.
     security:
-    - BearerAuth: []
+      - BearerAuth: []
     parameters:
-    - in: query
-      name: studentId
-      schema:
-        type: integer
-      description: Filter by student ID
-    - in: query
-      name: classId
-      schema:
-        type: integer
-      description: Filter by class ID
-    - in: query
-      name: academicYearId
-      schema:
-        type: integer
-      description: Filter by academic year ID
-    - in: query
-      name: status
-      schema:
-        type: string
-        enum:
-        - pending
-        - partial
-        - paid
-      description: Filter by payment status
+      - in: query
+        name: studentId
+        schema:
+          type: integer
+        description: Filter by student ID
+      - in: query
+        name: classId
+        schema:
+          type: integer
+        description: Filter by class ID
+      - in: query
+        name: academicYearId
+        schema:
+          type: integer
+        description: Filter by academic year ID
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum: [pending, partial, paid]
+        description: Filter by payment status
     responses:
       '200':
         description: Fee transactions retrieved successfully
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Success'
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/FeeTransaction'
       '401':
         $ref: '#/components/responses/Unauthorized'
+
 /fee-transactions/defaulters:
   get:
     tags:
-    - Fee Transactions
-    summary: Get fee defaulters list
-    description: Get list of students with pending/overdue fees (School Admin or Accountant)
+      - Fee Transactions
+    summary: Get fee defaulters
+    description: |
+      Returns all transactions where `due_date < today` and `status` is `pending` or `partial`.
+      These are students who missed their payment deadline.
     security:
-    - BearerAuth: []
+      - BearerAuth: []
     parameters:
-    - in: query
-      name: classId
-      schema:
-        type: integer
-      description: Filter by class ID
+      - in: query
+        name: classId
+        schema:
+          type: integer
+        description: Filter by class ID
+      - in: query
+        name: academicYearId
+        schema:
+          type: integer
+        description: Filter by academic year ID
     responses:
       '200':
         description: Fee defaulters retrieved successfully
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Success'
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/FeeDefaulter'
       '401':
         $ref: '#/components/responses/Unauthorized'
+
 /fee-transactions/student/{studentId}:
   get:
     tags:
-    - Fee Transactions
+      - Fee Transactions
     summary: Get student fee transactions
-    description: Get all fee transactions for a specific student (School Admin or
-      Accountant)
+    description: |
+      Get all fee transactions for a specific student.
+      - Admin / Accountant — can access any student
+      - Parent — can only access their own child (403 otherwise)
     security:
-    - BearerAuth: []
+      - BearerAuth: []
     parameters:
-    - in: path
-      name: studentId
-      required: true
-      schema:
-        type: integer
-      description: Student ID
+      - in: path
+        name: studentId
+        required: true
+        schema:
+          type: integer
     responses:
       '200':
         description: Student fee transactions retrieved successfully
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Success'
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/FeeTransaction'
       '401':
         $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+
 /fee-transactions/{id}:
   get:
     tags:
-    - Fee Transactions
+      - Fee Transactions
     summary: Get fee transaction by ID
-    description: Get a specific fee transaction (School Admin or Accountant)
     security:
-    - BearerAuth: []
+      - BearerAuth: []
     parameters:
-    - $ref: '#/components/parameters/IdPathParam'
+      - $ref: '#/components/parameters/IdPathParam'
     responses:
       '200':
         description: Fee transaction retrieved successfully
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Success'
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/FeeTransaction'
       '401':
         $ref: '#/components/responses/Unauthorized'
       '404':
         $ref: '#/components/responses/NotFound'
+
   patch:
     tags:
-    - Fee Transactions
+      - Fee Transactions
     summary: Update fee transaction
-    description: Update fee transaction details like due date (School Admin only)
+    description: Update transaction details such as due date (School Admin only).
     security:
-    - BearerAuth: []
+      - BearerAuth: []
     parameters:
-    - $ref: '#/components/parameters/IdPathParam'
+      - $ref: '#/components/parameters/IdPathParam'
     requestBody:
       required: true
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/UpdateFeeTransaction'
+          example:
+            dueDate: "2024-08-01"
     responses:
       '200':
         description: Fee transaction updated successfully
@@ -167,58 +324,140 @@
         $ref: '#/components/responses/Forbidden'
       '404':
         $ref: '#/components/responses/NotFound'
+
 /fee-transactions/{id}/payment:
   patch:
     tags:
-    - Fee Transactions
+      - Fee Transactions
     summary: Record fee payment
-    description: Record a fee payment for a transaction (School Admin or Accountant)
+    description: |
+      Record a payment against a fee transaction (School Admin or Accountant).
+
+      - Payments are cumulative — each call adds to `amount_paid`
+      - Status auto-updates: `pending` → `partial` → `paid`
+      - Overpayment beyond `amount_due` is rejected
+      - Paying an already `paid` transaction is rejected
+
+      **Example (quarterly, amount_due = 12,500):**
+      - Call 1: amountPaid=6000 → status: `partial`, amount_paid=6000
+      - Call 2: amountPaid=6500 → status: `paid`, amount_paid=12500
     security:
-    - BearerAuth: []
+      - BearerAuth: []
     parameters:
-    - $ref: '#/components/parameters/IdPathParam'
+      - $ref: '#/components/parameters/IdPathParam'
     requestBody:
       required: true
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/RecordPayment'
+          examples:
+            fullPayment:
+              summary: Full term payment
+              value:
+                amountPaid: 12500.00
+                paymentMode: "cash"
+                paymentDate: "2024-04-05"
+                receiptNumber: "RCP-001"
+            partialPayment:
+              summary: Partial payment
+              value:
+                amountPaid: 6000.00
+                paymentMode: "upi"
+                paymentDate: "2024-04-05"
     responses:
       '200':
         description: Payment recorded successfully
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Success'
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/FeeTransaction'
+            examples:
+              paid:
+                summary: Fully paid
+                value:
+                  success: true
+                  message: "Payment recorded successfully"
+                  data:
+                    id: 1
+                    term_number: 1
+                    amount_due: "12500.00"
+                    amount_paid: "12500.00"
+                    status: "paid"
+                    payment_mode: "cash"
+                    payment_date: "2024-04-05"
+                    receipt_number: "RCP-001"
+              partial:
+                summary: Partially paid
+                value:
+                  success: true
+                  message: "Payment recorded successfully"
+                  data:
+                    id: 1
+                    term_number: 1
+                    amount_due: "12500.00"
+                    amount_paid: "6000.00"
+                    status: "partial"
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':
         $ref: '#/components/responses/Unauthorized'
       '404':
         $ref: '#/components/responses/NotFound'
+
 /fee-transactions/{id}/waiver:
   patch:
     tags:
-    - Fee Transactions
+      - Fee Transactions
     summary: Apply fee waiver
-    description: Apply a fee waiver/discount to a transaction (School Admin only)
+    description: |
+      Apply a discount/scholarship waiver to a transaction (School Admin only).
+
+      - `amount_due = original_amount - waiver_amount`
+      - Status is recalculated after waiver
+      - Waiver cannot exceed `original_amount`
+
+      **Example:** original=12500, waiver=2000 → amount_due becomes 10500
     security:
-    - BearerAuth: []
+      - BearerAuth: []
     parameters:
-    - $ref: '#/components/parameters/IdPathParam'
+      - $ref: '#/components/parameters/IdPathParam'
     requestBody:
       required: true
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ApplyWaiver'
+          example:
+            waiverAmount: 2000.00
+            waiverReason: "Merit scholarship"
     responses:
       '200':
         description: Fee waiver applied successfully
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Success'
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/FeeTransaction'
+            example:
+              success: true
+              message: "Fee waiver applied successfully"
+              data:
+                id: 1
+                original_amount: "12500.00"
+                waiver_amount: "2000.00"
+                amount_due: "10500.00"
+                amount_paid: "0.00"
+                status: "pending"
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':

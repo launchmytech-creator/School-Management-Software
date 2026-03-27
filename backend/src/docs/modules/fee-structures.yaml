@@ -1,105 +1,340 @@
 /fee-structures:
   post:
     tags:
-    - Fee Structures
-    summary: Create fee structure
-    description: Create a new fee structure for a class (School Admin only)
+      - Fee Structures
+    summary: Add a fee component
+    description: |
+      Admin adds one fee component (e.g. Tuition Fee, Transport Fee) with its **annual amount**
+      and the `feeTerms` that applies to the whole class+year group.
+
+      **How it works:**
+      - Each call adds one fee type to the class+year group
+      - `feeTerms` must be the same for all components in the same class+year group
+      - The system enforces consistency — if the group already has components with feeTerms=4,
+        you cannot add a new component with feeTerms=2
+      - `amount` is the **annual amount** for that fee type (NOT per-term)
+
+      **Example — building a total annual fee of 50,000:**
+      ```
+      POST { classId:1, academicYearId:1, feeTerms:4, feeType:"Tuition Fee",  amount:30000 }
+      POST { classId:1, academicYearId:1, feeTerms:4, feeType:"Transport Fee", amount:10000 }
+      POST { classId:1, academicYearId:1, feeTerms:4, feeType:"Exam Fee",      amount:5000  }
+      POST { classId:1, academicYearId:1, feeTerms:4, feeType:"Extra Fee",     amount:5000  }
+      ```
+      Total annual = 50,000 → per term = 50,000 / 4 = **12,500**
+
+      **feeTerms options:**
+      | Value | Mode | Per-term = Total / feeTerms |
+      |---|---|---|
+      | `1` | Yearly | Total / 1 — pay once |
+      | `2` | Half-yearly | Total / 2 — every 6 months |
+      | `4` | Quarterly | Total / 4 — every 3 months |
+      | `12` | Monthly | Total / 12 — every month |
     security:
-    - BearerAuth: []
+      - BearerAuth: []
     requestBody:
       required: true
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/CreateFeeStructure'
+          examples:
+            addTuitionFee:
+              summary: Add Tuition Fee component (annual 30000, quarterly)
+              value:
+                classId: 1
+                academicYearId: 1
+                feeTerms: 4
+                feeType: "Tuition Fee"
+                amount: 30000.00
+            addTransportFee:
+              summary: Add Transport Fee component (annual 10000, quarterly)
+              value:
+                classId: 1
+                academicYearId: 1
+                feeTerms: 4
+                feeType: "Transport Fee"
+                amount: 10000.00
+            addExamFee:
+              summary: Add Exam Fee component (annual 5000, quarterly)
+              value:
+                classId: 1
+                academicYearId: 1
+                feeTerms: 4
+                feeType: "Exam Fee"
+                amount: 5000.00
+            yearlyExample:
+              summary: Yearly — single payment of full annual fee
+              value:
+                classId: 1
+                academicYearId: 1
+                feeTerms: 1
+                feeType: "Tuition Fee"
+                amount: 50000.00
     responses:
       '201':
-        description: Fee structure created successfully
+        description: Fee component added successfully
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Success'
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        component:
+                          $ref: '#/components/schemas/FeeStructure'
+                        group:
+                          $ref: '#/components/schemas/FeeStructureGroup'
+            examples:
+              afterAddingThreeComponents:
+                summary: Response after adding 3 components (Tuition + Transport + Exam)
+                value:
+                  success: true
+                  message: "Fee component added successfully"
+                  data:
+                    component:
+                      id: 3
+                      fee_type: "Exam Fee"
+                      amount: "5000.00"
+                      fee_terms: 4
+                    group:
+                      classId: 1
+                      academicYearId: 1
+                      className: "Class 5"
+                      classSection: "A"
+                      academicYearName: "2024-2025"
+                      feeTerms: 4
+                      totalAnnualFee: 45000
+                      perTermAmount: 11250
+                      components:
+                        - { id: 1, fee_type: "Tuition Fee",  annual_amount: 30000 }
+                        - { id: 2, fee_type: "Transport Fee", annual_amount: 10000 }
+                        - { id: 3, fee_type: "Exam Fee",      annual_amount: 5000  }
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':
         $ref: '#/components/responses/Unauthorized'
       '403':
         $ref: '#/components/responses/Forbidden'
-  get:
-    tags:
-    - Fee Structures
-    summary: Get all fee structures
-    description: Get all fee structures for the school (School Admin or Accountant)
-    security:
-    - BearerAuth: []
-    parameters:
-    - in: query
-      name: classId
-      schema:
-        type: integer
-      description: Filter by class ID
-    - in: query
-      name: academicYearId
-      schema:
-        type: integer
-      description: Filter by academic year ID
-    - in: query
-      name: feeType
-      schema:
-        type: string
-      description: Filter by fee type
-    responses:
-      '200':
-        description: Fee structures retrieved successfully
+      '409':
+        description: Fee type already exists for this class and academic year
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Success'
+              $ref: '#/components/schemas/Error'
+            example:
+              success: false
+              errorCode: "VAL_003"
+              message: "Fee type 'Tuition Fee' already exists for this class and academic year"
+
+  get:
+    tags:
+      - Fee Structures
+    summary: Get all fee components (flat list)
+    description: Returns all individual fee component rows. Use `/fee-structures/grouped` for totals and per-term amounts.
+    security:
+      - BearerAuth: []
+    parameters:
+      - in: query
+        name: classId
+        schema:
+          type: integer
+        description: Filter by class ID
+      - in: query
+        name: academicYearId
+        schema:
+          type: integer
+        description: Filter by academic year ID
+      - in: query
+        name: feeType
+        schema:
+          type: string
+        description: Filter by fee type
+    responses:
+      '200':
+        description: Fee components retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/FeeStructure'
       '401':
         $ref: '#/components/responses/Unauthorized'
+
+/fee-structures/grouped:
+  get:
+    tags:
+      - Fee Structures
+    summary: Get fee structures grouped by class and academic year
+    description: |
+      Returns one entry per class+year group showing:
+      - All fee components with their annual amounts
+      - Total annual fee (sum of all components)
+      - Per-term amount (total / feeTerms)
+      - feeTerms mode
+
+      This is the main view for understanding what a student owes per term.
+    security:
+      - BearerAuth: []
+    parameters:
+      - in: query
+        name: classId
+        schema:
+          type: integer
+        description: Filter by class ID
+      - in: query
+        name: academicYearId
+        schema:
+          type: integer
+        description: Filter by academic year ID
+    responses:
+      '200':
+        description: Grouped fee structures retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/FeeStructureGroup'
+            example:
+              success: true
+              data:
+                - classId: 1
+                  academicYearId: 1
+                  className: "Class 5"
+                  classSection: "A"
+                  academicYearName: "2024-2025"
+                  feeTerms: 4
+                  totalAnnualFee: 50000
+                  perTermAmount: 12500
+                  components:
+                    - { id: 1, fee_type: "Tuition Fee",  annual_amount: 30000 }
+                    - { id: 2, fee_type: "Transport Fee", annual_amount: 10000 }
+                    - { id: 3, fee_type: "Exam Fee",      annual_amount: 5000  }
+                    - { id: 4, fee_type: "Extra Fee",     annual_amount: 5000  }
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+
+/fee-structures/group:
+  delete:
+    tags:
+      - Fee Structures
+    summary: Delete all fee components for a class+year
+    description: Deletes all fee components for the given class and academic year. This removes the entire fee structure for that group.
+    security:
+      - BearerAuth: []
+    parameters:
+      - in: query
+        name: classId
+        required: true
+        schema:
+          type: integer
+        description: Class ID
+      - in: query
+        name: academicYearId
+        required: true
+        schema:
+          type: integer
+        description: Academic year ID
+    responses:
+      '200':
+        description: All fee components deleted successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        deleted:
+                          type: integer
+                          example: 4
+                        records:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/FeeStructure'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
+
 /fee-structures/{id}:
   get:
     tags:
-    - Fee Structures
-    summary: Get fee structure by ID
-    description: Get a specific fee structure (School Admin or Accountant)
+      - Fee Structures
+    summary: Get fee component by ID
+    description: Get a single fee component by its ID.
     security:
-    - BearerAuth: []
+      - BearerAuth: []
     parameters:
-    - $ref: '#/components/parameters/IdPathParam'
+      - $ref: '#/components/parameters/IdPathParam'
     responses:
       '200':
-        description: Fee structure retrieved successfully
+        description: Fee component retrieved successfully
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Success'
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/FeeStructure'
       '401':
         $ref: '#/components/responses/Unauthorized'
       '404':
         $ref: '#/components/responses/NotFound'
+
   patch:
     tags:
-    - Fee Structures
-    summary: Update fee structure
-    description: Update a fee structure (School Admin only)
+      - Fee Structures
+    summary: Update a fee component
+    description: Update the annual amount or fee type label of a single fee component.
     security:
-    - BearerAuth: []
+      - BearerAuth: []
     parameters:
-    - $ref: '#/components/parameters/IdPathParam'
+      - $ref: '#/components/parameters/IdPathParam'
     requestBody:
       required: true
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/UpdateFeeStructure'
+          example:
+            amount: 32000.00
     responses:
       '200':
-        description: Fee structure updated successfully
+        description: Fee component updated successfully
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Success'
+              allOf:
+                - $ref: '#/components/schemas/Success'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/FeeStructure'
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':
@@ -108,18 +343,19 @@
         $ref: '#/components/responses/Forbidden'
       '404':
         $ref: '#/components/responses/NotFound'
+
   delete:
     tags:
-    - Fee Structures
-    summary: Delete fee structure
-    description: Delete a fee structure (School Admin only)
+      - Fee Structures
+    summary: Delete a fee component
+    description: Delete a single fee component by ID.
     security:
-    - BearerAuth: []
+      - BearerAuth: []
     parameters:
-    - $ref: '#/components/parameters/IdPathParam'
+      - $ref: '#/components/parameters/IdPathParam'
     responses:
       '200':
-        description: Fee structure deleted successfully
+        description: Fee component deleted successfully
         content:
           application/json:
             schema:

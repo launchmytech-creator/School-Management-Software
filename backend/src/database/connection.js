@@ -1,6 +1,10 @@
-const { Pool } = require("pg");
+const { Pool, types } = require("pg");
 const config = require("../config");
 const logger = require("../utils/logger");
+
+// Return DATE columns as plain strings (YYYY-MM-DD) instead of JS Date objects
+// This prevents UTC timezone shift (e.g. 2026-03-25 becoming 2026-03-24T18:30:00Z in IST)
+types.setTypeParser(1082, (val) => val);
 
 const poolConfig = {
   host: config.database.host,

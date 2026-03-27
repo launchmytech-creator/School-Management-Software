@@ -62,13 +62,16 @@ class StudentAttendanceController {
 
   async getSchoolOpenDays(req, res, next) {
     try {
-      const { startDate, endDate } = req.query;
+      const now = new Date();
+      const year = parseInt(req.query.year) || now.getFullYear();
+      const month = parseInt(req.query.month) || now.getMonth() + 1;
+
       const count = await studentAttendanceService.getSchoolOpenDays(
         req.user.schoolId,
-        startDate,
-        endDate,
+        year,
+        month,
       );
-      return ApiResponse.success(res, { school_open_days: count });
+      return ApiResponse.success(res, { school_open_days: count, year, month });
     } catch (error) {
       next(error);
     }

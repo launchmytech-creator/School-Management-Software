@@ -6,13 +6,12 @@ class FeeTransactionsController {
     try {
       const result = await feeTransactionsService.generateFeeTransactions(
         req.body,
-        req.user.schoolId,
-        req.user.id,
+        req.user.schoolId
       );
       return ApiResponse.created(
         res,
         result,
-        `Generated ${result.count} fee transactions successfully`,
+        "Generated " + result.generated + " fee transactions successfully"
       );
     } catch (error) {
       next(error);

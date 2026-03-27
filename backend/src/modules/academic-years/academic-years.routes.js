@@ -21,21 +21,21 @@ router.post(
 router.get(
   "/",
   authenticate,
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
   academicYearsController.getAcademicYears,
 );
 
 router.get(
   "/current",
   authenticate,
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
   academicYearsController.getCurrentAcademicYear,
 );
 
 router.get(
   "/:id",
   authenticate,
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
   academicYearsController.getAcademicYearById,
 );
 
