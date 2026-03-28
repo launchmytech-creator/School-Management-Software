@@ -7,7 +7,7 @@ interface BackendFeeTransaction {
   student_id: number;
   fee_structure_id: number;
   academic_year_id: number;
-  term_number: number | null;
+  term_number: number;
   original_amount: number;
   amount_due: number;
   amount_paid: number;
@@ -20,17 +20,15 @@ interface BackendFeeTransaction {
   waiver_reason: string | null;
   waiver_approved_by: number | null;
   collected_by: number | null;
-  // fee_breakdown is present on student-scoped queries (JSON: { "Tuition Fee": 7500, ... })
-  fee_breakdown?: Record<string, number> | string | null;
-  // joined fields — present on admin/accountant list queries, absent on student-scoped queries
-  student_name?: string;
-  admission_number?: string;
-  class_name?: string;
-  class_section?: string | null;
-  academic_year_name?: string;
-  fee_type?: string;
-  parent_name?: string | null;
-  parent_phone?: string | null;
+  // joined fields
+  student_name: string;
+  admission_number: string;
+  class_name: string;
+  class_section: string | null;
+  academic_year_name: string;
+  fee_type: string;
+  parent_name: string | null;
+  parent_phone: string | null;
   parent_email?: string | null;
   pending_amount?: number;
 }
@@ -46,11 +44,8 @@ export interface FeeTransaction {
   feeStructureId: number;
   academicYearId: number;
   academicYearName: string;
-  // feeType is only present on admin/accountant list queries
   feeType: string;
-  // feeBreakdown is present on student-scoped queries: { "Tuition Fee": 7500, "Transport Fee": 2500 }
-  feeBreakdown: Record<string, number> | null;
-  termNumber: number | null;
+  termNumber: number;
   originalAmount: number;
   amountDue: number;
   amountPaid: number;
@@ -113,62 +108,32 @@ export interface GenerateFeeTransactionsDto {
 }
 
 // ── Mappers ─────────────────────────────────────────────────────────
-
-/** Parse fee_breakdown — backend may return it as a string or object */
-const parseFeeBreakdown = (raw: BackendFeeTransaction['fee_breakdown']): Record<string, number> | null => {
-  if (!raw) return null;
-  if (typeof raw === 'string') {
-    try { return JSON.parse(raw); } catch { return null; }
-  }
-  return raw;
-};
-
-/**
- * Derive a human-readable label for a transaction.
- * - Admin/accountant list queries include fee_type directly.
- * - Student-scoped queries include fee_breakdown (JSON map of components).
- *   We join the component names as the label, e.g. "Tuition Fee, Transport Fee".
- */
-const deriveFeeLabel = (row: BackendFeeTransaction): string => {
-  if (row.fee_type) return row.fee_type;
-  const breakdown = parseFeeBreakdown(row.fee_breakdown);
-  if (breakdown) return Object.keys(breakdown).join(', ');
-  return 'Fee';
-};
-
-const mapTransaction = (row: BackendFeeTransaction): FeeTransaction => {
-  const amountDue = parseFloat(String(row.amount_due)) || 0;
-  const amountPaid = parseFloat(String(row.amount_paid)) || 0;
-  return {
-    id: row.id,
-    studentId: row.student_id,
-    studentName: row.student_name ?? '',
-    admissionNumber: row.admission_number ?? '',
-    className: row.class_name ?? '',
-    classSection: row.class_section ?? null,
-    feeStructureId: row.fee_structure_id,
-    academicYearId: row.academic_year_id,
-    academicYearName: row.academic_year_name ?? '',
-    feeType: deriveFeeLabel(row),
-    feeBreakdown: parseFeeBreakdown(row.fee_breakdown),
-    termNumber: row.term_number ?? null,
-    originalAmount: parseFloat(String(row.original_amount)) || 0,
-    amountDue,
-    amountPaid,
-    amountPending: row.pending_amount
-      ? parseFloat(String(row.pending_amount))
-      : amountDue - amountPaid,
-    dueDate: row.due_date,
-    status: row.status as FeeTransaction['status'],
-    paymentDate: row.payment_date,
-    paymentMode: row.payment_mode,
-    receiptNumber: row.receipt_number,
-    waiverAmount: row.waiver_amount ? parseFloat(String(row.waiver_amount)) : null,
-    waiverReason: row.waiver_reason,
-    parentName: row.parent_name ?? null,
-    parentPhone: row.parent_phone ?? null,
-  };
-};
+const mapTransaction = (row: BackendFeeTransaction): FeeTransaction => ({
+  id: row.id,
+  studentId: row.student_id,
+  studentName: row.student_name,
+  admissionNumber: row.admission_number,
+  className: row.class_name,
+  classSection: row.class_section,
+  feeStructureId: row.fee_structure_id,
+  academicYearId: row.academic_year_id,
+  academicYearName: row.academic_year_name,
+  feeType: row.fee_type,
+  termNumber: row.term_number,
+  originalAmount: parseFloat(String(row.original_amount)) || 0,
+  amountDue: parseFloat(String(row.amount_due)) || 0,
+  amountPaid: parseFloat(String(row.amount_paid)) || 0,
+  amountPending: (parseFloat(String(row.amount_due)) || 0) - (parseFloat(String(row.amount_paid)) || 0),
+  dueDate: row.due_date,
+  status: row.status as FeeTransaction['status'],
+  paymentDate: row.payment_date,
+  paymentMode: row.payment_mode,
+  receiptNumber: row.receipt_number,
+  waiverAmount: row.waiver_amount ? parseFloat(String(row.waiver_amount)) : null,
+  waiverReason: row.waiver_reason,
+  parentName: row.parent_name,
+  parentPhone: row.parent_phone,
+});
 
 /**
  * Backend /defaulters returns flat rows (one per overdue transaction).
@@ -189,9 +154,9 @@ const groupDefaulters = (rows: BackendFeeTransaction[]): FeeDefaulter[] => {
     } else {
       map.set(row.student_id, {
         studentId: row.student_id,
-        studentName: row.student_name ?? '',
-        admissionNumber: row.admission_number ?? '',
-        className: row.class_name ?? '',
+        studentName: row.student_name,
+        admissionNumber: row.admission_number,
+        className: row.class_name,
         parentName: row.parent_name || 'N/A',
         parentPhone: row.parent_phone || '',
         parentEmail: row.parent_email || '',
