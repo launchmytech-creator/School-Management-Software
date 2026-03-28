@@ -11,10 +11,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { name: 'Dashboard',  icon: 'dashboard',      path: '/parent/dashboard'   },
   { name: 'Attendance', icon: 'event_available', path: '/parent/attendance'  },
-  { name: 'Academics',  icon: 'menu_book',       path: '/parent/academics'   },
+  { name: 'Syllabus',   icon: 'auto_stories',    path: '/parent/syllabus'   },
   { name: 'Fees',       icon: 'payments',        path: '/parent/fees'        },
-  { name: 'Schedule',   icon: 'schedule',        path: '/parent/schedule'    },
-  { name: 'Settings',   icon: 'settings',        path: '/parent/settings'    },
 ];
 
 const ParentSidebar: React.FC = () => {

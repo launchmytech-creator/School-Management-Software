@@ -55,8 +55,8 @@ import Announcements from "../Pages/Admin/Announcements";
 import Timetables from "../Pages/Admin/Timetables";
 // import Assignments from "../Pages/Admin/Assignments";
 import SchoolSettingsPage from "../Pages/Admin/SchoolSettingsPage";
-import Reports from "../Pages/Admin/Reports";
 // import Attendance from "@/Pages/Admin/Attendance";
+import ParentSyllabus from "../Pages/Parent/Syllabus";
 
 const AppRouter = () => {
   return (
@@ -427,10 +427,9 @@ const AppRouter = () => {
             <Routes>
               <Route path="dashboard"  element={<ParentDashboard />} />
               <Route path="attendance" element={<ParentAttendance />} />
-              <Route path="academics"  element={<ParentDashboard />} />
+              <Route path="syllabus"  element={<ParentSyllabus />} />
               <Route path="fees"       element={<ParentFeeStatus />} />
-              <Route path="schedule"   element={<ParentDashboard />} />
-              <Route path="settings"   element={<ParentDashboard />} />
+    
             </Routes>
           </ProtectedRoute>
         }

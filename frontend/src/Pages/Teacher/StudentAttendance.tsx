@@ -183,7 +183,7 @@ const StudentAttendance: React.FC = () => {
     }
   };
 
-  const isDateInFuture = new Date(selectedDate) > new Date();
+ const isDateInFuture = selectedDate > getLocalDateString();
 
   return (
     <TeacherLayout title="Mark Attendance">

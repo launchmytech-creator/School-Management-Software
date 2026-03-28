@@ -79,8 +79,7 @@ const ParentAttendance: React.FC = () => {
   const [records, setRecords]       = useState<AttendanceRecord[]>([]);
   const [holidays, setHolidays]     = useState<Holiday[]>([]);
   const [loading, setLoading]       = useState(true);
-  const [annualOpenDays, setAnnualOpenDays] = useState<number>(0);
-  const [monthOpenDays, setMonthOpenDays]   = useState<number>(0);
+  const [monthOpenDays, setMonthOpenDays] = useState<number>(0);
 
   // ── fetch children ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -96,17 +95,17 @@ const ParentAttendance: React.FC = () => {
   // ── fetch attendance for selected child ─────────────────────────────────────
   const fetchAttendance = useCallback(async () => {
     if (!selected) return;
-    const start = `${viewYear}-01-01`;
-    const end   = `${viewYear}-12-31`;
+    const monthStart = toDateStr(viewYear, viewMonth, 1);
+    const monthEnd = toDateStr(viewYear, viewMonth, getDaysInMonth(viewYear, viewMonth));
     try {
       const data = await attendanceService.getAttendance({
         studentId: selected.id,
-        startDate: start,
-        endDate: end,
+        startDate: monthStart,
+        endDate: monthEnd,
       });
       setRecords(data);
     } catch { setRecords([]); }
-  }, [selected, viewYear]);
+  }, [selected, viewYear, viewMonth]);
 
   // ── fetch holidays ──────────────────────────────────────────────────────────
   const fetchHolidays = useCallback(async () => {
@@ -119,48 +118,16 @@ const ParentAttendance: React.FC = () => {
   // ── fetch school open days ───────────────────────────────────────────────────
   const fetchSchoolOpenDays = useCallback(async () => {
     try {
-      // Annual: full year Jan 1 to Dec 31
-      const annual = await attendanceService.getSchoolOpenDays(`${viewYear}-01-01`, `${viewYear}-12-31`);
-      setAnnualOpenDays(annual);
-
-      // Month: full month regardless of past/future
-      const monthStart = toDateStr(viewYear, viewMonth, 1);
-      const monthEnd = toDateStr(viewYear, viewMonth, getDaysInMonth(viewYear, viewMonth));
-      const month = await attendanceService.getSchoolOpenDays(monthStart, monthEnd);
-      setMonthOpenDays(month);
+      const count = await attendanceService.getSchoolOpenDays(viewYear, viewMonth + 1);
+      setMonthOpenDays(count);
     } catch { /* ignore */ }
-  }, [viewYear, viewMonth, today]);
+  }, [viewYear, viewMonth]);
 
   useEffect(() => { fetchAttendance(); fetchHolidays(); fetchSchoolOpenDays(); }, [fetchAttendance, fetchHolidays, fetchSchoolOpenDays]);
-
-  useEffect(() => {
-    if (!holidays) return;
-
-    if (monthOpenDays && monthOpenDays > 0) return;
-
-    const start = new Date(viewYear, viewMonth, 1);
-    const end = new Date(viewYear, viewMonth, getDaysInMonth(viewYear, viewMonth));
-    const holidaySetLocal = new Set(holidays.map(h => h.holidayDate.slice(0, 10)));
-
-    let count = 0;
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const dow = d.getDay(); 
-      if (dow === 0) continue;
-      const ds = toDateStr(d.getFullYear(), d.getMonth(), d.getDate());
-      if (holidaySetLocal.has(ds)) continue;
-      count++;
-    }
-
-    setMonthOpenDays(count);
-  }, [holidays, viewYear, viewMonth, monthOpenDays]);
 
   // ── derived ─────────────────────────────────────────────────────────────────
   const recordMap = new Map(records.map(r => [r.attendanceDate.slice(0, 10), r.status]));
   const holidaySet = new Set(holidays.map(h => h.holidayDate.slice(0, 10)));
-
-  const totalPresent = records.filter(r => r.status === 'present').length;
-  const totalAbsent  = records.filter(r => r.status === 'absent').length;
-  const annualPct    = annualOpenDays > 0 ? Math.round((totalPresent / annualOpenDays) * 100) : 0;
 
   // month summary
   const monthRecords = records.filter(r => {
@@ -169,9 +136,10 @@ const ParentAttendance: React.FC = () => {
   });
   const monthPresent = monthRecords.filter(r => r.status === 'present').length;
   const monthAbsent  = monthRecords.filter(r => r.status === 'absent').length;
+  const monthPct     = monthOpenDays > 0 ? Math.round((monthPresent / monthOpenDays) * 100) : 0;
 
-  const statusLabel = annualPct >= 90 ? 'EXCELLENT' : annualPct >= 75 ? 'GOOD' : 'NEEDS IMPROVEMENT';
-  const statusColor = annualPct >= 90 ? 'bg-emerald-500' : annualPct >= 75 ? 'bg-amber-500' : 'bg-rose-500';
+  const statusLabel = monthPct >= 90 ? 'EXCELLENT' : monthPct >= 75 ? 'GOOD' : 'NEEDS IMPROVEMENT';
+  const statusColor = monthPct >= 90 ? 'bg-emerald-500' : monthPct >= 75 ? 'bg-amber-500' : 'bg-rose-500';
 
   // ── calendar grid ────────────────────────────────────────────────────────────
   const daysInMonth  = getDaysInMonth(viewYear, viewMonth);
@@ -250,17 +218,17 @@ const ParentAttendance: React.FC = () => {
           </div>
         )}
 
-        {/* Annual overview card */}
+        {/* Monthly overview card */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 flex flex-col items-center">
-          <CircularProgress pct={annualPct} />
-          <h2 className="text-lg font-black text-slate-900 mt-4">Annual Attendance Overview</h2>
+          <CircularProgress pct={monthPct} />
+          <h2 className="text-lg font-black text-slate-900 mt-4">Monthly Attendance Overview</h2>
           <p className="text-sm text-slate-500 mt-1">
             Present:{' '}
-            <span className="text-emerald-500 font-bold">{totalPresent} days</span>
+            <span className="text-emerald-500 font-bold">{monthPresent} days</span>
             {' | '}Absent:{' '}
-            <span className="text-rose-500 font-bold">{totalAbsent} days</span>
+            <span className="text-rose-500 font-bold">{monthAbsent} days</span>
             {' | '}School Open:{' '}
-            <span className="text-slate-700 font-bold">{annualOpenDays} days</span>
+            <span className="text-slate-700 font-bold">{monthOpenDays} days</span>
           </p>
         </div>
 

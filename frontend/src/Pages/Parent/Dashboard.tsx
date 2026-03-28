@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ParentLayout from '../../layouts/ParentLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { parentService } from '../../services/parentService';
 import { feeService } from '../../services/feeService';
 import { attendanceService } from '../../services/attendanceService';
@@ -77,6 +78,7 @@ const AttendanceDay: React.FC<AttendanceDayProps> = ({ day, date, status }) => {
 const ParentDashboard: React.FC = () => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
+  const { selectedYear } = useAcademicYear();
 
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState<LinkedStudent[]>([]);
@@ -112,7 +114,7 @@ const ParentDashboard: React.FC = () => {
 
   const fetchAnnouncements = useCallback(async () => {
     try {
-      const data = await announcementService.getAnnouncements({ isActive: true, limit: 3 });
+      const data = await announcementService.getAnnouncements({ limit: 3 });
       setAnnouncements(data);
     } catch {
       // silently fail
@@ -225,7 +227,7 @@ const ParentDashboard: React.FC = () => {
                   </span>
                   <span className="flex items-center gap-1 text-xs text-slate-500">
                     <span className="material-symbols-outlined text-[14px] text-[#4A9FD4]" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
-                    Academic Year 2023-2024
+                    Academic Year {selectedYear?.name || 'N/A'}
                   </span>
                 </div>
               </div>
@@ -359,7 +361,7 @@ const ParentDashboard: React.FC = () => {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
                           <h4 className="font-bold text-slate-900 text-sm">{ann.title}</h4>
-                          <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">{ann.content}</p>
+                          <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">{ann.message}</p>
                           <div className="flex items-center gap-3 mt-3">
                             <button className="text-xs font-semibold text-slate-600 border border-slate-200 px-3 py-1 rounded-lg hover:bg-slate-50 transition-colors">
                               Download Circular

@@ -103,8 +103,8 @@ export interface ApplyWaiverDto {
 }
 
 export interface GenerateFeeTransactionsDto {
-  classId: number;
-  academicYearId: number;
+  feeStructureId: number;
+  academicYearStartDate: string;
 }
 
 // ── Mappers ─────────────────────────────────────────────────────────
@@ -231,7 +231,6 @@ export const feeService = {
     studentId?: number;
     academicYearId?: number;
     status?: string;
-    feeType?: string;
   } = {}): Promise<FeeTransaction[]> => {
     const qp = new URLSearchParams();
     if (params.classId) qp.append('classId', String(params.classId));
@@ -241,36 +240,20 @@ export const feeService = {
 
     const qs = qp.toString();
     const rows = await apiRequest<BackendFeeTransaction[]>(`/fee-transactions${qs ? `?${qs}` : ''}`);
-    let transactions = rows.map(mapTransaction);
-
-    // Frontend filter for feeType
-    if (params.feeType) {
-      transactions = transactions.filter(t => t.feeType === params.feeType);
-    }
-
-    return transactions;
+    return rows.map(mapTransaction);
   },
 
   // Fee defaulters (grouped by student)
-  getFeeDefaulters: async (classId?: number, academicYearId?: number): Promise<FeeDefaulter[]> => {
-    const params = new URLSearchParams();
-    if (classId) params.append('classId', String(classId));
-    if (academicYearId) params.append('academicYearId', String(academicYearId));
-    const qs = params.toString();
-    const rows = await apiRequest<BackendFeeTransaction[]>(`/fee-transactions/defaulters${qs ? `?${qs}` : ''}`);
+  getFeeDefaulters: async (classId?: number): Promise<FeeDefaulter[]> => {
+    const qs = classId ? `?classId=${classId}` : '';
+    const rows = await apiRequest<BackendFeeTransaction[]>(`/fee-transactions/defaulters${qs}`);
     return groupDefaulters(rows);
   },
 
   // Single student transactions
-  getStudentFeeTransactions: async (studentId: number, feeType?: string): Promise<FeeTransaction[]> => {
+  getStudentFeeTransactions: async (studentId: number): Promise<FeeTransaction[]> => {
     const rows = await apiRequest<BackendFeeTransaction[]>(`/fee-transactions/student/${studentId}`);
-    let transactions = rows.map(mapTransaction);
-    
-    if (feeType) {
-      transactions = transactions.filter(t => t.feeType === feeType);
-    }
-    
-    return transactions;
+    return rows.map(mapTransaction);
   },
 
   // Single transaction detail
