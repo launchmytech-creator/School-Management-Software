@@ -104,20 +104,19 @@ export const subjectService = {
     });
   },
 
-  // Class Subjects
   assignSubjectToClass: async (data: AssignSubjectToClassDto): Promise<ClassSubject> => {
-    return apiRequest<ClassSubject>('/class-subjects', {
-      method: 'POST',
-      data,
-    });
+    const raw = await apiRequest<any>('/class-subjects', { method: 'POST', data });
+    return { id: raw.id, classId: raw.class_id, className: raw.class_name ?? '', subjectId: raw.subject_id, subjectName: raw.subject_name ?? '', academicYearId: raw.academic_year_id, academicYearName: raw.academic_year_name ?? '' };
   },
 
   getSubjectsByClass: async (classId: number): Promise<ClassSubject[]> => {
-    return apiRequest<ClassSubject[]>(`/class-subjects/class/${classId}`);
+    const raw = await apiRequest<any[]>(`/class-subjects/class/${classId}`);
+    return raw.map(r => ({ id: r.id, classId: r.class_id, className: r.class_name ?? '', subjectId: r.subject_id, subjectName: r.subject_name ?? '', academicYearId: r.academic_year_id, academicYearName: r.academic_year_name ?? '' }));
   },
 
   getClassesBySubject: async (subjectId: number): Promise<ClassSubject[]> => {
-    return apiRequest<ClassSubject[]>(`/class-subjects/subject/${subjectId}`);
+    const raw = await apiRequest<any[]>(`/class-subjects/subject/${subjectId}`);
+    return raw.map(r => ({ id: r.id, classId: r.class_id, className: r.class_name ?? '', subjectId: r.subject_id, subjectName: r.subject_name ?? '', academicYearId: r.academic_year_id, academicYearName: r.academic_year_name ?? '' }));
   },
 
   removeSubjectFromClass: async (id: number): Promise<void> => {

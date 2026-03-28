@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ParentLayout from '../../layouts/ParentLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { parentService } from '../../services/parentService';
 import { feeService } from '../../services/feeService';
 import { attendanceService } from '../../services/attendanceService';
@@ -21,15 +23,19 @@ const timeAgo = (dateStr: string): string => {
   return `${Math.floor(hrs / 24)} DAYS AGO`;
 };
 
-const WEEK_DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const DAY_LABELS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 const StatCard: React.FC<{
   label: string;
   icon: string;
   iconColor: string;
   children: React.ReactNode;
-}> = ({ label, icon, iconColor, children }) => (
-  <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+  onClick?: () => void;
+}> = ({ label, icon, iconColor, children, onClick }) => (
+  <div
+    className={`bg-white rounded-2xl border border-slate-100 p-5 shadow-sm ${onClick ? 'cursor-pointer hover:border-[#4A9FD4] hover:shadow-md transition-all' : ''}`}
+    onClick={onClick}
+  >
     <div className="flex items-start justify-between mb-3">
       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
       <span
@@ -46,7 +52,7 @@ const StatCard: React.FC<{
 interface AttendanceDayProps {
   day: string;
   date: string;
-  status: 'present' | 'absent' | 'late' | 'future' | null;
+  status: 'present' | 'absent' | 'late';
 }
 
 const AttendanceDay: React.FC<AttendanceDayProps> = ({ day, date, status }) => {
@@ -54,12 +60,10 @@ const AttendanceDay: React.FC<AttendanceDayProps> = ({ day, date, status }) => {
   const circle =
     status === 'present' ? `${base} bg-emerald-500 text-white` :
     status === 'absent'  ? `${base} bg-rose-500 text-white` :
-    status === 'late'    ? `${base} bg-amber-400 text-white` :
-                           `${base} bg-slate-100 text-slate-300`;
+                           `${base} bg-amber-400 text-white`;
   const icon =
     status === 'present' ? 'check' :
-    status === 'absent'  ? 'close' :
-    status === 'late'    ? 'schedule' : 'remove';
+    status === 'absent'  ? 'close' : 'schedule';
 
   return (
     <div className="text-center">
@@ -77,12 +81,15 @@ const AttendanceDay: React.FC<AttendanceDayProps> = ({ day, date, status }) => {
 const ParentDashboard: React.FC = () => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
+  const { selectedYear } = useAcademicYear();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState<LinkedStudent[]>([]);
   const [selectedChild, setSelectedChild] = useState<LinkedStudent | null>(null);
   const [fees, setFees] = useState<FeeTransaction[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [schoolOpenDays, setSchoolOpenDays] = useState(0);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   const fetchChildren = useCallback(async () => {
@@ -98,13 +105,21 @@ const ParentDashboard: React.FC = () => {
 
   const fetchChildData = useCallback(async () => {
     if (!selectedChild) return;
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const monthEnd = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     try {
-      const [feeData, attData] = await Promise.all([
+      const [feeData, attData, openDays] = await Promise.all([
         feeService.getStudentFeeTransactions(selectedChild.id),
-        attendanceService.getAttendance({ studentId: selectedChild.id }),
+        attendanceService.getAttendance({ studentId: selectedChild.id, startDate: monthStart, endDate: monthEnd }),
+        attendanceService.getSchoolOpenDays(year, month + 1),
       ]);
       setFees(feeData);
       setAttendance(attData);
+      setSchoolOpenDays(openDays);
     } catch {
       // silently fail
     }
@@ -133,7 +148,7 @@ const ParentDashboard: React.FC = () => {
     fetchChildData();
   }, [selectedChild]);
 
-  const totalDays   = attendance.length;
+  const totalDays   = schoolOpenDays;
   const presentDays = attendance.filter(a => a.status === 'present').length;
   const pct         = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
 
@@ -142,16 +157,26 @@ const ParentDashboard: React.FC = () => {
                       fees.some(f => f.status === 'partial') ? 'Partial' : 'Pending';
   const feeIsPaid   = feeStatus === 'Paid';
   const pendingFees = fees.filter(f => f.status !== 'paid' && f.status !== 'waived');
-  const latestFee   = fees[fees.length - 1] ?? null;
 
-  const recentAtt = attendance.slice(-6);
-  const weekSlots = WEEK_DAYS.map((day, i) => {
-    const rec = recentAtt[i];
-    if (!rec) return { day, date: '', status: 'future' as const };
-    const d = new Date(rec.attendanceDate);
-    const dateLabel = `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`;
-    return { day, date: dateLabel, status: rec.status as 'present' | 'absent' | 'late' };
-  });
+  // Parse YYYY-MM-DD safely without UTC shift
+  const parseLocalDate = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+
+  // Last 6 attendance records, sorted oldest→newest, no padding
+  const weekSlots = [...attendance]
+    .sort((a, b) => a.attendanceDate.localeCompare(b.attendanceDate))
+    .slice(-6)
+    .map(rec => {
+      const d = parseLocalDate(rec.attendanceDate);
+      return {
+        key: rec.attendanceDate,
+        day: DAY_LABELS[d.getDay()],
+        date: `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`,
+        status: rec.status as 'present' | 'absent' | 'late',
+      };
+    });
 
   if (loading) {
     return (
@@ -225,7 +250,7 @@ const ParentDashboard: React.FC = () => {
                   </span>
                   <span className="flex items-center gap-1 text-xs text-slate-500">
                     <span className="material-symbols-outlined text-[14px] text-[#4A9FD4]" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
-                    Academic Year 2023-2024
+                    Academic Year {selectedYear?.name || 'N/A'}
                   </span>
                 </div>
               </div>
@@ -241,7 +266,7 @@ const ParentDashboard: React.FC = () => {
 
             {/* Stat Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard label="Attendance Ratio" icon="person_check" iconColor="text-blue-400">
+              <StatCard label="Attendance Ratio" icon="person_check" iconColor="text-blue-400" onClick={() => navigate('/parent/attendance')}>
                 <p className="text-2xl font-black text-slate-900">
                   {presentDays}/{totalDays}
                   <span className="text-sm font-bold text-emerald-500 ml-2">{pct}%</span>
@@ -249,6 +274,11 @@ const ParentDashboard: React.FC = () => {
                 <div className="mt-3 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                 </div>
+                <p className="text-[10px] text-slate-400 mt-1.5">This month · school days</p>
+                <p className="text-[10px] text-[#4A9FD4] font-semibold mt-1 flex items-center gap-0.5">
+                  View details
+                  <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
+                </p>
               </StatCard>
 
               <StatCard label="Latest Exam Score" icon="star" iconColor="text-amber-400">
@@ -284,60 +314,121 @@ const ParentDashboard: React.FC = () => {
               <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="font-bold text-slate-900">Recent Attendance</h3>
-                  <div className="flex items-center gap-4 text-xs text-slate-500">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />Present
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />Absent
-                    </span>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />Present
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />Absent
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => navigate('/parent/attendance')}
+                      className="text-xs font-bold text-[#4A9FD4] hover:underline flex items-center gap-0.5"
+                    >
+                      View All
+                      <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                    </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-6 gap-2">
-                  {weekSlots.map((slot) => (
-                    <AttendanceDay
-                      key={slot.day}
-                      day={slot.day}
-                      date={slot.date}
-                      status={slot.status as 'present' | 'absent' | 'late' | 'future' | null}
-                    />
-                  ))}
+                <div className="grid grid-cols-6 gap-3">
+                  {attendance.length === 0 ? (
+                    <div className="col-span-6 text-center py-6">
+                      <span className="material-symbols-outlined text-3xl text-slate-200 block mb-2">event_busy</span>
+                      <p className="text-xs text-slate-400">No attendance records this month</p>
+                    </div>
+                  ) : (
+                    weekSlots.map((slot) => (
+                      <AttendanceDay
+                        key={slot.key}
+                        day={slot.day}
+                        date={slot.date}
+                        status={slot.status}
+                      />
+                    ))
+                  )}
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col items-center justify-center text-center">
-                {feeIsPaid ? (
-                  <>
-                    <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-                      <span className="material-symbols-outlined text-emerald-500 text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                    </div>
-                    <h4 className="font-bold text-slate-900 text-lg mb-1">All Clear!</h4>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      There are no pending fee payments for {selectedChild.fullName.split(' ')[0]} this month. Great job!
-                    </p>
-                    <button className="mt-4 text-xs font-bold text-[#4A9FD4] hover:underline flex items-center gap-1">
-                      View Receipt History
-                      <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                    </button>
-                  </>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-slate-900">Fee Status</h3>
+                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                    feeIsPaid ? 'bg-emerald-50 text-emerald-600' :
+                    feeStatus === 'Partial' ? 'bg-amber-50 text-amber-600' :
+                    feeStatus === 'N/A' ? 'bg-slate-100 text-slate-400' :
+                    'bg-rose-50 text-rose-600'
+                  }`}>
+                    {feeStatus.toUpperCase()}
+                  </span>
+                </div>
+
+                {fees.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center py-4">
+                    <span className="material-symbols-outlined text-3xl text-slate-200 block mb-2">receipt_long</span>
+                    <p className="text-xs text-slate-400">No fee records found</p>
+                  </div>
                 ) : (
                   <>
-                    <div className="w-14 h-14 rounded-full bg-rose-100 flex items-center justify-center mb-4">
-                      <span className="material-symbols-outlined text-rose-500 text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Total Annual Fee</span>
+                        <span className="text-sm font-bold text-slate-900">
+                          ₹{fees.reduce((s, f) => s + f.amountDue, 0).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Amount Paid</span>
+                        <span className="text-sm font-bold text-emerald-600">
+                          ₹{fees.reduce((s, f) => s + f.amountPaid, 0).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Amount Due</span>
+                        <span className="text-sm font-bold text-rose-500">
+                          ₹{fees.reduce((s, f) => s + Math.max(0, f.amountDue - f.amountPaid), 0).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+
+                      {/* Progress bar */}
+                      {(() => {
+                        const total = fees.reduce((s, f) => s + f.amountDue, 0);
+                        const paid  = fees.reduce((s, f) => s + f.amountPaid, 0);
+                        const pct   = total > 0 ? Math.round((paid / total) * 100) : 0;
+                        return (
+                          <div className="pt-1">
+                            <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                              <span>Paid</span><span>{pct}%</span>
+                            </div>
+                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
-                    <h4 className="font-bold text-slate-900 text-lg mb-1">Payment Due</h4>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      {pendingFees.length} fee{pendingFees.length > 1 ? 's' : ''} pending for {selectedChild.fullName.split(' ')[0]}.
-                    </p>
-                    {latestFee?.dueDate && (
-                      <p className="text-xs text-rose-500 font-semibold mt-1">Due: {formatDate(latestFee.dueDate)}</p>
+
+                    {/* Next due */}
+                    {pendingFees.length > 0 && pendingFees[0].dueDate && (
+                      <div className="mt-4 bg-rose-50 rounded-xl px-3 py-2 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-rose-400 text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>event</span>
+                        <div>
+                          <p className="text-[10px] text-rose-400 font-semibold uppercase">Next Due</p>
+                          <p className="text-xs font-bold text-rose-600">{formatDate(pendingFees[0].dueDate)}</p>
+                        </div>
+                      </div>
                     )}
-                    <button className="mt-4 text-xs font-bold text-[#4A9FD4] hover:underline flex items-center gap-1">
-                      View Fee Details
-                      <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                    </button>
                   </>
                 )}
+
+                <button
+                  onClick={() => navigate('/parent/fees')}
+                  className="mt-4 text-xs font-bold text-[#4A9FD4] hover:underline flex items-center gap-1"
+                >
+                  View Details
+                  <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </button>
               </div>
             </div>
 

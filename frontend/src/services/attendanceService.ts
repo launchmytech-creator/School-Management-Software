@@ -96,9 +96,9 @@ export const attendanceService = {
     }));
   },
 
-  getSchoolOpenDays: async (startDate: string, endDate: string): Promise<number> => {
+  getSchoolOpenDays: async (year: number, month: number): Promise<number> => {
     const response = await apiRequest<{ school_open_days: number }>(
-      `/student-attendance/school-open-days?startDate=${startDate}&endDate=${endDate}`
+      `/student-attendance/school-open-days?year=${year}&month=${month}`
     );
     return response.school_open_days;
   },
