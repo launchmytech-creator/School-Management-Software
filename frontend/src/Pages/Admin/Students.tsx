@@ -11,7 +11,8 @@ import {
 import { studentService } from '../../services/studentService';
 import { feeService } from '../../services/feeService';
 import { useNotification } from '../../context/NotificationContext';
-import type { Student, StudentFilters as IStudentFilters, FeeStatus } from '../../types/student';
+import { useAcademicYear } from '../../context/AcademicYearContext';
+import type { Student, FeeStatus } from '../../types/student';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import { SkeletonTable } from '../../components/common/Skeleton';
@@ -19,20 +20,30 @@ import { Button } from '../../components/ui/button';
 
 const Students: React.FC = () => {
   const navigate = useNavigate();
+  const { selectedYear } = useAcademicYear();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState({
+    classId: '',
+    section: '',
+    academicYear: '',
+    status: '',
+  });
   const { showNotification } = useNotification();
 
-  const fetchStudents = useCallback(async (filters?: IStudentFilters) => {
+  const fetchStudents = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await studentService.getStudents(filters);
+      // Fetch ALL students (no backend filters)
+      const data = await studentService.getStudents();
 
       // Fetch all fee transactions to compute per-student fee status
       const feeStatusMap: Record<number, FeeStatus> = {};
       try {
-        const transactions = await feeService.getFeeTransactions();
+        const transactions = await feeService.getFeeTransactions({
+          academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
+        });
         // Group by studentId
         const byStudent = new Map<number, { total: number; paid: number; partial: number }>();
         for (const t of transactions) {
@@ -69,7 +80,7 @@ const Students: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [showNotification]);
+  }, [selectedYear, showNotification]);
 
 
   useEffect(() => {
@@ -81,18 +92,34 @@ const Students: React.FC = () => {
   };
 
   const handleFilterChange = (name: string, value: string) => {
-    fetchStudents({ [name]: value });
+    setFilters(prev => ({ ...prev, [name]: value }));
   };
 
   const handleReset = () => {
     setSearchTerm("");
+    setFilters({ classId: '', section: '', academicYear: '', status: '' });
     fetchStudents();
   };
 
-  const filteredStudents = students.filter(s => 
-    (s.fullName || "").toLowerCase().includes((searchTerm || "").toLowerCase()) ||
-    (s.parentName || "").toLowerCase().includes((searchTerm || "").toLowerCase())
-  );
+  const filteredStudents = students.filter(s => {
+    // Class filter
+    if (filters.classId && s.classId?.toString() !== filters.classId) return false;
+    // Section filter
+    if (filters.section && s.classSection !== filters.section) return false;
+    // Academic Year filter
+    if (filters.academicYear && s.academicYear !== filters.academicYear) return false;
+    // Status filter
+    if (filters.status && s.status !== filters.status) return false;
+    // Search term
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      if (!s.fullName?.toLowerCase().includes(search) && 
+          !s.parentName?.toLowerCase().includes(search)) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   return (
     <AdminLayout title="Students">
@@ -121,7 +148,7 @@ const Students: React.FC = () => {
           onReset={handleReset}
           searchPlaceholder="Search by name or parent..."
         >
-          <StudentFilters onFilterChange={handleFilterChange} />
+          <StudentFilters onFilterChange={handleFilterChange} currentFilters={filters} />
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" className="size-9">
               <Download className="size-4" />
@@ -139,7 +166,7 @@ const Students: React.FC = () => {
             students={filteredStudents} 
             onView={(s) => navigate(`/admin/students/${s.id}`)}
             onEdit={(s) => navigate(`/admin/students/edit/${s.id}`)}
-            onDelete={(_id) => {
+            onDelete={() => {
               if (window.confirm('Are you sure you want to delete this student?')) {
                 // TODO: Implement delete functionality
                 showNotification('Delete functionality coming soon', 'info');

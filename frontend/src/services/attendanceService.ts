@@ -100,6 +100,13 @@ export const attendanceService = {
     return response.map(r => mapAttendanceRecord(r, ''));
   },
 
+  getSchoolOpenDays: async (startDate: string, endDate: string): Promise<number> => {
+    const response = await apiRequest<{ school_open_days: number }>(
+      `/student-attendance/school-open-days?startDate=${startDate}&endDate=${endDate}`
+    );
+    return response.school_open_days;
+  },
+
   deleteAttendance: async (id: number): Promise<void> => {
     await apiRequest<void>(`/student-attendance/${id}`, {
       method: 'DELETE',

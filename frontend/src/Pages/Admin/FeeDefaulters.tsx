@@ -3,6 +3,7 @@ import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import { useNotification } from '../../context/NotificationContext';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { feeService, type FeeDefaulter } from '../../services/feeService';
 import { feeStructureService } from '../../services/feeStructureService';
 import { classService } from '../../services/classService';
@@ -13,6 +14,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
 const FeeDefaulters: React.FC = () => {
   const { showNotification } = useNotification();
+  const { selectedYear } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [defaulters, setDefaulters] = useState<FeeDefaulter[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
@@ -46,7 +48,8 @@ const FeeDefaulters: React.FC = () => {
     try {
       setLoading(true);
       const data = await feeService.getFeeDefaulters(
-        selectedClass ? parseInt(selectedClass) : undefined
+        selectedClass ? parseInt(selectedClass) : undefined,
+        selectedYear?.id ? parseInt(selectedYear.id) : undefined
       );
       setDefaulters(data);
     } catch {
@@ -54,7 +57,7 @@ const FeeDefaulters: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, showNotification]);
+  }, [selectedClass, selectedYear, showNotification]);
 
   useEffect(() => {
     fetchClasses();

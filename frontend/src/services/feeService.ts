@@ -103,8 +103,8 @@ export interface ApplyWaiverDto {
 }
 
 export interface GenerateFeeTransactionsDto {
-  feeStructureId: number;
-  academicYearStartDate: string;
+  classId: number;
+  academicYearId: number;
 }
 
 // ── Mappers ─────────────────────────────────────────────────────────
@@ -207,9 +207,10 @@ const aggregateByStudent = (transactions: FeeTransaction[]): StudentFeeSummary[]
     }
   });
   
-  summary.totalPending = summary.totalAmount - summary.totalPaid;
-  
-  return Array.from(map.values()).sort((a, b) => 
+  return Array.from(map.values()).map(s => ({
+    ...s,
+    totalPending: s.totalAmount - s.totalPaid,
+  })).sort((a, b) => 
     a.studentName.localeCompare(b.studentName)
   );
 };
@@ -251,9 +252,12 @@ export const feeService = {
   },
 
   // Fee defaulters (grouped by student)
-  getFeeDefaulters: async (classId?: number): Promise<FeeDefaulter[]> => {
-    const qs = classId ? `?classId=${classId}` : '';
-    const rows = await apiRequest<BackendFeeTransaction[]>(`/fee-transactions/defaulters${qs}`);
+  getFeeDefaulters: async (classId?: number, academicYearId?: number): Promise<FeeDefaulter[]> => {
+    const params = new URLSearchParams();
+    if (classId) params.append('classId', String(classId));
+    if (academicYearId) params.append('academicYearId', String(academicYearId));
+    const qs = params.toString();
+    const rows = await apiRequest<BackendFeeTransaction[]>(`/fee-transactions/defaulters${qs ? `?${qs}` : ''}`);
     return groupDefaulters(rows);
   },
 

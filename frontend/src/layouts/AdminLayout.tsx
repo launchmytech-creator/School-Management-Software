@@ -1,8 +1,9 @@
-import React from 'react';
-import { useLocation } from 'react-router-dom';
-import AdminSidebar from '../components/layout/AdminSidebar';
-import SuperAdminSidebar from '../components/layout/SuperAdminSidebar';
-import AppHeader from '../components/common/AppHeader';
+import React from "react";
+import { useLocation } from "react-router-dom";
+import AdminSidebar from "../components/layout/AdminSidebar";
+import SuperAdminSidebar from "../components/layout/SuperAdminSidebar";
+import ParentSidebar from "../components/layout/ParentSidebar";
+import AppHeader from "../components/common/AppHeader";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -18,9 +19,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC] font-body text-slate-800">
-      {location.pathname.startsWith('/super-admin') ? (
+      {location.pathname.startsWith("/super-admin") ? (
         <SuperAdminSidebar />
-      ) : location.pathname.startsWith('/admin') ? (
+      ) : location.pathname.startsWith("/admin") ? (
         <AdminSidebar />
       ) : (
         <AdminSidebar />
@@ -30,9 +31,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
         <AppHeader />
 
         <main className="flex-1 overflow-y-auto p-12 custom-scrollbar bg-white shadow-inner">
-          <div className="max-w-[1400px] mx-auto">
-            {children}
-          </div>
+          <div className="max-w-[1400px] mx-auto">{children}</div>
         </main>
       </div>
     </div>

@@ -64,16 +64,18 @@ const FeeCollection: React.FC = () => {
       setLoading(true);
       const data = await feeService.getFeeTransactions({
         classId: selectedClass ? parseInt(selectedClass) : undefined,
+        academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
         status: statusFilter || undefined,
         feeType: feeTypeFilter || undefined,
       });
       setTransactions(data);
+      console.log(data)
     } catch {
       showNotification('Failed to fetch fee transactions', 'error');
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, statusFilter, feeTypeFilter, showNotification]);
+  }, [selectedClass, selectedYear, statusFilter, feeTypeFilter, showNotification]);
 
   useEffect(() => {
     fetchClasses();

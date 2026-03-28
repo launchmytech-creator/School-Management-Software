@@ -32,6 +32,7 @@ const FeeStructures: React.FC = () => {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generateData, setGenerateData] = useState({
     feeStructureId: 0,
+    academicYearId: 0,
     academicYearStartDate: '',
   });
   const [generating, setGenerating] = useState(false);
@@ -40,7 +41,7 @@ const FeeStructures: React.FC = () => {
     academicYearId: 0,
     feeType: '',
     amount: 0,
-    termNumber: undefined,
+    feeTerms: 0,
   });
 
   const fetchClasses = useCallback(async () => {
@@ -60,6 +61,16 @@ const FeeStructures: React.FC = () => {
       showNotification('Failed to fetch academic years', 'error');
     }
   }, [showNotification]);
+
+  const getFeeTermsLabel = (feeTerms: number | null): string => {
+    switch (feeTerms) {
+      case 1: return 'Yearly';
+      case 2: return 'Half-yearly';
+      case 4: return 'Quarterly';
+      case 12: return 'Monthly';
+      default: return 'N/A';
+    }
+  };
 
   const fetchFeeStructures = useCallback(async () => {
     try {
@@ -113,7 +124,7 @@ const FeeStructures: React.FC = () => {
       academicYearId: Number(defaultYearId),
       feeType: '',
       amount: 0,
-      termNumber: undefined,
+      feeTerms: 1,
     });
     setShowCreateModal(true);
   };
@@ -125,13 +136,13 @@ const FeeStructures: React.FC = () => {
       academicYearId: structure.academicYearId,
       feeType: structure.feeType,
       amount: structure.amount,
-      termNumber: structure.termNumber || undefined,
+      feeTerms: structure.feeTerms || 1,
     });
     setShowCreateModal(true);
   };
 
   const handleSave = async () => {
-    if (!formData.feeType || !formData.amount || !formData.classId || !formData.academicYearId) {
+    if (!formData.feeType || !formData.amount || !formData.classId || !formData.academicYearId || !formData.feeTerms) {
       showNotification('Please fill all required fields', 'error');
       return;
     }
@@ -150,8 +161,13 @@ const FeeStructures: React.FC = () => {
       }
       setShowCreateModal(false);
       fetchFeeStructures();
-    } catch {
-      showNotification('Failed to save fee structure', 'error');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('same feeTerms') || errorMessage.includes('feeTerms')) {
+        showNotification('Fee terms must match existing fee structure for this class and academic year', 'error');
+      } else {
+        showNotification('Failed to save fee structure', 'error');
+      }
     } finally {
       setSaving(false);
     }
@@ -172,15 +188,32 @@ const FeeStructures: React.FC = () => {
 
 
   const handleGenerateTransactions = async () => {
-    if (!generateData.feeStructureId || !generateData.academicYearStartDate) {
-      showNotification('Please select academic year start date', 'error');
+    if (!generateData.feeStructureId) {
+      showNotification('Please select a fee structure', 'error');
+      return;
+    }
+
+    const selectedStructure = feeStructures.find(fs => fs.id === generateData.feeStructureId);
+    if (!selectedStructure) {
+      showNotification('Fee structure not found', 'error');
       return;
     }
 
     try {
       setGenerating(true);
-      await feeService.generateFeeTransactions(generateData);
-      showNotification('Fee transactions generated successfully', 'success');
+      const result = await feeService.generateFeeTransactions({
+        classId: selectedStructure.classId,
+        academicYearId: selectedStructure.academicYearId,
+      });
+      
+      if (result.generated > 0) {
+        showNotification(`Successfully generated ${result.generated} transactions. ${result.skippedStudents > 0 ? `${result.skippedStudents} students skipped (already had transactions).` : ''}`, 'success');
+      } else if (result.skippedStudents > 0) {
+        showNotification(`All ${result.skippedStudents} students were skipped because they already have transactions for this year.`, 'warning');
+      } else {
+        showNotification('No transactions were generated.', 'info');
+      }
+      
       setShowGenerateModal(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to generate fee transactions';
@@ -218,6 +251,7 @@ const FeeStructures: React.FC = () => {
                 }
                 setGenerateData({
                   feeStructureId: 0,
+                  academicYearId: 0,
                   academicYearStartDate: getLocalDateString(),
                 });
                 setShowGenerateModal(true);
@@ -320,7 +354,7 @@ const FeeStructures: React.FC = () => {
                           </td>
                           <td className="px-6 py-4">
                             <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-full">
-                              {structure.termNumber ? `Term ${structure.termNumber}` : 'Annual'}
+                              {getFeeTermsLabel(structure.feeTerms)}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
@@ -411,20 +445,22 @@ const FeeStructures: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
             />
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Term (Optional)</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Fee Terms</label>
               <select
-                value={formData.termNumber || ''}
+                value={formData.feeTerms || ''}
                 onChange={(e) => setFormData({ 
                   ...formData, 
-                  termNumber: e.target.value ? parseInt(e.target.value) : undefined 
+                  feeTerms: parseInt(e.target.value) || 0
                 })}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Annual</option>
-                {[1, 2, 3, 4].map(term => (
-                  <option key={term} value={term}>Term {term}</option>
-                ))}
+                <option value="">Select Fee Terms</option>
+                <option value="1">Yearly (1 installment)</option>
+                <option value="2">Half-yearly (2 installments)</option>
+                <option value="4">Quarterly (4 installments)</option>
+                <option value="12">Monthly (12 installments)</option>
               </select>
+              <p className="text-xs text-slate-500 mt-1">Number of installments: 1 (yearly), 2 (half-yearly), 4 (quarterly), or 12 (monthly)</p>
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1">
@@ -444,23 +480,36 @@ const FeeStructures: React.FC = () => {
           size="md"
         >
           <div className="p-6 space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <p className="text-sm text-blue-700">
-                This will generate fee transactions for all students in the selected fee structure based on the school's fee terms.
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+              <p className="text-sm text-blue-700 font-medium">
+                This will generate fee transactions for all students in the selected fee structure.
               </p>
+              <div className="bg-white/50 rounded-lg p-2 border border-blue-100">
+                <p className="text-xs text-blue-600">
+                  <strong>Note:</strong> Fees are aggregated. If a student already has transactions for this year, they will be skipped. Add all fee components (Tuition, Lab, etc.) before generating.
+                </p>
+              </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Fee Structure</label>
               <select
                 value={generateData.feeStructureId}
-                onChange={(e) => setGenerateData({ ...generateData, feeStructureId: parseInt(e.target.value) })}
+                onChange={(e) => {
+                  const selectedId = parseInt(e.target.value);
+                  const selected = feeStructures.find(fs => fs.id === selectedId);
+                  setGenerateData({
+                    ...generateData,
+                    feeStructureId: selectedId,
+                    academicYearId: selected?.academicYearId || 0,
+                  });
+                }}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Fee Structure</option>
-                {feeStructures.map(structure => (
-                  <option key={structure.id} value={structure.id}>
-                    {structure.className} - {structure.feeType} ({formatCurrency(structure.amount)})
+                {feeStructures.map(fs => (
+                  <option key={fs.id} value={fs.id}>
+                    {fs.className} - {fs.feeType} ({getFeeTermsLabel(fs.feeTerms)}) - {fs.academicYearName}
                   </option>
                 ))}
               </select>

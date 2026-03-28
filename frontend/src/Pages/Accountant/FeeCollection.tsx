@@ -1,35 +1,48 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import AccountantLayout from '../../layouts/AccountantLayout';
-import FilterBar from '../../components/common/FilterBar';
-import EmptyState from '../../components/common/EmptyState';
-import { useNotification } from '../../context/NotificationContext';
-import { feeService, type FeeTransaction, type RecordPaymentDto } from '../../services/feeService';
-import { feeStructureService } from '../../services/feeStructureService';
-import { classService } from '../../services/classService';
-import type { Class } from '../../types/class';
-import { DollarSign, CheckCircle, Clock, AlertTriangle, Receipt } from 'lucide-react';
-import { formatCurrency, getLocalDateString } from '../../lib/utils';
-import { BaseModal } from '../../components/common/BaseModal';
-import { Button } from '../../components/ui/button';
-import InputField from '../../components/ui/InputField';
-import { SkeletonTable } from '../../components/common/Skeleton';
+import React, { useState, useEffect, useCallback } from "react";
+import AccountantLayout from "../../layouts/AccountantLayout";
+import FilterBar from "../../components/common/FilterBar";
+import EmptyState from "../../components/common/EmptyState";
+import { useNotification } from "../../context/NotificationContext";
+import { useAcademicYear } from "../../context/AcademicYearContext";
+import {
+  feeService,
+  type FeeTransaction,
+  type RecordPaymentDto,
+} from "../../services/feeService";
+import { feeStructureService } from "../../services/feeStructureService";
+import { classService } from "../../services/classService";
+import type { Class } from "../../types/class";
+import {
+  DollarSign,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  Receipt,
+} from "lucide-react";
+import { formatCurrency, getLocalDateString } from "../../lib/utils";
+import { BaseModal } from "../../components/common/BaseModal";
+import { Button } from "../../components/ui/button";
+import InputField from "../../components/ui/InputField";
+import { SkeletonTable } from "../../components/common/Skeleton";
 
 const AccountantFeeCollection: React.FC = () => {
   const { showNotification } = useNotification();
+  const { selectedYear } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<FeeTransaction[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [feeTypes, setFeeTypes] = useState<string[]>([]);
-  const [selectedClass, setSelectedClass] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [feeTypeFilter, setFeeTypeFilter] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [feeTypeFilter, setFeeTypeFilter] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<FeeTransaction | null>(null);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<FeeTransaction | null>(null);
   const [processing, setProcessing] = useState(false);
   const [paymentData, setPaymentData] = useState<RecordPaymentDto>({
     amountPaid: 0,
-    paymentMode: 'cash',
+    paymentMode: "cash",
     paymentDate: getLocalDateString(),
   });
 
@@ -48,20 +61,33 @@ const AccountantFeeCollection: React.FC = () => {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const filters: { classId?: number; status?: string; feeType?: string } = {};
-      
+      const filters: {
+        classId?: number;
+        academicYearId?: number;
+        status?: string;
+        feeType?: string;
+      } = {};
+
       if (selectedClass) filters.classId = parseInt(selectedClass);
+      if (selectedYear?.id) filters.academicYearId = parseInt(selectedYear.id);
       if (statusFilter) filters.status = statusFilter;
       if (feeTypeFilter) filters.feeType = feeTypeFilter;
-      
+
       const data = await feeService.getFeeTransactions(filters);
       setTransactions(data);
+      console.log(data)
     } catch {
-      showNotification('Failed to fetch transactions', 'error');
+      showNotification("Failed to fetch transactions", "error");
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, statusFilter, feeTypeFilter, showNotification]);
+  }, [
+    selectedClass,
+    selectedYear,
+    statusFilter,
+    feeTypeFilter,
+    showNotification,
+  ]);
 
   useEffect(() => {
     const fetchDropdowns = async () => {
@@ -69,7 +95,7 @@ const AccountantFeeCollection: React.FC = () => {
         const cls = await classService.getClasses();
         setClasses(cls);
       } catch {
-        showNotification('Failed to fetch filters', 'error');
+        showNotification("Failed to fetch filters", "error");
       }
     };
     fetchDropdowns();
@@ -79,33 +105,34 @@ const AccountantFeeCollection: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  const filteredTransactions = transactions.filter(t =>
-    t.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.admissionNumber?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTransactions = transactions.filter(
+    (t) =>
+      t.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.admissionNumber?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const stats = {
     total: transactions.length,
-    paid: transactions.filter(t => t.status === 'paid').length,
-    pending: transactions.filter(t => t.status === 'pending').length,
-    partial: transactions.filter(t => t.status === 'partial').length,
+    paid: transactions.filter((t) => t.status === "paid").length,
+    pending: transactions.filter((t) => t.status === "pending").length,
+    partial: transactions.filter((t) => t.status === "partial").length,
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'paid':
+      case "paid":
         return (
           <span className="flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">
             <CheckCircle className="w-3 h-3" /> Paid
           </span>
         );
-      case 'pending':
+      case "pending":
         return (
           <span className="flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">
             <Clock className="w-3 h-3" /> Pending
           </span>
         );
-      case 'partial':
+      case "partial":
         return (
           <span className="flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
             <AlertTriangle className="w-3 h-3" /> Partial
@@ -122,10 +149,11 @@ const AccountantFeeCollection: React.FC = () => {
 
   const openPaymentModal = (transaction: FeeTransaction) => {
     setSelectedTransaction(transaction);
-    const remaining = (transaction.amountDue || 0) - (transaction.amountPaid || 0);
+    const remaining =
+      (transaction.amountDue || 0) - (transaction.amountPaid || 0);
     setPaymentData({
       amountPaid: remaining,
-      paymentMode: 'cash',
+      paymentMode: "cash",
       paymentDate: getLocalDateString(),
     });
     setShowPaymentModal(true);
@@ -133,18 +161,18 @@ const AccountantFeeCollection: React.FC = () => {
 
   const handleRecordPayment = async () => {
     if (!selectedTransaction || !paymentData.amountPaid) {
-      showNotification('Please enter payment amount', 'error');
+      showNotification("Please enter payment amount", "error");
       return;
     }
 
     try {
       setProcessing(true);
       await feeService.recordPayment(selectedTransaction.id, paymentData);
-      showNotification('Payment recorded successfully', 'success');
+      showNotification("Payment recorded successfully", "success");
       setShowPaymentModal(false);
       fetchData();
     } catch {
-      showNotification('Failed to record payment', 'error');
+      showNotification("Failed to record payment", "error");
     } finally {
       setProcessing(false);
     }
@@ -169,7 +197,9 @@ const AccountantFeeCollection: React.FC = () => {
           <div className="bg-emerald-50 p-5 rounded-card border border-emerald-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-emerald-700">{stats.paid}</p>
+                <p className="text-2xl font-bold text-emerald-700">
+                  {stats.paid}
+                </p>
                 <p className="text-sm text-emerald-600">Paid</p>
               </div>
               <div className="p-3 bg-emerald-100 rounded-xl">
@@ -181,7 +211,9 @@ const AccountantFeeCollection: React.FC = () => {
           <div className="bg-amber-50 p-5 rounded-card border border-amber-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-amber-700">{stats.pending}</p>
+                <p className="text-2xl font-bold text-amber-700">
+                  {stats.pending}
+                </p>
                 <p className="text-sm text-amber-600">Pending</p>
               </div>
               <div className="p-3 bg-amber-100 rounded-xl">
@@ -193,7 +225,9 @@ const AccountantFeeCollection: React.FC = () => {
           <div className="bg-blue-50 p-5 rounded-card border border-blue-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-blue-700">{stats.partial}</p>
+                <p className="text-2xl font-bold text-blue-700">
+                  {stats.partial}
+                </p>
                 <p className="text-sm text-blue-600">Partial</p>
               </div>
               <div className="p-3 bg-blue-100 rounded-xl">
@@ -205,33 +239,43 @@ const AccountantFeeCollection: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Class</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Class
+            </label>
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Classes</option>
-              {classes.map(cls => (
-                <option key={cls.id} value={cls.id}>{cls.name}</option>
+              {classes.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Fee Type</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Fee Type
+            </label>
             <select
               value={feeTypeFilter}
               onChange={(e) => setFeeTypeFilter(e.target.value)}
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Fee Types</option>
-              {feeTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
+              {feeTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Status
+            </label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -244,16 +288,24 @@ const AccountantFeeCollection: React.FC = () => {
             </select>
           </div>
           <div className="flex items-end">
-            <Button variant="outline" onClick={() => { setSelectedClass(''); setStatusFilter(''); setFeeTypeFilter(''); }} className="w-full">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedClass("");
+                setStatusFilter("");
+                setFeeTypeFilter("");
+              }}
+              className="w-full"
+            >
               Clear Filters
             </Button>
           </div>
         </div>
 
-        <FilterBar 
+        <FilterBar
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          onReset={() => setSearchTerm('')}
+          onReset={() => setSearchTerm("")}
           searchPlaceholder="Search by student name or admission number..."
         />
 
@@ -265,33 +317,58 @@ const AccountantFeeCollection: React.FC = () => {
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Student</th>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Class</th>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Fee Type</th>
-                    <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Amount Due</th>
-                    <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Paid</th>
-                    <th className="px-6 py-3.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Student
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Class
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Fee Type
+                    </th>
+                    <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Amount Due
+                    </th>
+                    <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Paid
+                    </th>
+                    <th className="px-6 py-3.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredTransactions.map((transaction) => (
-                    <tr key={transaction.id} className="hover:bg-slate-50/50 transition-colors">
+                    <tr
+                      key={transaction.id}
+                      className="hover:bg-slate-50/50 transition-colors"
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="size-10 rounded-full bg-accent-sky/20 flex items-center justify-center">
                             <span className="text-accent-sky font-bold text-sm">
-                              {transaction.studentName?.charAt(0) || 'S'}
+                              {transaction.studentName?.charAt(0) || "S"}
                             </span>
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-slate-900">{transaction.studentName}</p>
-                            <p className="text-xs text-slate-500">{transaction.admissionNumber}</p>
+                            <p className="text-sm font-semibold text-slate-900">
+                              {transaction.studentName}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {transaction.admissionNumber}
+                            </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{transaction.className}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{transaction.feeType}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {transaction.className}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {transaction.feeType}
+                      </td>
                       <td className="px-6 py-4 text-right text-sm font-semibold text-slate-900">
                         {formatCurrency(transaction.amountDue || 0)}
                       </td>
@@ -302,7 +379,7 @@ const AccountantFeeCollection: React.FC = () => {
                         {getStatusBadge(transaction.status)}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        {transaction.status !== 'paid' && (
+                        {transaction.status !== "paid" && (
                           <Button
                             size="sm"
                             onClick={() => openPaymentModal(transaction)}
@@ -339,24 +416,35 @@ const AccountantFeeCollection: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-slate-500">Student</p>
-                    <p className="font-semibold text-slate-900">{selectedTransaction.studentName}</p>
+                    <p className="font-semibold text-slate-900">
+                      {selectedTransaction.studentName}
+                    </p>
                   </div>
                   <div>
                     <p className="text-slate-500">Fee Type</p>
-                    <p className="font-semibold text-slate-900">{selectedTransaction.feeType}</p>
+                    <p className="font-semibold text-slate-900">
+                      {selectedTransaction.feeType}
+                    </p>
                   </div>
                   <div>
                     <p className="text-slate-500">Total Amount</p>
-                    <p className="font-semibold text-slate-900">{formatCurrency(selectedTransaction.amountDue || 0)}</p>
+                    <p className="font-semibold text-slate-900">
+                      {formatCurrency(selectedTransaction.amountDue || 0)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-slate-500">Already Paid</p>
-                    <p className="font-semibold text-emerald-600">{formatCurrency(selectedTransaction.amountPaid || 0)}</p>
+                    <p className="font-semibold text-emerald-600">
+                      {formatCurrency(selectedTransaction.amountPaid || 0)}
+                    </p>
                   </div>
                   <div className="col-span-2">
                     <p className="text-slate-500">Remaining</p>
                     <p className="font-bold text-accent-orange text-lg">
-                      {formatCurrency((selectedTransaction.amountDue || 0) - (selectedTransaction.amountPaid || 0))}
+                      {formatCurrency(
+                        (selectedTransaction.amountDue || 0) -
+                          (selectedTransaction.amountPaid || 0),
+                      )}
                     </p>
                   </div>
                 </div>
@@ -365,22 +453,40 @@ const AccountantFeeCollection: React.FC = () => {
               <InputField
                 label="Payment Amount"
                 type="number"
-                value={paymentData.amountPaid || ''}
-                onChange={(e) => setPaymentData({ ...paymentData, amountPaid: parseFloat(e.target.value) || 0 })}
+                value={paymentData.amountPaid || ""}
+                onChange={(e) =>
+                  setPaymentData({
+                    ...paymentData,
+                    amountPaid: parseFloat(e.target.value) || 0,
+                  })
+                }
               />
 
               <InputField
                 label="Payment Date"
                 type="date"
-                value={paymentData.paymentDate || ''}
-                onChange={(e) => setPaymentData({ ...paymentData, paymentDate: e.target.value })}
+                value={paymentData.paymentDate || ""}
+                onChange={(e) =>
+                  setPaymentData({
+                    ...paymentData,
+                    paymentDate: e.target.value,
+                  })
+                }
               />
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Mode</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Payment Mode
+                </label>
                 <select
-                  value={paymentData.paymentMode || 'cash'}
-                  onChange={(e) => setPaymentData({ ...paymentData, paymentMode: e.target.value as RecordPaymentDto['paymentMode'] })}
+                  value={paymentData.paymentMode || "cash"}
+                  onChange={(e) =>
+                    setPaymentData({
+                      ...paymentData,
+                      paymentMode: e.target
+                        .value as RecordPaymentDto["paymentMode"],
+                    })
+                  }
                   className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="cash">Cash</option>
@@ -392,10 +498,18 @@ const AccountantFeeCollection: React.FC = () => {
               </div>
 
               <div className="flex gap-3 pt-4">
-                <Button variant="outline" onClick={() => setShowPaymentModal(false)} className="flex-1">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPaymentModal(false)}
+                  className="flex-1"
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleRecordPayment} loading={processing} className="flex-1">
+                <Button
+                  onClick={handleRecordPayment}
+                  loading={processing}
+                  className="flex-1"
+                >
                   Record Payment
                 </Button>
               </div>

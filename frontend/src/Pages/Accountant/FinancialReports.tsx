@@ -3,6 +3,7 @@ import AccountantLayout from '../../layouts/AccountantLayout';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { feeService, type FeeTransaction } from '../../services/feeService';
 import { feeStructureService } from '../../services/feeStructureService';
 import { classService } from '../../services/classService';
@@ -30,6 +31,7 @@ interface FeeSummary {
 
 const FinancialReports: React.FC = () => {
   const { showNotification } = useNotification();
+  const { selectedYear } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<FeeSummary | null>(null);
   const [transactions, setTransactions] = useState<FeeTransaction[]>([]);
@@ -68,6 +70,7 @@ const FinancialReports: React.FC = () => {
       
       const transactionsData = await feeService.getFeeTransactions({
         classId: selectedClass ? parseInt(selectedClass) : undefined,
+        academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
         feeType: feeTypeFilter || undefined,
       });
       
@@ -93,7 +96,7 @@ const FinancialReports: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, feeTypeFilter, showNotification]);
+  }, [selectedClass, selectedYear, feeTypeFilter, showNotification]);
 
   useEffect(() => {
     fetchDropdowns();

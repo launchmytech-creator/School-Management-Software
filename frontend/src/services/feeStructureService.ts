@@ -9,7 +9,7 @@ export interface FeeStructure {
   academicYearName: string;
   feeType: string;
   amount: number;
-  termNumber: number | null;
+  feeTerms: number | null;
 }
 
 export interface CreateFeeStructureDto {
@@ -17,7 +17,7 @@ export interface CreateFeeStructureDto {
   academicYearId: number;
   feeType: string;
   amount: number;
-  termNumber?: number;
+  feeTerms: number;
 }
 
 export interface UpdateFeeStructureDto {
@@ -35,7 +35,7 @@ interface BackendFeeStructure {
   academic_year_name: string;
   fee_type: string;
   amount: number;
-  term_number: number | null;
+  fee_terms: number | null;
 }
 
 const mapFromBackend = (data: BackendFeeStructure): FeeStructure => ({
@@ -47,7 +47,7 @@ const mapFromBackend = (data: BackendFeeStructure): FeeStructure => ({
   academicYearName: data.academic_year_name,
   feeType: data.fee_type,
   amount: data.amount,
-  termNumber: data.term_number,
+  feeTerms: data.fee_terms,
 });
 
 export const feeStructureService = {
@@ -59,7 +59,7 @@ export const feeStructureService = {
         academicYearId: data.academicYearId,
         feeType: data.feeType,
         amount: data.amount,
-        termNumber: data.termNumber,
+        feeTerms: data.feeTerms,
       },
     });
     return mapFromBackend(response);

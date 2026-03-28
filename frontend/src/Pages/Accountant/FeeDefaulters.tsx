@@ -3,6 +3,7 @@ import AccountantLayout from '../../layouts/AccountantLayout';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { feeService, type FeeDefaulter } from '../../services/feeService';
 import { notificationService } from '../../services/notificationService';
 import { parentService } from '../../services/parentService';
@@ -16,6 +17,7 @@ import { Button } from '../../components/ui/button';
 
 const AccountantFeeDefaulters: React.FC = () => {
   const { showNotification } = useNotification();
+  const { selectedYear } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [defaulters, setDefaulters] = useState<FeeDefaulter[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
@@ -39,7 +41,8 @@ const AccountantFeeDefaulters: React.FC = () => {
     try {
       setLoading(true);
       const data = await feeService.getFeeDefaulters(
-        selectedClass ? parseInt(selectedClass) : undefined
+        selectedClass ? parseInt(selectedClass) : undefined,
+        selectedYear?.id ? parseInt(selectedYear.id) : undefined
       );
       setDefaulters(data);
     } catch {
@@ -47,7 +50,7 @@ const AccountantFeeDefaulters: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, showNotification]);
+  }, [selectedClass, selectedYear, showNotification]);
 
   useEffect(() => {
     fetchClasses();

@@ -3,6 +3,7 @@ import AccountantLayout from '../../layouts/AccountantLayout';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { studentService } from '../../services/studentService';
 import { classService } from '../../services/classService';
 import { feeService } from '../../services/feeService';
@@ -38,6 +39,7 @@ interface StudentFromService {
 
 const AccountantStudents: React.FC = () => {
   const { showNotification } = useNotification();
+  const { selectedYear } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<StudentWithFees[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
@@ -63,7 +65,10 @@ const AccountantStudents: React.FC = () => {
       setLoading(true);
       
       const [studentsData, classesData] = await Promise.all([
-        studentService.getStudents({ classId: selectedClass || undefined }),
+        studentService.getStudents({ 
+          classId: selectedClass || undefined,
+          academicYear: selectedYear?.id || undefined,
+        }),
         classService.getClasses()
       ]);
 
@@ -75,7 +80,10 @@ const AccountantStudents: React.FC = () => {
           const classIdStr = String(s.currentClassId || '');
           
           try {
-            const transactions = await feeService.getStudentFeeTransactions(parseInt(studentId), feeTypeFilter || undefined);
+            const transactions = await feeService.getStudentFeeTransactions(
+              parseInt(studentId), 
+              feeTypeFilter || undefined
+            );
             
             const totalDue = transactions.reduce((sum, t) => sum + (t.amountDue || 0), 0);
             const totalPaid = transactions.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
@@ -122,7 +130,7 @@ const AccountantStudents: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, feeTypeFilter, showNotification]);
+  }, [selectedClass, selectedYear, feeTypeFilter, showNotification]);
 
   useEffect(() => {
     fetchData();

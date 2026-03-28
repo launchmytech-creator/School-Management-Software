@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AccountantLayout from '../../layouts/AccountantLayout';
 import { useNotification } from '../../context/NotificationContext';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { feeService, type FeeTransaction } from '../../services/feeService';
 import { notificationService } from '../../services/notificationService';
 import { formatCurrency, getLocalDateString } from '../../lib/utils';
@@ -28,6 +29,7 @@ interface NotificationItem {
 
 const AccountantDashboard: React.FC = () => {
   const { showNotification } = useNotification();
+  const { selectedYear } = useAcademicYear();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [chartFilter, setChartFilter] = useState('6months');
@@ -62,9 +64,10 @@ const AccountantDashboard: React.FC = () => {
       const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
       
       // Fetch all transactions (not just paid) for accurate stats
+      const academicYearId = selectedYear?.id ? parseInt(selectedYear.id) : undefined;
       const [allTransactions, defaulters, notifications] = await Promise.all([
-        feeService.getFeeTransactions({}),
-        feeService.getFeeDefaulters(),
+        feeService.getFeeTransactions({ academicYearId }),
+        feeService.getFeeDefaulters(undefined, academicYearId),
         notificationService.getMyNotifications({ type: 'fee_reminder', limit: 10 }),
       ]);
 
@@ -157,7 +160,7 @@ const AccountantDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [showNotification]);
+  }, [selectedYear, showNotification]);
 
   useEffect(() => {
     fetchDashboardData();

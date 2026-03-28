@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AccountantLayout from '../../layouts/AccountantLayout';
 import { useNotification } from '../../context/NotificationContext';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { feeStructureService, type FeeStructure } from '../../services/feeStructureService';
 import { classService } from '../../services/classService';
 import { academicYearService } from '../../services/academicYearService';
@@ -14,13 +15,24 @@ import { SkeletonTable } from '../../components/common/Skeleton';
 
 const AccountantFeeStructures: React.FC = () => {
   const { showNotification } = useNotification();
+  const { selectedYear } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
-  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [yearFilter, setYearFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  const getFeeTermsLabel = (feeTerms: number | null): string => {
+    switch (feeTerms) {
+      case 1: return 'Yearly';
+      case 2: return 'Half-yearly';
+      case 4: return 'Quarterly';
+      case 12: return 'Monthly';
+      default: return 'N/A';
+    }
+  };
 
   const fetchClasses = useCallback(async () => {
     try {
@@ -49,7 +61,7 @@ const AccountantFeeStructures: React.FC = () => {
       } = {};
       
       if (selectedClass) filters.classId = parseInt(selectedClass);
-      if (selectedYear) filters.academicYearId = parseInt(selectedYear);
+      if (yearFilter) filters.academicYearId = parseInt(yearFilter);
       
       const data = await feeStructureService.getFeeStructures(filters);
       setFeeStructures(data);
@@ -58,7 +70,7 @@ const AccountantFeeStructures: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClass, selectedYear, showNotification]);
+  }, [selectedClass, yearFilter, showNotification]);
 
   useEffect(() => {
     fetchClasses();
@@ -137,7 +149,7 @@ const AccountantFeeStructures: React.FC = () => {
         <FilterBar 
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          onReset={() => { setSearchTerm(''); setSelectedClass(''); setSelectedYear(''); }}
+          onReset={() => { setSearchTerm(''); setSelectedClass(''); setYearFilter(''); }}
           searchPlaceholder="Search by fee type or class..."
         >
           <select
@@ -151,8 +163,8 @@ const AccountantFeeStructures: React.FC = () => {
             ))}
           </select>
           <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
+            value={yearFilter}
+            onChange={(e) => setYearFilter(e.target.value)}
             className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 min-w-40"
           >
             <option value="">All Years</option>
@@ -189,7 +201,7 @@ const AccountantFeeStructures: React.FC = () => {
                           </td>
                           <td className="px-6 py-4">
                             <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-full">
-                              {structure.termNumber ? `Term ${structure.termNumber}` : 'Annual'}
+                              {getFeeTermsLabel(structure.feeTerms)}
                             </span>
                           </td>
                         </tr>
