@@ -103,11 +103,9 @@ const Students: React.FC = () => {
 
   const filteredStudents = students.filter(s => {
     // Class filter
-    if (filters.classId && s.classId?.toString() !== filters.classId) return false;
+    if (filters.classId && s.currentClassId?.toString() !== filters.classId) return false;
     // Section filter
     if (filters.section && s.classSection !== filters.section) return false;
-    // Academic Year filter
-    if (filters.academicYear && s.academicYear !== filters.academicYear) return false;
     // Status filter
     if (filters.status && s.status !== filters.status) return false;
     // Search term

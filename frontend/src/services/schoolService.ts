@@ -1,5 +1,5 @@
 import { apiRequest } from './api';
-import type { School, SchoolStats, RecentSchoolActivity, CreateSchoolRequest, SubscriptionTier, SchoolUpdateData } from '../types/school';
+import type { School, CreateSchoolRequest, SubscriptionTier, SchoolUpdateData } from '../types/school';
 import { getCurrentAcademicYear } from '../lib/utils';
 
 const VALID_SUBSCRIPTION_PLANS: SubscriptionTier[] = ['BASIC', 'PREMIUM', 'BUSINESS'];
@@ -41,21 +41,6 @@ const normalizeSchool = (data: Record<string, unknown>): School => ({
 });
 
 export const schoolService = {
-  // Stats & Dashboard
-  getStats: (): Promise<SchoolStats> => apiRequest<SchoolStats>('/super-admin/stats'),
-  
-  getRecentActivity: async (): Promise<RecentSchoolActivity[]> => {
-    const data = await apiRequest<Record<string, unknown>[]>('/super-admin/recent-schools');
-    return data.map(item => ({
-      ...item,
-      id: (item.id as string | number)?.toString(),
-      plan: normalizePlan(item.plan as string | undefined),
-      createdAt: (item.createdAt as string) || (item.created_at as string),
-      initials: (item.initials as string) || ((item.name as string)?.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || '??'),
-    })) as RecentSchoolActivity[];
-  },
-
-  // School Management
   getSchools: async (params: { page?: number; limit?: number; search?: string; plan?: string; status?: string } = {}): Promise<School[]> => {
     const query = new URLSearchParams(params as Record<string, string>).toString();
     const data = await apiRequest<Record<string, unknown>[]>(`/schools?${query}`);
@@ -70,15 +55,6 @@ export const schoolService = {
   toggleSchoolStatus: (id: string, status: boolean): Promise<School> => apiRequest<School>(`/schools/${id}`, {
     method: 'PATCH',
     data: { isActive: status },
-  }),
-
-  deleteSchool: (id: string): Promise<void> => apiRequest<void>(`/schools/${id}`, {
-    method: 'DELETE',
-  }),
-
-  bulkDeactivate: (ids: string[]): Promise<void> => apiRequest<void>('/super-admin/schools/bulk-deactivate', {
-    method: 'POST',
-    data: { ids },
   }),
 
   updateSchool: (id: string, data: SchoolUpdateData): Promise<School> => apiRequest<School>(`/schools/${id}`, {

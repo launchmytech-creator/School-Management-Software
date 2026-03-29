@@ -13,26 +13,20 @@ import {
   ChartLegend,
   ChartLegendContent,
   ChartTooltip,
-  ChartTooltipContent,
 } from "@/components/ui/chart"
 
-export const description = "A pie chart with a legend"
-
 const chartConfig = {
-  schools: {
-    label: "Schools",
-  },
   basic: {
     label: "Basic",
-    color: "var(--chart-1)",
+    color: "#64748b",
   },
   premium: {
     label: "Premium",
-    color: "var(--chart-2)",
+    color: "#4A9FD4",
   },
   business: {
     label: "Business",
-    color: "var(--chart-3)",
+    color: "#1E3A5F",
   },
 } satisfies ChartConfig
 
@@ -42,12 +36,55 @@ interface SubscriptionPieChartProps {
   business: number;
 }
 
+interface TooltipPayload {
+  payload: {
+    plan: string;
+    schools: number;
+    fill: string;
+    total: number;
+  };
+}
+
+function CustomTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) {
+  if (!active || !payload?.length) return null;
+
+  const data = payload[0].payload;
+  if (!data) return null;
+
+  const total = data.total || 1;
+  const percentage = ((data.schools / total) * 100).toFixed(1);
+
+  return (
+    <div className="bg-white px-4 py-3 rounded-xl shadow-xl border border-slate-100">
+      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+        {chartConfig[data.plan as keyof typeof chartConfig]?.label || data.plan}
+      </p>
+      <div className="flex items-center gap-3">
+        <span className="text-lg font-black text-slate-800">{data.schools}</span>
+        <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg">
+          {percentage}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function SubscriptionPieChart({ basic, premium, business }: SubscriptionPieChartProps) {
+  const total = basic + premium + business;
+  
   const chartData = [
-    { plan: "basic", schools: basic, fill: "var(--color-basic)" },
-    { plan: "premium", schools: premium, fill: "var(--color-premium)" },
-    { plan: "business", schools: business, fill: "var(--color-business)" },
+    { plan: "basic", schools: basic, fill: chartConfig.basic.color, total },
+    { plan: "premium", schools: premium, fill: chartConfig.premium.color, total },
+    { plan: "business", schools: business, fill: chartConfig.business.color, total },
   ]
+
+  if (total === 0) {
+    return (
+      <div className="flex items-center justify-center h-[250px] text-slate-300 text-xs font-bold uppercase tracking-widest">
+        No schools data
+      </div>
+    );
+  }
 
   return (
     <Card className="flex flex-col border-none shadow-none p-0">
@@ -63,7 +100,7 @@ export function SubscriptionPieChart({ basic, premium, business }: SubscriptionP
           <PieChart>
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent hideLabel />}
+              content={<CustomTooltip />}
             />
             <Pie
               data={chartData}

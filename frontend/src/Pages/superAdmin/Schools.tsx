@@ -1,53 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import StatCard from '../../components/dashboard/StatCard';
-import { schoolService } from '../../services/schoolService';
-import type { School, SchoolStats } from '../../types/school';
+import type { School } from '../../types/school';
 import SchoolDetailDrawer from '../../components/superAdmin/SchoolDetailDrawer';
-import { useNotification } from '../../context/NotificationContext';
+import { useSchool } from '../../context/SchoolContext';
+import { usePagination } from '../../hooks/usePagination';
 
 const Schools: React.FC = () => {
   const navigate = useNavigate();
-  const { showNotification } = useNotification();
-  const [loading, setLoading] = useState(true);
-  const [allSchools, setAllSchools] = useState<School[]>([]);
-  const [stats, setStats] = useState<SchoolStats | null>(null);
+  const { schools, stats, loading, toggleSchoolStatus } = useSchool();
   
-  const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [plan, setPlan] = useState('');
   const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
-  const limit = 10;
-
-  // Drawer state
+  
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [viewingSchool, setViewingSchool] = useState<School | null>(null);
 
-  const handleOpenDrawer = (school: School) => {
-    setViewingSchool(school);
-    setIsDrawerOpen(true);
-  };
-
-  const handleEdit = (school: School) => {
-    navigate('/super-admin/create-school', { state: { school } });
-  };
-
-  const fetchSchools = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await schoolService.getSchools();
-      setAllSchools(Array.isArray(data) ? data : []);
-    } catch {
-      showNotification('Failed to fetch schools', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const filteredSchools = React.useMemo(() => {
-    return allSchools.filter(school => {
+  const filteredSchools = useMemo(() => {
+    return schools.filter(school => {
       const matchesSearch = !search || 
         school.name.toLowerCase().includes(search.toLowerCase()) ||
         school.id.toString().toLowerCase().includes(search.toLowerCase()) ||
@@ -61,66 +33,31 @@ const Schools: React.FC = () => {
 
       return matchesSearch && matchesPlan && matchesStatus;
     });
-  }, [allSchools, search, plan, status]);
+  }, [schools, search, plan, status]);
 
-  const paginatedSchools = React.useMemo(() => {
-    const start = (page - 1) * limit;
-    return filteredSchools.slice(start, start + limit);
-  }, [filteredSchools, page]);
+  const { currentPage, setPage, totalPages, currentItems, hasNextPage, hasPrevPage } = usePagination({
+    items: filteredSchools,
+    pageSize: 10,
+    initialPage: 1,
+  });
 
-  useEffect(() => {
-    fetchSchools();
-  }, [fetchSchools]);
+  const handleOpenDrawer = (school: School) => {
+    setViewingSchool(school);
+    setIsDrawerOpen(true);
+  };
 
-  useEffect(() => {
-    schoolService.getStats()
-      .then(setStats)
-      .catch(() => showNotification('Failed to fetch school statistics', 'error'));
-  }, [showNotification]);
+  const handleEdit = (school: School) => {
+    navigate('/super-admin/create-school', { state: { school } });
+  };
 
   const statItems = [
-    { label: 'Total Schools', value: stats?.totalSchools || 0, icon: 'apartment', color: 'bg-slate-50', iconColor: 'text-slate-600' },
-    { label: 'Active', value: stats?.activeSchools || 0, icon: 'check_circle', color: 'bg-emerald-50', iconColor: 'text-emerald-500' },
-    { label: 'Inactive', value: stats?.inactiveSchools || 0, icon: 'cancel', color: 'bg-red-50', iconColor: 'text-red-400' },
+    { label: 'Total Schools', value: stats.total, icon: 'apartment', color: 'bg-slate-50', iconColor: 'text-slate-600' },
+    { label: 'Active', value: stats.active, icon: 'check_circle', color: 'bg-emerald-50', iconColor: 'text-emerald-500' },
+    { label: 'Inactive', value: stats.inactive, icon: 'cancel', color: 'bg-red-50', iconColor: 'text-red-400' },
   ];
 
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedSchools(paginatedSchools.map(s => s.id));
-    } else {
-      setSelectedSchools([]);
-    }
-  };
-
-  const handleSelectSchool = (id: string) => {
-    setSelectedSchools(prev => 
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
-  };
-
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
-    try {
-      await schoolService.toggleSchoolStatus(id, !currentStatus);
-      showNotification('School status updated successfully.', 'success');
-      fetchSchools();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to update status';
-      showNotification(message, 'error');
-    }
-  };
-
-  const handleBulkDeactivate = async () => {
-    if (confirm(`Are you sure you want to deactivate ${selectedSchools.length} schools?`)) {
-      try {
-        await schoolService.bulkDeactivate(selectedSchools);
-        showNotification(`${selectedSchools.length} schools deactivated successfully.`, 'success');
-        setSelectedSchools([]);
-        fetchSchools();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Bulk deactivation failed';
-        showNotification(message, 'error');
-      }
-    }
+    await toggleSchoolStatus(id, !currentStatus);
   };
 
   return (
@@ -130,7 +67,7 @@ const Schools: React.FC = () => {
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
           <div>
             <h2 className="text-[28px] font-display font-extrabold text-[#1E3A5F] mb-1">All Schools</h2>
-            <p className="text-slate-400 text-sm font-medium tracking-tight">{allSchools.length} schools registered across all regions</p>
+            <p className="text-slate-400 text-sm font-medium tracking-tight">{stats.total} schools registered across all regions</p>
           </div>
           <button 
             onClick={() => navigate('/super-admin/create-school')}
@@ -187,15 +124,11 @@ const Schools: React.FC = () => {
              >
                Reset Filters
              </button>
-             <button className="h-12 px-6 border border-slate-200 rounded-lg flex items-center gap-2 hover:bg-slate-50 transition-all font-bold text-slate-600 text-sm cursor-pointer">
-                <span className="material-symbols-outlined text-lg">download</span>
-                Export CSV
-             </button>
           </div>
         </div>
 
         {/* Schools Table */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden min-h-[400px] relative">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden  relative">
           {loading && (
             <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center">
               <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
@@ -206,14 +139,6 @@ const Schools: React.FC = () => {
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-[#F8FAFC] border-b border-slate-100">
-                  <th className="py-5 px-6 w-12">
-                    <input 
-                      type="checkbox" 
-                      onChange={handleSelectAll}
-                      checked={paginatedSchools.length > 0 && selectedSchools.length === paginatedSchools.length}
-                      className="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-primary" 
-                    />
-                  </th>
                   <th className="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">School ID</th>
                   <th className="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">School Name</th>
                   <th className="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Plan</th>
@@ -225,16 +150,8 @@ const Schools: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {paginatedSchools.length > 0 ? paginatedSchools.map((school) => (
-                  <tr key={school.id} className={`hover:bg-slate-50 transition-colors ${selectedSchools.includes(school.id) ? 'bg-blue-50/30' : ''}`}>
-                    <td className="py-6 px-6">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedSchools.includes(school.id)}
-                        onChange={() => handleSelectSchool(school.id)}
-                        className="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer accent-primary" 
-                      />
-                    </td>
+                {currentItems.length > 0 ? currentItems.map((school) => (
+                  <tr key={school.id} className="hover:bg-slate-50 transition-colors">
                     <td className="py-6 px-4 text-xs font-bold text-slate-400">#{String(school.id).slice(-4).toUpperCase()}</td>
                     <td className="py-6 px-4">
                       <div className="flex items-center gap-4">
@@ -298,19 +215,19 @@ const Schools: React.FC = () => {
 
           {/* Pagination */}
           <div className="px-10 py-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Showing {paginatedSchools.length} of {filteredSchools.length} schools</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Showing {currentItems.length} of {filteredSchools.length} schools</p>
             <div className="flex items-center gap-2">
                <button 
-                 disabled={page === 1}
-                 onClick={() => setPage(page - 1)}
+                 disabled={!hasPrevPage}
+                 onClick={() => setPage(currentPage - 1)}
                  className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-100 text-slate-400 hover:bg-slate-50 transition-all disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed"
                >
                  <span className="material-symbols-outlined text-sm">chevron_left</span>
                </button>
-               <span className="px-4 text-xs font-bold text-slate-400">Page {page} of {Math.ceil(filteredSchools.length / limit) || 1}</span>
+               <span className="px-4 text-xs font-bold text-slate-400">Page {currentPage} of {totalPages}</span>
                <button 
-                 disabled={page * limit >= filteredSchools.length}
-                 onClick={() => setPage(page + 1)}
+                 disabled={!hasNextPage}
+                 onClick={() => setPage(currentPage + 1)}
                  className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-100 text-slate-400 hover:bg-slate-50 transition-all disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed"
                >
                  <span className="material-symbols-outlined text-sm">chevron_right</span>
@@ -319,39 +236,6 @@ const Schools: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Floating Bulk Actions Bar */}
-      {selectedSchools.length > 0 && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-[#1E3A5F] px-8 py-4 rounded-full shadow-[0_20px_50px_rgba(30,58,95,0.3)] flex items-center gap-10 animate-fade-in-up z-50 border border-white/10">
-          <div className="flex items-center gap-4 text-white">
-            <span className="text-xl font-black text-[#4A9FD4]">{selectedSchools.length}</span>
-            <span className="text-[11px] font-bold uppercase tracking-widest text-white/60">Schools Selected</span>
-          </div>
-          
-          <div className="h-6 w-px bg-white/10"></div>
-          
-          <div className="flex items-center gap-6">
-            <button 
-              onClick={handleBulkDeactivate}
-              className="flex items-center gap-2 text-white/80 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest group cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-lg text-red-400 group-hover:scale-110 transition-transform">block</span>
-              Deactivate Selected
-            </button>
-            <button className="flex items-center gap-2 text-white/80 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest group cursor-pointer">
-              <span className="material-symbols-outlined text-lg text-[#4A9FD4] group-hover:scale-110 transition-transform">upload</span>
-              Export Selected
-            </button>
-          </div>
-          
-          <button 
-            onClick={() => setSelectedSchools([])}
-            className="ml-4 w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-lg text-white/40">close</span>
-          </button>
-        </div>
-      )}
 
       <SchoolDetailDrawer 
         isOpen={isDrawerOpen} 

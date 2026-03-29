@@ -11,7 +11,7 @@ import { formatDate, getLocalDateString } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
 import { Button } from '../../components/ui/button';
 
-const TeacherAttendance: React.FC = () => {
+const TeacherAttendancePage: React.FC = () => {
   const { showNotification } = useNotification();
   const [loading, setLoading] = useState(true);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -392,4 +392,4 @@ const TeacherAttendance: React.FC = () => {
   );
 };
 
-export default TeacherAttendance;
+export default TeacherAttendancePage;

@@ -202,14 +202,12 @@ const FeeStructures: React.FC = () => {
     try {
       setGenerating(true);
       const result = await feeService.generateFeeTransactions({
-        classId: selectedStructure.classId,
-        academicYearId: selectedStructure.academicYearId,
+        feeStructureId: generateData.feeStructureId,
+        academicYearStartDate: selectedYear || new Date().toISOString().split('T')[0],
       });
       
-      if (result.generated > 0) {
-        showNotification(`Successfully generated ${result.generated} transactions. ${result.skippedStudents > 0 ? `${result.skippedStudents} students skipped (already had transactions).` : ''}`, 'success');
-      } else if (result.skippedStudents > 0) {
-        showNotification(`All ${result.skippedStudents} students were skipped because they already have transactions for this year.`, 'warning');
+      if (result.count > 0) {
+        showNotification(`Successfully generated ${result.count} transactions.`, 'success');
       } else {
         showNotification('No transactions were generated.', 'info');
       }

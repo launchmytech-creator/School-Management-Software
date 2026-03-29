@@ -66,7 +66,6 @@ const FeeCollection: React.FC = () => {
         classId: selectedClass ? parseInt(selectedClass) : undefined,
         academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
         status: statusFilter || undefined,
-        feeType: feeTypeFilter || undefined,
       });
       setTransactions(data);
       console.log(data)

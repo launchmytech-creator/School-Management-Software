@@ -81,8 +81,7 @@ const AccountantStudents: React.FC = () => {
           
           try {
             const transactions = await feeService.getStudentFeeTransactions(
-              parseInt(studentId), 
-              feeTypeFilter || undefined
+              parseInt(studentId)
             );
             
             const totalDue = transactions.reduce((sum, t) => sum + (t.amountDue || 0), 0);

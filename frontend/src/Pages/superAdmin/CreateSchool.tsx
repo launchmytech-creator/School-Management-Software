@@ -1,9 +1,9 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { schoolService } from '../../services/schoolService';
 import type { CreateSchoolRequest, SchoolCreateData, SubscriptionTier, School, FeeTerm, SchoolUpdateData } from '../../types/school';
 import { useState } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import { useNotification } from '../../context/NotificationContext';
+import { useSchool } from '../../context/SchoolContext';
 import { getCurrentAcademicYear, getLocalDateString } from '../../lib/utils';
 
 const generateSchoolCode = (name: string): string => {
@@ -23,6 +23,7 @@ const CreateSchool: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { showNotification } = useNotification();
+  const { createSchool: createSchoolContext, updateSchool: updateSchoolContext } = useSchool();
   const editSchool = location.state?.school as School | undefined;
   const isEditMode = !!editSchool;
 
@@ -122,7 +123,7 @@ const CreateSchool: React.FC = () => {
           subscriptionStatus: formData.subscriptionStatus,
           subscriptionEndDate: formData.subscriptionEndDate,
         };
-        await schoolService.updateSchool(editSchool.id, payload);
+        await updateSchoolContext(editSchool.id, payload);
       } else {
         const payload: CreateSchoolRequest = {
           school: {
@@ -143,7 +144,7 @@ const CreateSchool: React.FC = () => {
             phone: formData.adminPhone,
           }
         };
-        await schoolService.createSchool(payload);
+        await createSchoolContext(payload);
       }
       showNotification(`School ${isEditMode ? 'updated' : 'registered'} successfully!`, 'success');
       navigate('/super-admin/schools');

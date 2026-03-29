@@ -2,7 +2,7 @@ import { feeService } from './feeService';
 import { studentService } from './studentService';
 import { teacherService } from './teacherService';
 import { classService } from './classService';
-import { attendanceService, type AttendanceRecord } from './attendanceService';
+import { attendanceService } from './attendanceService';
 import { getLocalDateString } from '../lib/utils';
 
 export interface AdminDashboardStats {

@@ -41,8 +41,7 @@ const AccountantFeeDefaulters: React.FC = () => {
     try {
       setLoading(true);
       const data = await feeService.getFeeDefaulters(
-        selectedClass ? parseInt(selectedClass) : undefined,
-        selectedYear?.id ? parseInt(selectedYear.id) : undefined
+        selectedClass ? parseInt(selectedClass) : undefined
       );
       setDefaulters(data);
     } catch {

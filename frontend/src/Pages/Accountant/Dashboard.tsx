@@ -45,7 +45,7 @@ const AccountantDashboard: React.FC = () => {
     monthPercentChange: 0,
   });
   const [recentReceipts, setRecentReceipts] = useState<FeeTransaction[]>([]);
-  const [chartData, setChartData] = useState<{ month: string; amount: number }[]>([]);
+  const [chartData, setChartData] = useState<{ month: string; amount: number; height: number }[]>([]);
   const [remindersSent, setRemindersSent] = useState<NotificationItem[]>([]);
 
   const fetchDashboardData = useCallback(async () => {
@@ -67,7 +67,7 @@ const AccountantDashboard: React.FC = () => {
       const academicYearId = selectedYear?.id ? parseInt(selectedYear.id) : undefined;
       const [allTransactions, defaulters, notifications] = await Promise.all([
         feeService.getFeeTransactions({ academicYearId }),
-        feeService.getFeeDefaulters(undefined, academicYearId),
+        feeService.getFeeDefaulters(undefined),
         notificationService.getMyNotifications({ type: 'fee_reminder', limit: 10 }),
       ]);
 
@@ -220,7 +220,7 @@ const AccountantDashboard: React.FC = () => {
             <tr><td>Fee Type:</td><td>${receipt.feeType || 'N/A'}</td></tr>
             <tr><td>Amount Due:</td><td>${formatCurrency(receipt.amountDue || 0)}</td></tr>
             <tr><td>Amount Paid:</td><td>${formatCurrency(receipt.amountPaid || 0)}</td></tr>
-            <tr><td>Payment Date:</td><td>${formatDate(receipt.paymentDate)}</td></tr>
+            <tr><td>Payment Date:</td><td>${formatDate(receipt.paymentDate || '')}</td></tr>
             <tr><td>Payment Mode:</td><td>${receipt.paymentMode || 'N/A'}</td></tr>
           </table>
         </div>

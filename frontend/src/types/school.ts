@@ -15,30 +15,6 @@ export interface School {
   createdAt: string;
 }
 
-export interface SchoolStats {
-  totalSchools: number;
-  activeSchools: number;
-  inactiveSchools: number;
-  basicPlans: number;
-  premiumPlans: number;
-  businessPlans: number;
-}
-
-export interface RecentSchoolActivity {
-  id: string;
-  name: string;
-  initials: string;
-  logoBg: string;
-  plan: SubscriptionTier;
-  createdAt: string;
-}
-
-export interface SubscriptionDistribution {
-  tier: SubscriptionTier;
-  count: number;
-  percentage: number;
-}
-
 export interface SchoolCreateData {
   name: string;
   code: string;
@@ -63,14 +39,12 @@ export interface SchoolUpdateData {
   isActive?: boolean;
 }
 
-export interface AdminCreateData {
-  email: string;
-  password: string;
-  fullName: string;
-  phone: string;
-}
-
 export interface CreateSchoolRequest {
   school: SchoolCreateData;
-  admin: AdminCreateData;
+  admin: {
+    email: string;
+    password: string;
+    fullName: string;
+    phone: string;
+  };
 }

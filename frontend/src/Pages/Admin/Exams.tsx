@@ -78,13 +78,12 @@ const Exams: React.FC = () => {
       return;
     }
     try {
-      const academicYearId = selectedYear?.id ? parseInt(selectedYear.id) : undefined;
-      const subjects = await subjectService.getSubjectsByClass(parseInt(classId), academicYearId);
+      const subjects = await subjectService.getSubjectsByClass(parseInt(classId));
       setClassSubjects(subjects);
     } catch {
       setClassSubjects([]);
     }
-  }, [selectedYear]);
+  }, []);
 
   useEffect(() => {
     fetchClasses();

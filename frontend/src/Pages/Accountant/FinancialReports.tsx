@@ -71,7 +71,6 @@ const FinancialReports: React.FC = () => {
       const transactionsData = await feeService.getFeeTransactions({
         classId: selectedClass ? parseInt(selectedClass) : undefined,
         academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
-        feeType: feeTypeFilter || undefined,
       });
       
       const uniqueStudents = new Set(transactionsData.map(t => t.studentId));
