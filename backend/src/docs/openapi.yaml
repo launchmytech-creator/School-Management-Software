@@ -270,10 +270,6 @@ components:
           format: date
           nullable: true
           example: "2025-12-31"
-        feeTerms:
-          type: integer
-          enum: [1, 2, 4, 12]
-          example: 4
         contactEmail:
           type: string
           format: email
@@ -393,6 +389,27 @@ components:
         isActive:
           type: boolean
           example: true
+
+    UpdateSchoolAdminRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 3
+          maxLength: 150
+          example: "John Smith"
+        email:
+          type: string
+          format: email
+          example: "admin@abcschool.com"
+        phone:
+          type: string
+          maxLength: 20
+          example: "+1234567890"
+        password:
+          type: string
+          minLength: 8
+          example: "NewPassword@123"
 
     Teacher:
       type: object

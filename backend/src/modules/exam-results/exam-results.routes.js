@@ -24,7 +24,7 @@ router.get(
 
 router.get(
   "/student/:studentId",
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
   examResultsController.getStudentResults,
 );
 

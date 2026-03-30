@@ -72,7 +72,31 @@ const updateSchoolValidation = [
     .withMessage("isActive must be a boolean"),
 ];
 
+const updateSchoolAdminValidation = [
+  body("fullName")
+    .optional()
+    .isLength({ min: 3, max: 150 })
+    .withMessage("Full name must be between 3 and 150 characters"),
+
+  body("email")
+    .optional()
+    .isEmail()
+    .withMessage("Valid email is required")
+    .normalizeEmail(),
+
+  body("phone")
+    .optional()
+    .isLength({ max: 20 })
+    .withMessage("Phone must be at most 20 characters"),
+
+  body("password")
+    .optional()
+    .isLength({ min: 8 })
+    .withMessage("Password must be at least 8 characters"),
+];
+
 module.exports = {
   createSchoolValidation,
   updateSchoolValidation,
+  updateSchoolAdminValidation,
 };

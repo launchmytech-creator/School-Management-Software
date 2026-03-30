@@ -52,6 +52,25 @@ class SchoolsController {
       next(error);
     }
   }
+  async getSchoolAdmin(req, res, next) {
+    try {
+      const { id } = req.params;
+      const admin = await schoolsService.getSchoolAdmin(id);
+      return ApiResponse.success(res, admin, "School admin retrieved successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateSchoolAdmin(req, res, next) {
+    try {
+      const { id } = req.params;
+      const admin = await schoolsService.updateSchoolAdmin(id, req.body);
+      return ApiResponse.success(res, admin, "School admin updated successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new SchoolsController();

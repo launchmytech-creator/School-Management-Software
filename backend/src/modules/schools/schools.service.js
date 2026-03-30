@@ -79,16 +79,20 @@ class SchoolsService {
 
   async getAllSchools() {
     const query = `
-      SELECT s.*, 
+      SELECT s.id, s.name, s.code, s.contact_email, s.contact_phone,
+             s.address, s.is_active, s.created_at,
+             s.subscription_status, s.subscription_end_date, s.subscription_plan_id,
              sp.name as subscription_plan_name,
-             sp.features as subscription_features,
              COUNT(DISTINCT u.id) FILTER (WHERE u.role = 'teacher') as teacher_count,
              COUNT(DISTINCT st.id) as student_count
       FROM schools s
       LEFT JOIN subscription_plans sp ON s.subscription_plan_id = sp.id
       LEFT JOIN users u ON s.id = u.school_id AND u.is_active = true
       LEFT JOIN students st ON s.id = st.school_id AND st.status = 'active'
-      GROUP BY s.id, sp.name, sp.features
+      GROUP BY s.id, s.name, s.code, s.contact_email, s.contact_phone,
+               s.address, s.is_active, s.created_at,
+               s.subscription_status, s.subscription_end_date, s.subscription_plan_id,
+               sp.name
       ORDER BY s.created_at DESC
     `;
 
@@ -98,9 +102,10 @@ class SchoolsService {
 
   async getSchoolById(schoolId) {
     const query = `
-      SELECT s.*,
+      SELECT s.id, s.name, s.code, s.contact_email, s.contact_phone,
+             s.address, s.is_active, s.created_at,
+             s.subscription_status, s.subscription_end_date, s.subscription_plan_id,
              sp.name as subscription_plan_name,
-             sp.features as subscription_features,
              COUNT(DISTINCT u.id) FILTER (WHERE u.role = 'teacher') as teacher_count,
              COUNT(DISTINCT st.id) as student_count
       FROM schools s
@@ -108,7 +113,10 @@ class SchoolsService {
       LEFT JOIN users u ON s.id = u.school_id AND u.is_active = true
       LEFT JOIN students st ON s.id = st.school_id AND st.status = 'active'
       WHERE s.id = $1
-      GROUP BY s.id, sp.name, sp.features
+      GROUP BY s.id, s.name, s.code, s.contact_email, s.contact_phone,
+               s.address, s.is_active, s.created_at,
+               s.subscription_status, s.subscription_end_date, s.subscription_plan_id,
+               sp.name
     `;
 
     const result = await pool.query(query, [schoolId]);
@@ -225,6 +233,65 @@ class SchoolsService {
     } finally {
       client.release();
     }
+  }
+  async getSchoolAdmin(schoolId) {
+    const result = await pool.query(
+      `SELECT id, email, full_name, phone, role, school_id, is_active, created_at
+       FROM users
+       WHERE school_id = $1 AND role = $2 AND is_active = true
+       LIMIT 1`,
+      [schoolId, ROLES.SCHOOL_ADMIN]
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND, ERROR_MESSAGES[ERROR_CODES.USER_NOT_FOUND], 404);
+    }
+
+    return result.rows[0];
+  }
+
+  async updateSchoolAdmin(schoolId, adminData) {
+    const fields = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (adminData.fullName !== undefined) {
+      fields.push(`full_name = $${paramCount++}`);
+      values.push(adminData.fullName);
+    }
+    if (adminData.email !== undefined) {
+      fields.push(`email = $${paramCount++}`);
+      values.push(adminData.email);
+    }
+    if (adminData.phone !== undefined) {
+      fields.push(`phone = $${paramCount++}`);
+      values.push(adminData.phone);
+    }
+    if (adminData.password !== undefined) {
+      const hashedPassword = await bcrypt.hash(adminData.password, 10);
+      fields.push(`password_hash = $${paramCount++}`);
+      values.push(hashedPassword);
+    }
+
+    if (fields.length === 0) {
+      throw new AppError(ERROR_CODES.INVALID_INPUT, "No fields to update", 400);
+    }
+
+    values.push(schoolId, ROLES.SCHOOL_ADMIN);
+    const query = `
+      UPDATE users
+      SET ${fields.join(", ")}
+      WHERE school_id = $${paramCount} AND role = $${paramCount + 1}
+      RETURNING id, email, full_name, phone, role, school_id
+    `;
+
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
+      throw new AppError(ERROR_CODES.USER_NOT_FOUND, ERROR_MESSAGES[ERROR_CODES.USER_NOT_FOUND], 404);
+    }
+
+    return result.rows[0];
   }
 }
 

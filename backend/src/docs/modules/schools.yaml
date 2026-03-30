@@ -107,24 +107,7 @@
     tags:
     - Schools
     summary: Update school
-    description: 'Update school details (Super Admin only).
-
-
-      **Features:**
-
-      - Update subscription plan (automatically tracked in history)
-
-      - Update fee terms (automatically tracked in history)
-
-      - Update contact information
-
-      - Update subscription status
-
-
-      **Note:** Historical data is preserved when subscriptionPlanId or feeTerms are
-      changed.
-
-      '
+    description: Update school details (Super Admin only)
     operationId: updateSchool
     security:
     - BearerAuth: []
@@ -142,10 +125,6 @@
               value:
                 subscriptionPlanId: 3
                 subscriptionStatus: active
-            updateFeeTerms:
-              summary: Update fee terms
-              value:
-                feeTerms: 12
             updateContactInfo:
               summary: Update contact information
               value:
@@ -163,6 +142,89 @@
                 properties:
                   data:
                     $ref: '#/components/schemas/School'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
+      '500':
+        $ref: '#/components/responses/InternalServerError'
+/schools/{id}/admin:
+  get:
+    tags:
+    - Schools
+    summary: Get school admin details
+    description: Retrieve the admin user of a school (Super Admin only)
+    operationId: getSchoolAdmin
+    security:
+    - BearerAuth: []
+    parameters:
+    - $ref: '#/components/parameters/IdPathParam'
+    responses:
+      '200':
+        description: School admin retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
+      '500':
+        $ref: '#/components/responses/InternalServerError'
+  patch:
+    tags:
+    - Schools
+    summary: Update school admin details
+    description: Update the admin user details for a school (Super Admin only)
+    operationId: updateSchoolAdmin
+    security:
+    - BearerAuth: []
+    parameters:
+    - $ref: '#/components/parameters/IdPathParam'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UpdateSchoolAdminRequest'
+          examples:
+            updateAdminName:
+              summary: Update admin name and phone
+              value:
+                fullName: John Smith
+                phone: '+9876543210'
+            updateAdminEmail:
+              summary: Update admin email
+              value:
+                email: newadmin@abcschool.com
+            resetAdminPassword:
+              summary: Reset admin password
+              value:
+                password: NewPassword@123
+    responses:
+      '200':
+        description: School admin updated successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Success'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
       '400':
         $ref: '#/components/responses/ValidationError'
       '401':

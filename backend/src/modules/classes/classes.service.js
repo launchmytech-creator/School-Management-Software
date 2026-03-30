@@ -4,6 +4,28 @@ const AppError = require("../../utils/AppError");
 
 class ClassesService {
   async createClass(classData, schoolId) {
+    // Normalize: trim whitespace and collapse internal spaces
+    const normalizedName = classData.name.trim().replace(/\s+/g, ' ');
+    const normalizedSection = classData.section ? classData.section.trim().replace(/\s+/g, ' ') : null;
+
+    // Check for duplicate: same name (case-insensitive) + section + academic year within school
+    const dupCheck = await pool.query(
+      `SELECT id FROM classes 
+       WHERE school_id = $1 
+         AND academic_year_id = $2 
+         AND LOWER(TRIM(name)) = LOWER($3)
+         AND (
+           ($4::text IS NULL AND section IS NULL) OR
+           (LOWER(TRIM(section)) = LOWER($4))
+         )`,
+      [schoolId, classData.academicYearId, normalizedName, normalizedSection]
+    );
+
+    if (dupCheck.rows.length > 0) {
+      const label = normalizedSection ? `${normalizedName} - ${normalizedSection}` : normalizedName;
+      throw new AppError(ERROR_CODES.INVALID_INPUT, `Class "${label}" already exists for this academic year`, 409);
+    }
+
     const query = `
       INSERT INTO classes (
         school_id, name, section, academic_year_id, default_fee_amount
@@ -14,8 +36,8 @@ class ClassesService {
 
     const result = await pool.query(query, [
       schoolId,
-      classData.name,
-      classData.section || null,
+      normalizedName,
+      normalizedSection,
       classData.academicYearId,
       classData.defaultFeeAmount || null,
     ]);

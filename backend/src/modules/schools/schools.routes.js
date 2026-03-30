@@ -4,6 +4,7 @@ const schoolsController = require("./schools.controller");
 const {
   createSchoolValidation,
   updateSchoolValidation,
+  updateSchoolAdminValidation,
 } = require("./schools.validation");
 const validate = require("../../middleware/validator");
 const { authenticate, authorize } = require("../../middleware/auth");
@@ -39,6 +40,22 @@ router.patch(
   updateSchoolValidation,
   validate,
   schoolsController.updateSchool,
+);
+
+router.get(
+  "/:id/admin",
+  authenticate,
+  authorize(ROLES.SUPER_ADMIN),
+  schoolsController.getSchoolAdmin,
+);
+
+router.patch(
+  "/:id/admin",
+  authenticate,
+  authorize(ROLES.SUPER_ADMIN),
+  updateSchoolAdminValidation,
+  validate,
+  schoolsController.updateSchoolAdmin,
 );
 
 module.exports = router;
