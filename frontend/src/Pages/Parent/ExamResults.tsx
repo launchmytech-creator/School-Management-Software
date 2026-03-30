@@ -1,0 +1,488 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import ParentLayout from "../../layouts/ParentLayout";
+import { useAuth } from "../../context/AuthContext";
+import { useAcademicYear } from "../../context/AcademicYearContext";
+import { parentService } from "../../services/parentService";
+import { examResultService } from "../../services/examResultService";
+import type { LinkedStudent } from "../../types/parent";
+import type { StudentResult } from "../../services/examResultService";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+const EXAM_TYPES = ["All", "Class Test", "Unit Test", "Half Yearly", "Final"];
+
+const SUBJECT_COLORS: Record<string, string> = {
+  Mathematics: "#4A9FD4",
+  Science: "#22c55e",
+  English: "#f97316",
+  History: "#ef4444",
+  Geography: "#a855f7",
+  default: "#64748b",
+};
+
+const subjectColor = (name: string) =>
+  SUBJECT_COLORS[name] || SUBJECT_COLORS.default;
+
+const gradeColor = (grade: string) => {
+  if (["A+", "A"].includes(grade)) return "text-emerald-600 bg-emerald-50";
+  if (["B+", "B"].includes(grade)) return "text-blue-600 bg-blue-50";
+  if (["C+", "C"].includes(grade)) return "text-amber-600 bg-amber-50";
+  return "text-rose-600 bg-rose-50";
+};
+
+const progressColor = (pct: number) => {
+  if (pct >= 85) return { bar: "bg-emerald-500", label: "EXCELLENT" };
+  if (pct >= 70) return { bar: "bg-blue-500", label: "ABOVE AVERAGE" };
+  if (pct >= 50) return { bar: "bg-amber-500", label: "GOOD" };
+  return { bar: "bg-rose-500", label: "NEEDS ATTENTION" };
+};
+
+const subjectIcon = (name: string) => {
+  const n = name.toLowerCase();
+  if (n.includes("math"))
+    return { icon: "calculate", bg: "bg-blue-100", text: "text-blue-600" };
+  if (n.includes("science"))
+    return { icon: "science", bg: "bg-green-100", text: "text-green-600" };
+  if (n.includes("english"))
+    return { icon: "menu_book", bg: "bg-orange-100", text: "text-orange-600" };
+  if (n.includes("history"))
+    return { icon: "history_edu", bg: "bg-red-100", text: "text-red-600" };
+  return { icon: "school", bg: "bg-purple-100", text: "text-purple-600" };
+};
+
+// ── subject card ──────────────────────────────────────────────────────────────
+
+const SubjectCard: React.FC<{ result: StudentResult }> = ({ result }) => {
+  const pct = Math.round((result.marksObtained / result.maxMarks) * 100);
+  const { bar, label } = progressColor(pct);
+  const { icon, bg, text } = subjectIcon(result.subjectName);
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}
+          >
+            <span
+              className={`material-symbols-outlined text-[20px] ${text}`}
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              {icon}
+            </span>
+          </div>
+          <div>
+            <h4 className="font-bold text-slate-900 text-sm">
+              {result.subjectName}
+            </h4>
+            <p className="text-[11px] text-slate-400">
+              Exam: {result.examName}
+            </p>
+          </div>
+        </div>
+        <span
+          className={`text-xs font-black px-2 py-0.5 rounded-lg ${gradeColor(result.grade)}`}
+        >
+          {result.grade}
+        </span>
+      </div>
+
+      <div className="mb-3">
+        <span className="text-3xl font-black text-slate-900">
+          {result.marksObtained}
+        </span>
+        <span className="text-sm text-slate-400 font-semibold">
+          {" "}
+          / {result.maxMarks}
+        </span>
+      </div>
+
+      <div className="space-y-1">
+        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${bar}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+          <span>Progress</span>
+          <span className={bar.replace("bg-", "text-")}>{label}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── main ──────────────────────────────────────────────────────────────────────
+
+const ParentExamResults: React.FC = () => {
+  const { user } = useAuth();
+  const { selectedYear } = useAcademicYear();
+  const navigate = useNavigate();
+
+  const [children, setChildren] = useState<LinkedStudent[]>([]);
+  const [selected, setSelected] = useState<LinkedStudent | null>(null);
+  const [results, setResults] = useState<StudentResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeType, setActiveType] = useState("All");
+  const [activeSubject, setActiveSubject] = useState("Mathematics");
+
+  // fetch children
+  useEffect(() => {
+    if (!user?.id) return;
+    parentService
+      .getParentChildren(Number(user.id))
+      .then((data) => {
+        setChildren(data);
+        if (data.length > 0) setSelected(data[0]);
+      })
+      .finally(() => setLoading(false));
+  }, [user?.id]);
+
+  // fetch results
+  const fetchResults = useCallback(async () => {
+    if (!selected) return;
+    try {
+      const data = await examResultService.getStudentResults(selected.id, {
+        academicYearId: selectedYear?.id ? Number(selectedYear.id) : undefined,
+      });
+      setResults(data);
+    } catch {
+      setResults([]);
+    }
+  }, [selected, selectedYear?.id]);
+
+  useEffect(() => {
+    fetchResults();
+  }, [fetchResults]);
+
+  // derived
+  const filtered = results.filter(
+    (r) => activeType === "All" || r.examType === activeType,
+  );
+
+  // latest result per subject (for cards)
+  const latestBySubject = filtered.reduce<Record<string, StudentResult>>(
+    (acc, r) => {
+      if (
+        !acc[r.subjectName] ||
+        new Date(r.examDate) > new Date(acc[r.subjectName].examDate)
+      ) {
+        acc[r.subjectName] = r;
+      }
+      return acc;
+    },
+    {},
+  );
+  const subjectCards = Object.values(latestBySubject);
+
+  // subjects list for trend legend
+  const allSubjects = [...new Set(results.map((r) => r.subjectName))];
+
+  // trend chart data — group by exam name/date
+  const trendData = (() => {
+    const byExam: Record<string, Record<string, number | string>> = {};
+    results.forEach((r) => {
+      const key = r.examName;
+      if (!byExam[key]) byExam[key] = { name: key };
+      byExam[key][r.subjectName] = Math.round(
+        (r.marksObtained / r.maxMarks) * 100,
+      );
+    });
+    return Object.values(byExam);
+  })();
+
+  // summary stats
+  const totalMarks = filtered.reduce((s, r) => s + r.marksObtained, 0);
+  const totalMax = filtered.reduce((s, r) => s + r.maxMarks, 0);
+  const overallAvg =
+    totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : "—";
+  const bestSubject = subjectCards.reduce<StudentResult | null>(
+    (best, r) =>
+      !best || r.marksObtained / r.maxMarks > best.marksObtained / best.maxMarks
+        ? r
+        : best,
+    null,
+  );
+  const worstSubject = subjectCards.reduce<StudentResult | null>(
+    (worst, r) =>
+      !worst ||
+      r.marksObtained / r.maxMarks < worst.marksObtained / worst.maxMarks
+        ? r
+        : worst,
+    null,
+  );
+
+  if (loading) {
+    return (
+      <ParentLayout title="Results & Marks">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="w-10 h-10 border-4 border-[#4A9FD4] border-t-transparent rounded-full animate-spin" />
+        </div>
+      </ParentLayout>
+    );
+  }
+
+  return (
+    <ParentLayout title="Results & Marks">
+      <div className="p-6 max-w-5xl mx-auto space-y-5 pb-10">
+        {/* Back */}
+        <button
+          onClick={() => navigate("/parent/dashboard")}
+          className="flex items-center gap-1 text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors"
+        >
+          <span className="material-symbols-outlined text-[18px]">
+            arrow_back
+          </span>
+          Results &amp; Marks
+        </button>
+
+        {/* Child tabs */}
+        {children.length > 1 && (
+          <div className="flex gap-2">
+            {children.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setSelected(c)}
+                className={`flex items-center gap-2 px-5 py-2 text-sm font-semibold border-b-2 transition-all ${
+                  selected?.id === c.id
+                    ? "border-[#4A9FD4] text-[#4A9FD4]"
+                    : "border-transparent text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                <span
+                  className="material-symbols-outlined text-[16px]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  account_circle
+                </span>
+                {c.fullName.split(" ")[0]}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Header */}
+        {selected && (
+          <div>
+            <h2 className="text-2xl font-black text-slate-900">
+              Marks &amp; Academic Performance
+            </h2>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Viewing report for {selected.fullName.split(" ")[0]} &bull;{" "}
+              {selected.className || "N/A"} &bull; {selectedYear?.name || ""}{" "}
+              Session
+            </p>
+          </div>
+        )}
+
+        {/* Exam type filter */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {EXAM_TYPES.map((t) => (
+            <button
+              key={t}
+              onClick={() => setActiveType(t)}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                activeType === t
+                  ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
+                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {/* Subject cards */}
+        {subjectCards.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 text-center">
+            <span className="material-symbols-outlined text-5xl text-slate-200 block mb-3">
+              quiz
+            </span>
+            <p className="text-slate-500 font-semibold">
+              No exam results found
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Results will appear here once exams are graded.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {subjectCards.map((r) => (
+              <SubjectCard key={r.id} result={r} />
+            ))}
+          </div>
+        )}
+
+        {/* Performance Trend */}
+        {trendData.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+            <div className="flex items-start justify-between mb-1">
+              <div>
+                <h3 className="font-bold text-slate-900">Performance Trend</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Academic progress over recent examinations
+                </p>
+              </div>
+              <button className="flex items-center gap-1 text-xs font-bold text-[#4A9FD4] hover:underline">
+                <span className="material-symbols-outlined text-[14px]">
+                  bar_chart
+                </span>
+                Full Report
+              </button>
+            </div>
+
+            <div className="mt-4 h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={trendData}
+                  margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 10, fill: "#94a3b8" }}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    tick={{ fontSize: 10, fill: "#94a3b8" }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: 12,
+                      border: "1px solid #e2e8f0",
+                      fontSize: 12,
+                    }}
+                    formatter={(val: number) => [`${val}%`]}
+                  />
+                  {allSubjects.map((sub) => (
+                    <Line
+                      key={sub}
+                      type="monotone"
+                      dataKey={sub}
+                      stroke={subjectColor(sub)}
+                      strokeWidth={activeSubject === sub ? 3 : 1.5}
+                      dot={{
+                        r: activeSubject === sub ? 5 : 3,
+                        fill: subjectColor(sub),
+                      }}
+                      activeDot={{ r: 6 }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Subject legend */}
+            <div className="flex items-center gap-4 mt-4 flex-wrap">
+              {allSubjects.map((sub) => (
+                <button
+                  key={sub}
+                  onClick={() => setActiveSubject(sub)}
+                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all ${
+                    activeSubject === sub
+                      ? "text-white shadow-sm"
+                      : "text-slate-500 bg-slate-100 hover:bg-slate-200"
+                  }`}
+                  style={
+                    activeSubject === sub
+                      ? { backgroundColor: subjectColor(sub) }
+                      : {}
+                  }
+                >
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: subjectColor(sub) }}
+                  />
+                  {sub}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Summary footer card */}
+        {subjectCards.length > 0 && (
+          <div className="bg-[#1E3A5F] rounded-2xl p-6 grid grid-cols-3 gap-6 text-center">
+            <div>
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">
+                Overall Average
+              </p>
+              <p className="text-3xl font-black text-white">
+                {overallAvg}
+                {overallAvg !== "—" ? "%" : ""}
+              </p>
+              {overallAvg !== "—" && (
+                <p className="text-[11px] text-emerald-400 font-bold mt-1 flex items-center justify-center gap-1">
+                  <span className="material-symbols-outlined text-[12px]">
+                    trending_up
+                  </span>
+                  This term
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">
+                Best Subject
+              </p>
+              {bestSubject ? (
+                <>
+                  <p className="text-lg font-black text-white flex items-center justify-center gap-1">
+                    <span
+                      className="material-symbols-outlined text-emerald-400 text-[18px]"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      check_circle
+                    </span>
+                    {bestSubject.subjectName}
+                  </p>
+                  <p className="text-[11px] text-white/50 mt-1">
+                    Scored {bestSubject.marksObtained}/{bestSubject.maxMarks} (
+                    {bestSubject.grade})
+                  </p>
+                </>
+              ) : (
+                <p className="text-white/50 text-sm">—</p>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">
+                Needs Improvement
+              </p>
+              {worstSubject && worstSubject !== bestSubject ? (
+                <>
+                  <p className="text-lg font-black text-white flex items-center justify-center gap-1">
+                    <span
+                      className="material-symbols-outlined text-amber-400 text-[18px]"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      warning
+                    </span>
+                    {worstSubject.subjectName}
+                  </p>
+                  <p className="text-[11px] text-white/50 mt-1">
+                    Focus on the next Unit Test
+                  </p>
+                </>
+              ) : (
+                <p className="text-white/50 text-sm">—</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </ParentLayout>
+  );
+};
+
+export default ParentExamResults;

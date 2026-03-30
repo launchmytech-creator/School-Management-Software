@@ -3,6 +3,7 @@ import ParentDashboard from "../Pages/Parent/Dashboard";
 import ParentAttendance from "../Pages/Parent/Attendance";
 import ParentSyllabus from "../Pages/Parent/Syllabus";
 import ParentFeeStatus from "../Pages/Parent/FeeStatus";
+import ParentExamResults from "@/Pages/Parent/ExamResults";
 
 const parentRoutes = (
   <Routes>
@@ -10,6 +11,7 @@ const parentRoutes = (
     <Route path="attendance" element={<ParentAttendance />} />
     <Route path="syllabus" element={<ParentSyllabus />} />
     <Route path="fees" element={<ParentFeeStatus />} />
+    <Route path="exam-results" element={<ParentExamResults />} />
   </Routes>
 );
 
