@@ -17,6 +17,7 @@ import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import { SkeletonTable } from '../../components/common/Skeleton';
 import { Button } from '../../components/ui/button';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
 const Students: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +32,7 @@ const Students: React.FC = () => {
     status: '',
   });
   const { showNotification } = useNotification();
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, studentId: null as number | null });
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -164,14 +166,24 @@ const Students: React.FC = () => {
             students={filteredStudents} 
             onView={(s) => navigate(`/admin/students/${s.id}`)}
             onEdit={(s) => navigate(`/admin/students/edit/${s.id}`)}
-            onDelete={() => {
-              if (window.confirm('Are you sure you want to delete this student?')) {
-                // TODO: Implement delete functionality
-                showNotification('Delete functionality coming soon', 'info');
-              }
+            onDelete={(studentId) => {
+              setDeleteDialog({ isOpen: true, studentId });
             }}
           />
         )}
+
+        <ConfirmDialog
+          isOpen={deleteDialog.isOpen}
+          onClose={() => setDeleteDialog({ isOpen: false, studentId: null })}
+          onConfirm={() => {
+            showNotification('Delete functionality coming soon', 'info');
+            setDeleteDialog({ isOpen: false, studentId: null });
+          }}
+          title="Delete Student"
+          message="Are you sure you want to delete this student? This action cannot be undone."
+          confirmText="Delete"
+          variant="danger"
+        />
       </div>
     </AdminLayout>
   );

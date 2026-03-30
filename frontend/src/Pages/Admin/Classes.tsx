@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminLayout from "../../layouts/AdminLayout";
 import { 
   Plus, Users, DollarSign, 
-  MoreVertical, BookOpen, Calendar
+  BookOpen, Calendar, Eye, Trash2
 } from "lucide-react";
 import { classService } from "../../services/classService";
 import type { Class } from "../../types/class";
@@ -13,11 +14,14 @@ import FilterBar from "../../components/common/FilterBar";
 import ViewToggle from "../../components/common/ViewToggle";
 import EmptyState from "../../components/common/EmptyState";
 import CreateClassModal from "../../components/class/CreateClassModal";
+import ActionMenu from "../../components/ui/ActionMenu";
 import { SkeletonCard } from "../../components/common/Skeleton";
 import { Button } from "../../components/ui/button";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 
 const Classes: React.FC = () => {
   const { showNotification } = useNotification();
+  const navigate = useNavigate();
   const { allYears, selectedYear, setSelectedYear } = useAcademicYear();
   
   const [classes, setClasses] = useState<Class[]>([]);
@@ -25,6 +29,11 @@ const Classes: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({
+    isOpen: false,
+    itemId: null as string | null,
+    loading: false,
+  });
 
   const fetchClasses = React.useCallback(async () => {
     setLoading(true);
@@ -59,8 +68,30 @@ const Classes: React.FC = () => {
 
   const handleResetFilters = () => {
     setSearchTerm("");
-    // We don't necessarily reset the academic year as it's a global context usually
   };
+
+  const handleDeleteClass = (id: string) => {
+    setDeleteDialog({ isOpen: true, itemId: id, loading: false });
+  };
+
+  const confirmDeleteClass = async () => {
+    if (!deleteDialog.itemId) return;
+    try {
+      setDeleteDialog({ ...deleteDialog, loading: true });
+      await classService.deleteClass(deleteDialog.itemId);
+      showNotification('Class deleted successfully', 'success');
+      setDeleteDialog({ isOpen: false, itemId: null, loading: false });
+      fetchClasses();
+    } catch {
+      showNotification('Failed to delete class', 'error');
+      setDeleteDialog({ ...deleteDialog, loading: false });
+    }
+  };
+
+  const getActionMenuItems = (id: string) => [
+    { label: 'View Detail', icon: <Eye className="size-4" />, onClick: () => navigate(`/admin/classes/${id}`) },
+    { label: 'Delete', icon: <Trash2 className="size-4" />, onClick: () => handleDeleteClass(id), variant: 'danger' as const },
+  ];
 
   return (
     <AdminLayout title="Classes">
@@ -138,14 +169,16 @@ const Classes: React.FC = () => {
                 {viewMode === "grid" ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                     {sections.map((s) => (
-                      <div key={s.id} className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-blue-500/5 transition-all group">
-                        <div className="flex items-start justify-between mb-8">
+                      <div 
+                        key={s.id} 
+                        className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-blue-500/5 transition-all group cursor-pointer"
+                        onClick={() => navigate(`/admin/classes/${s.id}`)}
+                      >
+                        <div className="flex items-start justify-between mb-8" onClick={(e) => e.stopPropagation()}>
                           <div className="size-16 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-500">
                             <BookOpen className="size-8" />
                           </div>
-                          <button className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all">
-                            <MoreVertical className="size-5" />
-                          </button>
+                          <ActionMenu items={getActionMenuItems(s.id)} />
                         </div>
                         
                         <h3 className="text-2xl font-display font-black text-slate-900 tracking-tight mb-2 group-hover:text-blue-600 transition-colors">
@@ -191,35 +224,35 @@ const Classes: React.FC = () => {
                               <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Actions</th>
                            </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
-                           {sections.map((s) => (
-                             <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
-                                <td className="px-10 py-6">
-                                   <div className="flex items-center gap-4">
-                                      <div className="size-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
-                                         <BookOpen className="size-5" />
-                                      </div>
-                                      <span className="font-display font-black text-slate-900 text-lg tracking-tight">Section {s.section || "N/A"}</span>
-                                   </div>
-                                </td>
-                                <td className="px-8 py-6 text-center">
-                                   <span className="font-display font-black text-slate-900 text-lg">
-                                     {s.studentCount}
-                                   </span>
-                                </td>
-                                <td className="px-8 py-6 text-center text-sm font-bold text-slate-500 tracking-tight">
-                                   {s.defaultFeeAmount ? `₹${s.defaultFeeAmount}` : "--"}
-                                </td>
-                                <td className="px-10 py-6">
-                                   <div className="flex items-center justify-center gap-2">
-                                      <button className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all">
-                                        <MoreVertical className="size-4" />
-                                      </button>
-                                   </div>
-                                </td>
-                             </tr>
-                           ))}
-                        </tbody>
+                         <tbody className="divide-y divide-slate-50">
+                            {sections.map((s) => (
+                              <tr 
+                                key={s.id} 
+                                className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
+                                onClick={() => navigate(`/admin/classes/${s.id}`)}
+                              >
+                                 <td className="px-10 py-6">
+                                    <div className="flex items-center gap-4">
+                                       <div className="size-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
+                                          <BookOpen className="size-5" />
+                                       </div>
+                                       <span className="font-display font-black text-slate-900 text-lg tracking-tight">Section {s.section || "N/A"}</span>
+                                    </div>
+                                 </td>
+                                 <td className="px-8 py-6 text-center">
+                                    <span className="font-display font-black text-slate-900 text-lg">
+                                      {s.studentCount}
+                                    </span>
+                                 </td>
+                                 <td className="px-8 py-6 text-center text-sm font-bold text-slate-500 tracking-tight">
+                                    {s.defaultFeeAmount ? `₹${s.defaultFeeAmount}` : "--"}
+                                 </td>
+                                  <td className="px-10 py-6" onClick={(e) => e.stopPropagation()}>
+                                     <ActionMenu items={getActionMenuItems(s.id)} />
+                                  </td>
+                              </tr>
+                            ))}
+                         </tbody>
                      </table>
                   </div>
                 )}
@@ -233,6 +266,17 @@ const Classes: React.FC = () => {
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onSuccess={fetchClasses}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, itemId: null, loading: false })}
+        onConfirm={confirmDeleteClass}
+        title="Delete Class"
+        message="Are you sure you want to delete this class? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+        loading={deleteDialog.loading}
       />
     </AdminLayout>
   );

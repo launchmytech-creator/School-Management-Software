@@ -103,6 +103,7 @@ const AdminDashboard: React.FC = () => {
           ? ("positive" as const)
           : ("negative" as const),
       color: "text-blue-500 bg-blue-50",
+      onClick: () => navigate('/admin/students'),
     },
     {
       label: "TOTAL TEACHERS",
@@ -114,6 +115,7 @@ const AdminDashboard: React.FC = () => {
           ? ("positive" as const)
           : ("negative" as const),
       color: "text-violet-500 bg-violet-50",
+      onClick: () => navigate('/admin/teachers'),
     },
     {
       label: "FEE COLLECTED",
@@ -127,6 +129,7 @@ const AdminDashboard: React.FC = () => {
           ? ("positive" as const)
           : ("negative" as const),
       color: "text-emerald-500 bg-emerald-50",
+      onClick: () => navigate('/admin/fees'),
     },
     {
       label: "PENDING DEFAULTERS",
@@ -139,6 +142,7 @@ const AdminDashboard: React.FC = () => {
           ? ("negative" as const)
           : ("positive" as const),
       color: "text-rose-500 bg-rose-50",
+      onClick: () => navigate('/admin/fee-defaulters'),
     },
   ];
 

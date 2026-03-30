@@ -31,6 +31,7 @@ const Holidays: React.FC = () => {
   });
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fetchCurrentYear = useCallback(async () => {
     try {
@@ -64,8 +65,12 @@ const Holidays: React.FC = () => {
   }, [fetchHolidays]);
 
   const handleCreateHoliday = async () => {
-    if (!formData.holidayDate || !formData.description) {
-      showNotification('Date and description are required', 'error');
+    const newErrors: Record<string, string> = {};
+    if (!formData.holidayDate) newErrors.holidayDate = 'Date is required';
+    if (!formData.description.trim()) newErrors.description = 'Description is required';
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -84,6 +89,7 @@ const Holidays: React.FC = () => {
       showNotification('Holiday created successfully', 'success');
       setShowCreateModal(false);
       setFormData({ holidayDate: '', description: '' });
+      setErrors({});
       fetchHolidays();
     } catch {
       showNotification('Failed to create holiday', 'error');
@@ -432,14 +438,22 @@ const Holidays: React.FC = () => {
               label="Date"
               type="date"
               value={formData.holidayDate}
-              onChange={(e) => setFormData({ ...formData, holidayDate: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, holidayDate: e.target.value });
+                if (errors.holidayDate) setErrors(prev => { const next = { ...prev }; delete next.holidayDate; return next; });
+              }}
+              error={errors.holidayDate}
               required
             />
             <InputField
               label="Description"
               placeholder="e.g., Independence Day"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, description: e.target.value });
+                if (errors.description) setErrors(prev => { const next = { ...prev }; delete next.description; return next; });
+              }}
+              error={errors.description}
               required
             />
             <div className="flex gap-3 pt-4">

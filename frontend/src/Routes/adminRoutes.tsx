@@ -3,6 +3,7 @@ import RequiresActiveYear from "../components/academicYear/RequiresActiveYear";
 import AdminDashboard from "../Pages/Admin/Dashboard";
 import AcademicYearsPage from "../Pages/Admin/AcademicYearsPage";
 import Classes from "../Pages/Admin/Classes";
+import ClassDetail from "../Pages/Admin/ClassDetail";
 import ParentList from "../Pages/Admin/ParentList";
 import Students from "../Pages/Admin/Students";
 import AddStudent from "../Pages/Admin/AddStudent";
@@ -40,6 +41,7 @@ const adminRoutes = (
     <Route path="dashboard" element={<AdminDashboard />} />
     <Route path="academic-years" element={<AcademicYearsPage />} />
     <Route path="classes" element={<Classes />} />
+    <Route path="classes/:id" element={withActiveYear(<ClassDetail />)} />
     <Route path="parents" element={<ParentList />} />
 
     {/* Student Management */}

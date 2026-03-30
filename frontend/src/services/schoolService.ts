@@ -1,5 +1,5 @@
 import { apiRequest } from './api';
-import type { School, CreateSchoolRequest, SubscriptionTier, SchoolUpdateData } from '../types/school';
+import type { School, CreateSchoolRequest, SubscriptionTier, SchoolUpdateData, SchoolAdmin, UpdateSchoolAdminData } from '../types/school';
 import { getCurrentAcademicYear } from '../lib/utils';
 
 const VALID_SUBSCRIPTION_PLANS: SubscriptionTier[] = ['BASIC', 'PREMIUM', 'BUSINESS'];
@@ -38,6 +38,8 @@ const normalizeSchool = (data: Record<string, unknown>): School => ({
   feeTerm: mapFeeTerms(data.feeTerm as string | undefined || (data.fee_terms as number | undefined)),
   status: data.status !== undefined ? Boolean(data.status) : Boolean(data.is_active),
   createdAt: (data.createdAt as string) || (data.created_at as string) || new Date().toISOString(),
+  teacherCount: Number(data.teacher_count) || 0,
+  studentCount: Number(data.student_count) || 0,
 });
 
 export const schoolService = {
@@ -61,4 +63,24 @@ export const schoolService = {
     method: 'PATCH',
     data,
   }),
+
+  getSchoolAdmin: async (schoolId: string): Promise<SchoolAdmin> => {
+    const data = await apiRequest<Record<string, unknown>>(`/schools/${schoolId}/admin`);
+    return {
+      id: data.id as number,
+      email: data.email as string,
+      fullName: data.full_name as string,
+      phone: data.phone as string,
+      role: data.role as string,
+      schoolId: data.school_id as number,
+      isActive: data.is_active as boolean,
+      createdAt: data.created_at as string,
+    };
+  },
+
+  updateSchoolAdmin: (schoolId: string, data: UpdateSchoolAdminData): Promise<SchoolAdmin> => 
+    apiRequest<SchoolAdmin>(`/schools/${schoolId}/admin`, {
+      method: 'PATCH',
+      data,
+    }),
 };

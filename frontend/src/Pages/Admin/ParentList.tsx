@@ -16,6 +16,7 @@ import StatusBadge from "../../components/common/StatusBadge";
 import EmptyState from "../../components/common/EmptyState";
 import CreateParentModal from "../../components/parent/CreateParentModal";
 import { Button } from "../../components/ui/button";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 
 const ParentList: React.FC = () => {
   const { showNotification } = useNotification();
@@ -27,6 +28,7 @@ const ParentList: React.FC = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, parentId: null as number | null });
 
   const fetchParents = React.useCallback(async () => {
     setLoading(true);
@@ -45,16 +47,21 @@ const ParentList: React.FC = () => {
     fetchParents();
   }, [fetchParents]);
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to deactivate this parent? This will only work if no students are linked.")) return;
-    
+  const handleDelete = (id: number) => {
+    setDeleteDialog({ isOpen: true, parentId: id });
+  };
+
+  const confirmDeleteParent = async () => {
+    if (!deleteDialog.parentId) return;
     try {
-      await parentService.deleteParent(id);
+      await parentService.deleteParent(deleteDialog.parentId);
       showNotification("Parent deactivated successfully", "success");
       fetchParents();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to deactivate parent.";
       showNotification(message, "error");
+    } finally {
+      setDeleteDialog({ isOpen: false, parentId: null });
     }
   };
 
@@ -222,6 +229,16 @@ const ParentList: React.FC = () => {
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onSuccess={fetchParents}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, parentId: null })}
+        onConfirm={confirmDeleteParent}
+        title="Deactivate Parent"
+        message="Are you sure you want to deactivate this parent? This will only work if no students are linked."
+        confirmText="Deactivate"
+        variant="warning"
       />
     </AdminLayout>
   );

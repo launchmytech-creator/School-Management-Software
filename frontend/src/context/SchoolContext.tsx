@@ -50,7 +50,7 @@ export const SchoolProvider: React.FC<{ children: React.ReactNode }> = ({
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  console.log(schools);
   const fetchSchools = useCallback(async () => {
     try {
       setLoading(true);

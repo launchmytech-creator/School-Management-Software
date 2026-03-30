@@ -21,7 +21,7 @@ const InputField: React.FC<InputFieldProps> = ({ label, icon, onToggleEye, input
         </span>
       )}
       <input
-        className={`w-full h-10 rounded-lg border focus:ring-2 focus:border-accent outline-none text-sm text-slate-700 placeholder:text-slate-300 transition-all ${icon ? 'pl-10' : 'px-3'} ${onToggleEye ? 'pr-10' : ''} ${error ? 'border-red-500 bg-red-50/30 focus:ring-red-500/10' : 'border-slate-200 focus:ring-accent/20'} ${inputClassName || ''}`}
+        className={`w-full h-10 rounded-lg border focus:ring-2 focus:border-accent outline-none text-sm text-slate-700 placeholder:text-slate-300 transition-all disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400 ${icon ? 'pl-10' : 'px-3'} ${onToggleEye ? 'pr-10' : ''} ${error ? 'border-red-500 bg-red-50/30 focus:ring-red-500/10' : 'border-slate-200 focus:ring-accent/20'} ${inputClassName || ''}`}
         {...props}
       />
       {onToggleEye && (

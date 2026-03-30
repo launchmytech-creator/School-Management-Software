@@ -13,6 +13,8 @@ export interface School {
   feeTerm: FeeTerm;
   status: boolean;
   createdAt: string;
+  teacherCount?: number;
+  studentCount?: number;
 }
 
 export interface SchoolCreateData {
@@ -47,4 +49,20 @@ export interface CreateSchoolRequest {
     fullName: string;
     phone: string;
   };
+}
+
+export interface SchoolAdmin {
+  id: number;
+  email: string;
+  fullName: string;
+  phone: string;
+  role: string;
+  schoolId: number;
+  isActive: boolean;
+  createdAt?: string;
+}
+
+export interface UpdateSchoolAdminData {
+  fullName?: string;
+  phone?: string;
 }

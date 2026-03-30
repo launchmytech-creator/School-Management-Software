@@ -18,6 +18,7 @@ import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import StatusBadge from "../../components/common/StatusBadge";
 import EmptyState from "../../components/common/EmptyState";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 
 const TeacherList: React.FC = () => {
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ const TeacherList: React.FC = () => {
   
   // Modals
   const [isCreateTeacherOpen, setIsCreateTeacherOpen] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, teacherId: null as number | null });
 
   // Fetch Data
   const fetchTeachers = useCallback(async () => {
@@ -48,9 +50,13 @@ const TeacherList: React.FC = () => {
     fetchTeachers();
   }, [fetchTeachers]);
 
-  const handleDeleteTeacher = async (_id: number) => {
-    if (!window.confirm("Are you sure you want to delete this teacher? This may affect their allocations.")) return;
+  const handleDeleteTeacher = (id: number) => {
+    setDeleteDialog({ isOpen: true, teacherId: id });
+  };
+
+  const confirmDeleteTeacher = () => {
     showNotification("Delete functionality coming soon", "info");
+    setDeleteDialog({ isOpen: false, teacherId: null });
   };
 
   const handleReset = () => {
@@ -190,6 +196,16 @@ const TeacherList: React.FC = () => {
         isOpen={isCreateTeacherOpen} 
         onClose={() => setIsCreateTeacherOpen(false)} 
         onSuccess={fetchTeachers}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, teacherId: null })}
+        onConfirm={confirmDeleteTeacher}
+        title="Delete Teacher"
+        message="Are you sure you want to delete this teacher? This may affect their allocations."
+        confirmText="Delete"
+        variant="danger"
       />
     </AdminLayout>
   );

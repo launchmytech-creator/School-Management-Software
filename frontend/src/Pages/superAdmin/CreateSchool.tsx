@@ -1,10 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import type { CreateSchoolRequest, SchoolCreateData, SubscriptionTier, School, FeeTerm, SchoolUpdateData } from '../../types/school';
-import { useState } from 'react';
+import type { CreateSchoolRequest, SchoolCreateData, SubscriptionTier, School, FeeTerm, SchoolUpdateData, SchoolAdmin, UpdateSchoolAdminData } from '../../types/school';
+import { useState, useEffect } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import { useNotification } from '../../context/NotificationContext';
 import { useSchool } from '../../context/SchoolContext';
 import { getCurrentAcademicYear, getLocalDateString } from '../../lib/utils';
+import { schoolService } from '../../services/schoolService';
 
 const generateSchoolCode = (name: string): string => {
   const prefix = name.substring(0, 3).toUpperCase();
@@ -52,6 +53,7 @@ const CreateSchool: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier>(editSchool?.plan || 'PREMIUM');
   const [feeTerm, setFeeTerm] = useState<FeeTerm>(editSchool?.feeTerm || 'YEARLY');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [schoolAdmin, setSchoolAdmin] = useState<SchoolAdmin | null>(null);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -75,6 +77,27 @@ const CreateSchool: React.FC = () => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  const fetchSchoolAdmin = async (id: string) => {
+    try {
+      const admin = await schoolService.getSchoolAdmin(id);
+      setSchoolAdmin(admin);
+      setFormData(prev => ({
+        ...prev,
+        adminFullName: admin.fullName,
+        adminEmail: admin.email,
+        adminPhone: admin.phone,
+      }));
+    } catch {
+      // Handle silently
+    }
+  };
+
+  useEffect(() => {
+    if (isEditMode && editSchool?.id) {
+      fetchSchoolAdmin(editSchool.id);
+    }
+  }, [isEditMode, editSchool?.id]);
 
   const planMapping: Record<SubscriptionTier, number> = {
     'BASIC': 1,
@@ -124,6 +147,19 @@ const CreateSchool: React.FC = () => {
           subscriptionEndDate: formData.subscriptionEndDate,
         };
         await updateSchoolContext(editSchool.id, payload);
+
+        if (schoolAdmin) {
+          const adminUpdates: UpdateSchoolAdminData = {};
+          if (formData.adminFullName !== schoolAdmin.fullName) {
+            adminUpdates.fullName = formData.adminFullName;
+          }
+          if (formData.adminPhone !== schoolAdmin.phone) {
+            adminUpdates.phone = formData.adminPhone;
+          }
+          if (Object.keys(adminUpdates).length > 0) {
+            await schoolService.updateSchoolAdmin(editSchool.id, adminUpdates);
+          }
+        }
       } else {
         const payload: CreateSchoolRequest = {
           school: {
@@ -173,12 +209,14 @@ const CreateSchool: React.FC = () => {
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-100 shadow-premium p-12 space-y-16">
           <SchoolInfoForm formData={formData} handleChange={handleChange} errors={errors} />
 
-          {!isEditMode && (
-            <>
-              <hr className="border-slate-50" />
-              <AdminInfoForm formData={formData} handleChange={handleChange} errors={errors} />
-            </>
-          )}
+          <hr className="border-slate-50" />
+          <AdminInfoForm 
+            formData={formData} 
+            handleChange={handleChange} 
+            errors={errors}
+            isEditMode={isEditMode}
+            adminEmail={schoolAdmin?.email}
+          />
 
           <hr className="border-slate-50" />
           <SubscriptionSettingsForm formData={formData} handleChange={handleChange} errors={errors} />

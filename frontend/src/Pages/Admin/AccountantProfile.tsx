@@ -17,6 +17,26 @@ const AccountantProfile: React.FC = () => {
   // Data state
   const [accountant, setAccountant] = useState<Accountant | null>(null);
   const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState(false);
+
+  const handleToggleStatus = async () => {
+    if (!accountant || !id) return;
+    setToggling(true);
+    try {
+      await accountantService.updateAccountant(parseInt(id), { 
+        isActive: !accountant.isActive 
+      });
+      setAccountant(prev => prev ? { ...prev, isActive: !prev.isActive } : null);
+      showNotification(
+        accountant.isActive ? 'Accountant deactivated successfully!' : 'Accountant activated successfully!',
+        'success'
+      );
+    } catch {
+      showNotification('Failed to update status', 'error');
+    } finally {
+      setToggling(false);
+    }
+  };
 
   const fetchAccountantData = useCallback(async () => {
     if (!id) return;
@@ -143,11 +163,22 @@ const AccountantProfile: React.FC = () => {
               </div>
 
               <div className="mt-8 space-y-3">
-                <button className="w-full py-3.5 rounded-2xl border-2 border-slate-900 text-slate-900 font-black text-sm hover:bg-slate-900 hover:text-white transition-all active:scale-95 shadow-sm">
+                <button 
+                  onClick={() => navigate(`/admin/accountants/${id}/edit`)}
+                  className="w-full py-3.5 rounded-2xl border-2 border-slate-900 text-slate-900 font-black text-sm hover:bg-slate-900 hover:text-white transition-all active:scale-95 shadow-sm cursor-pointer"
+                >
                   Edit Profile
                 </button>
-                <button className="w-full py-3.5 rounded-2xl border-2 border-rose-100 text-rose-500 font-black text-sm hover:bg-rose-50 transition-all active:scale-95">
-                  Deactivate
+                <button 
+                  onClick={handleToggleStatus}
+                  disabled={toggling}
+                  className={`w-full py-3.5 rounded-2xl border-2 font-black text-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer ${
+                    accountant.isActive 
+                      ? 'border-rose-100 text-rose-500 hover:bg-rose-50' 
+                      : 'border-emerald-100 text-emerald-500 hover:bg-emerald-50'
+                  }`}
+                >
+                  {toggling ? 'Updating...' : accountant.isActive ? 'Deactivate' : 'Activate'}
                 </button>
               </div>
             </div>

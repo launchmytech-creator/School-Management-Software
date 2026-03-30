@@ -32,6 +32,7 @@ const ClassSubjects: React.FC = () => {
     subjectId: 0,
     academicYearId: 0,
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fetchClasses = useCallback(async () => {
     try {
@@ -117,14 +118,32 @@ const ClassSubjects: React.FC = () => {
       subjectId: 0,
       academicYearId: Number(defaultYearId),
     });
+    setErrors({});
     setShowModal(true);
   };
 
-  const handleSave = async () => {
-    if (!formData.classId || !formData.subjectId || !formData.academicYearId) {
-      showNotification('Please fill all required fields', 'error');
-      return;
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.classId) newErrors.classId = 'Class is required';
+    if (!formData.subjectId) newErrors.subjectId = 'Subject is required';
+    if (!formData.academicYearId) newErrors.academicYearId = 'Academic year is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFieldChange = (field: string, value: number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
+  };
+
+  const handleSave = async () => {
+    if (!validate()) return;
 
     try {
       setSaving(true);
@@ -353,51 +372,60 @@ const ClassSubjects: React.FC = () => {
           <div className="p-6 space-y-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Class</label>
-              <select
-                value={formData.classId || ''}
-                onChange={(e) => setFormData({ ...formData, classId: Number(e.target.value) })}
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Class</option>
-                {classes.map(cls => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.name} - Section {cls.section || 'A'}
-                  </option>
-                ))}
-              </select>
+              <div className="flex flex-col">
+                <select
+                  value={formData.classId || ''}
+                  onChange={(e) => handleFieldChange('classId', Number(e.target.value))}
+                  className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.classId ? 'border-red-500' : 'border-slate-200'}`}
+                >
+                  <option value="">Select Class</option>
+                  {classes.map(cls => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name} - Section {cls.section || 'A'}
+                    </option>
+                  ))}
+                </select>
+                {errors.classId && <span className="text-red-500 text-xs mt-1">{errors.classId}</span>}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Academic Year</label>
-              <select
-                value={formData.academicYearId || ''}
-                onChange={(e) => setFormData({ ...formData, academicYearId: Number(e.target.value) })}
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Year</option>
-                {academicYears.map(year => (
-                  <option key={year.id} value={year.id}>{year.name}</option>
-                ))}
-              </select>
+              <div className="flex flex-col">
+                <select
+                  value={formData.academicYearId || ''}
+                  onChange={(e) => handleFieldChange('academicYearId', Number(e.target.value))}
+                  className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.academicYearId ? 'border-red-500' : 'border-slate-200'}`}
+                >
+                  <option value="">Select Year</option>
+                  {academicYears.map(year => (
+                    <option key={year.id} value={year.id}>{year.name}</option>
+                  ))}
+                </select>
+                {errors.academicYearId && <span className="text-red-500 text-xs mt-1">{errors.academicYearId}</span>}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Subject</label>
-              <select
-                value={formData.subjectId || ''}
-                onChange={(e) => setFormData({ ...formData, subjectId: Number(e.target.value) })}
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Subject</option>
-                {subjects
-                  .filter(s => !assignedSubjectIds.includes(s.id))
-                  .map(subject => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name} ({subject.code})
-                    </option>
-                  ))}
-              </select>
-              {assignedSubjectIds.length === subjects.length && subjects.length > 0 && (
-                <p className="text-xs text-amber-600 mt-1">All subjects have been assigned to this class</p>
-              )}
+              <div className="flex flex-col">
+                <select
+                  value={formData.subjectId || ''}
+                  onChange={(e) => handleFieldChange('subjectId', Number(e.target.value))}
+                  className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.subjectId ? 'border-red-500' : 'border-slate-200'}`}
+                >
+                  <option value="">Select Subject</option>
+                  {subjects
+                    .filter(s => !assignedSubjectIds.includes(s.id))
+                    .map(subject => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.name} ({subject.code})
+                      </option>
+                    ))}
+                </select>
+                {errors.subjectId && <span className="text-red-500 text-xs mt-1">{errors.subjectId}</span>}
+                {assignedSubjectIds.length === subjects.length && subjects.length > 0 && (
+                  <p className="text-xs text-amber-600 mt-1">All subjects have been assigned to this class</p>
+                )}
+              </div>
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => setShowModal(false)} className="flex-1">

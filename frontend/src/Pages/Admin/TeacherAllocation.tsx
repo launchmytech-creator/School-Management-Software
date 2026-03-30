@@ -12,6 +12,7 @@ import type {
 } from "../../types/teacher";
 import { Button } from "../../components/ui/button";
 import AllocateTeacherModal from "../../components/teacher/AllocateTeacherModal";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 
 const TeacherAllocation: React.FC = () => {
   const { showNotification } = useNotification();
@@ -20,6 +21,7 @@ const TeacherAllocation: React.FC = () => {
   const [allocations, setAllocations] = useState<TeacherAllocationType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, allocationId: null as number | null });
 
   // Fetch Data
   const fetchData = useCallback(async () => {
@@ -38,15 +40,20 @@ const TeacherAllocation: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  const handleDeleteAllocation = async (id: number) => {
-    if (!window.confirm("Are you sure you want to remove this allocation?")) return;
-    
+  const handleDeleteAllocation = (id: number) => {
+    setDeleteDialog({ isOpen: true, allocationId: id });
+  };
+
+  const confirmDeleteAllocation = async () => {
+    if (!deleteDialog.allocationId) return;
     try {
-      await teacherService.deleteAllocation(id);
+      await teacherService.deleteAllocation(deleteDialog.allocationId);
       showNotification("Allocation removed", "success");
-      setAllocations(prev => prev.filter(a => a.id !== id));
+      setAllocations(prev => prev.filter(a => a.id !== deleteDialog.allocationId));
     } catch {
       showNotification("Failed to delete allocation", "error");
+    } finally {
+      setDeleteDialog({ isOpen: false, allocationId: null });
     }
   };
 
@@ -236,6 +243,16 @@ const TeacherAllocation: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={fetchData}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, allocationId: null })}
+        onConfirm={confirmDeleteAllocation}
+        title="Remove Allocation"
+        message="Are you sure you want to remove this allocation? This action cannot be undone."
+        confirmText="Remove"
+        variant="danger"
       />
     </AdminLayout>
   );

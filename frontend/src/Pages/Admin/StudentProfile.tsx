@@ -10,10 +10,6 @@ import {
   CalendarDays,
 } from "lucide-react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  Tooltip,
   ResponsiveContainer,
   Cell,
   PieChart,
@@ -96,7 +92,7 @@ const StudentProfile: React.FC = () => {
         startDate: getLocalDateString(monthStart),
         endDate: getLocalDateString(monthEnd),
       });
-      
+
       setAttendanceRecords(data);
     } catch {
       setAttendanceRecords([]);
@@ -258,13 +254,6 @@ const StudentProfile: React.FC = () => {
     year: "numeric",
   });
 
-  const performanceData = [
-    { name: "Term 1", value: 35 },
-    { name: "Term 2", value: 65 },
-    { name: "Term 3", value: 85 },
-    { name: "Term 4", value: 75 },
-    { name: "Current", value: 95 },
-  ];
 
   if (loading) {
     return (
@@ -370,21 +359,19 @@ const StudentProfile: React.FC = () => {
 
           <div className="lg:col-span-9 space-y-8">
             <div className="bg-white p-2 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center gap-2">
-              {["Overview", "Attendance", "Marks", "Fee Status", "Reports"].map(
-                (tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`flex-1 py-3 px-6 rounded-2xl text-[13px] font-black transition-all ${
-                      activeTab === tab
-                        ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20"
-                        : "text-slate-400 hover:text-slate-600"
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ),
-              )}
+              {["Attendance", "Marks", "Fee Status", "Reports"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 py-3 px-6 rounded-2xl text-[13px] font-black transition-all ${
+                    activeTab === tab
+                      ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20"
+                      : "text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
 
             {activeTab === "Attendance" && (
@@ -509,8 +496,20 @@ const StudentProfile: React.FC = () => {
                       <PieChart>
                         <Pie
                           data={[
-                            { name: "Present", value: attendanceSummary.presentCount, color: "#10B981" },
-                            { name: "Absent", value: Math.max(0, attendanceSummary.workingDays - attendanceSummary.presentCount), color: "#F1F5F9" },
+                            {
+                              name: "Present",
+                              value: attendanceSummary.presentCount,
+                              color: "#10B981",
+                            },
+                            {
+                              name: "Absent",
+                              value: Math.max(
+                                0,
+                                attendanceSummary.workingDays -
+                                  attendanceSummary.presentCount,
+                              ),
+                              color: "#F1F5F9",
+                            },
                           ]}
                           cx="50%"
                           cy="50%"
@@ -571,55 +570,6 @@ const StudentProfile: React.FC = () => {
                         : "needs improvement"}{" "}
                     attendance this month.
                   </p>
-                </div>
-
-                <div className="xl:col-span-3 bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100">
-                  <h3 className="text-xl font-black text-slate-900 tracking-tight mb-10">
-                    Performance Comparison
-                  </h3>
-                  <div className="h-64 mt-10">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={performanceData}
-                        margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
-                      >
-                        <XAxis
-                          dataKey="name"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{
-                            fill: "#CBD5E1",
-                            fontSize: 10,
-                            fontWeight: 900,
-                          }}
-                          dy={10}
-                        />
-                        <Tooltip
-                          cursor={{ fill: "#F8FAFC" }}
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              return (
-                                <div className="bg-slate-900 text-white p-3 rounded-xl font-black text-[10px] uppercase tracking-widest">
-                                  {payload[0].value}% Score
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={20}>
-                          {performanceData.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={
-                                entry.name === "Current" ? "#3B82F6" : "#94A3B8"
-                              }
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
                 </div>
               </div>
             )}

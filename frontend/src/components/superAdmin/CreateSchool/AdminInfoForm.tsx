@@ -10,9 +10,11 @@ interface AdminInfoFormProps {
   };
   handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   errors: Record<string, string>;
+  isEditMode?: boolean;
+  adminEmail?: string;
 }
 
-const AdminInfoForm: React.FC<AdminInfoFormProps> = ({ formData, handleChange, errors }) => {
+const AdminInfoForm: React.FC<AdminInfoFormProps> = ({ formData, handleChange, errors, isEditMode, adminEmail }) => {
   return (
     <section className="space-y-8">
       <div className="flex items-center gap-4 text-[#1E3A5F]">
@@ -26,8 +28,8 @@ const AdminInfoForm: React.FC<AdminInfoFormProps> = ({ formData, handleChange, e
           name="adminFullName"
           value={formData.adminFullName}
           onChange={handleChange}
-          required
-          placeholder="John Doe" 
+          required={!isEditMode}
+          placeholder="e.g., John Doe" 
           inputClassName="h-14 bg-slate-50"
           error={errors.adminFullName}
         />
@@ -35,12 +37,13 @@ const AdminInfoForm: React.FC<AdminInfoFormProps> = ({ formData, handleChange, e
           label="Admin Email"
           type="email" 
           name="adminEmail"
-          value={formData.adminEmail}
+          value={isEditMode ? (adminEmail || formData.adminEmail) : formData.adminEmail}
           onChange={handleChange}
-          required
-          placeholder="admin@example.com" 
+          required={!isEditMode}
+          placeholder="admin@schoolname.com" 
           inputClassName="h-14 bg-slate-50"
-          error={errors.adminEmail}
+          disabled={isEditMode}
+          error={isEditMode ? undefined : errors.adminEmail}
         />
         <InputField 
           label="Admin Password"
@@ -48,18 +51,19 @@ const AdminInfoForm: React.FC<AdminInfoFormProps> = ({ formData, handleChange, e
           name="adminPassword"
           value={formData.adminPassword}
           onChange={handleChange}
-          required
-          placeholder="••••••••" 
+          required={!isEditMode}
+          disabled={isEditMode}
+          placeholder={isEditMode ? "Contact support to change password" : "Min. 8 characters"} 
           inputClassName="h-14 bg-slate-50"
-          error={errors.adminPassword}
+          error={isEditMode ? undefined : errors.adminPassword}
         />
         <InputField 
           label="Admin Phone"
           name="adminPhone"
           value={formData.adminPhone}
           onChange={handleChange}
-          required
-          placeholder="+1 (555) 000-0000" 
+          required={!isEditMode}
+          placeholder="e.g., +91 98765 43210" 
           inputClassName="h-14 bg-slate-50"
           error={errors.adminPhone}
         />

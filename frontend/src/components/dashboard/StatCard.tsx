@@ -4,13 +4,17 @@ interface StatCardProps {
   label: string;
   value: string | number;
   icon: string;
-  color: string; // This will pass bg-blue-50/10 etc for icon box
-  iconColor: string; // This will pass text-blue-500 etc for icon
+  color: string;
+  iconColor: string;
+  onClick?: () => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ label, value, icon, color, iconColor }) => {
+const StatCard: React.FC<StatCardProps> = ({ label, value, icon, color, iconColor, onClick }) => {
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-5 group hover:shadow-lg transition-all duration-300">
+    <div 
+      onClick={onClick}
+      className={`bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-5 group hover:shadow-lg transition-all duration-300 ${onClick ? 'cursor-pointer hover:border-[#4A9FD4]/30' : ''}`}
+    >
       <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 ${color}`}>
         <span className={`material-symbols-outlined ${iconColor} text-2xl`}>
           {icon}

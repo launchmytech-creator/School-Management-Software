@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
@@ -8,27 +9,30 @@ import { subjectService, type Chapter, type CreateChapterDto } from '../../servi
 import type { Subject } from '../../services/subjectService';
 import { BookOpen, Plus, Edit2, Trash2, List } from 'lucide-react';
 import { BaseModal } from '../../components/common/BaseModal';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
 import { SkeletonTable } from '../../components/common/Skeleton';
 
 const Chapters: React.FC = () => {
   const { showNotification } = useNotification();
+  const { subjectId } = useParams<{ subjectId: string }>();
   const [loading, setLoading] = useState(true);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [selectedSubject, setSelectedSubject] = useState<string>(subjectId || '');
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; chapterId: number | null }>({ isOpen: false, chapterId: null });
   const [formData, setFormData] = useState<CreateChapterDto>({
     subjectId: 0,
     name: '',
     sequenceNumber: 1,
-    description: '',
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fetchSubjects = useCallback(async () => {
     try {
@@ -66,18 +70,17 @@ const Chapters: React.FC = () => {
   }, [selectedSubject, fetchChapters]);
 
   const filteredChapters = chapters.filter(ch =>
-    ch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ch.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    ch.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleOpenCreate = () => {
     setEditingChapter(null);
     setFormData({
-      subjectId: parseInt(selectedSubject),
+      subjectId: parseInt(subjectId || selectedSubject),
       name: '',
       sequenceNumber: chapters.length + 1,
-      description: '',
     });
+    setErrors({});
     setShowModal(true);
   };
 
@@ -87,16 +90,32 @@ const Chapters: React.FC = () => {
       subjectId: chapter.subjectId,
       name: chapter.name,
       sequenceNumber: chapter.sequenceNumber,
-      description: chapter.description || '',
     });
+    setErrors({});
     setShowModal(true);
   };
 
-  const handleSave = async () => {
-    if (!formData.name || !formData.subjectId) {
-      showNotification('Please fill all required fields', 'error');
-      return;
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.name) newErrors.name = 'Chapter name is required';
+    if (!formData.subjectId) newErrors.subjectId = 'Subject is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFieldChange = (field: string, value: string | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
+  };
+
+  const handleSave = async () => {
+    if (!validate()) return;
 
     try {
       setSaving(true);
@@ -104,7 +123,6 @@ const Chapters: React.FC = () => {
         await subjectService.updateChapter(editingChapter.id, {
           name: formData.name,
           sequenceNumber: formData.sequenceNumber,
-          description: formData.description,
         });
         showNotification('Chapter updated successfully', 'success');
       } else {
@@ -120,12 +138,16 @@ const Chapters: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this chapter?')) return;
-    
+  const handleDelete = (id: number) => {
+    setDeleteDialog({ isOpen: true, chapterId: id });
+  };
+
+  const confirmDeleteChapter = async () => {
+    if (!deleteDialog.chapterId) return;
     try {
-      setDeleting(id);
-      await subjectService.deleteChapter(id);
+      setDeleting(deleteDialog.chapterId);
+      setDeleteDialog({ isOpen: false, chapterId: null });
+      await subjectService.deleteChapter(deleteDialog.chapterId);
       showNotification('Chapter deleted successfully', 'success');
       fetchChapters(parseInt(selectedSubject));
     } catch {
@@ -135,18 +157,21 @@ const Chapters: React.FC = () => {
     }
   };
 
-  const selectedSubjectName = subjects.find(s => s.id === parseInt(selectedSubject))?.name || '';
+  const selectedSubjectName = subjectId
+    ? subjects.find(s => s.id === parseInt(subjectId))?.name || 'Subject'
+    : subjects.find(s => s.id === parseInt(selectedSubject))?.name || '';
 
   return (
     <AdminLayout title="Chapters">
       <div className="space-y-6 pb-12">
-        <PageHeader 
+        <PageHeader
           title="Chapters"
-          subtitle="Manage chapter content for each subject"
+          subtitle={subjectId ? `Managing chapters for: ${selectedSubjectName}` : "Manage chapter content for each subject"}
           breadcrumb={{
             links: [
               { label: "Dashboard", href: "/admin/dashboard" },
               { label: "Subjects", href: "/admin/subjects" },
+              ...(subjectId ? [{ label: selectedSubjectName, href: "/admin/subjects" }] : []),
               { label: "Chapters", active: true }
             ]
           }}
@@ -239,7 +264,6 @@ const Chapters: React.FC = () => {
                 <tr>
                   <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">#</th>
                   <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Chapter Name</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Description</th>
                   <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -253,11 +277,6 @@ const Chapters: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-sm font-semibold text-slate-900">{chapter.name}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-slate-500 line-clamp-2">
-                        {chapter.description || '-'}
-                      </p>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -305,25 +324,17 @@ const Chapters: React.FC = () => {
               label="Chapter Name"
               placeholder="Enter chapter name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => handleFieldChange('name', e.target.value)}
+              error={errors.name}
             />
             <InputField
               label="Sequence Number"
               type="number"
               placeholder="Order number"
               value={formData.sequenceNumber || ''}
-              onChange={(e) => setFormData({ ...formData, sequenceNumber: parseInt(e.target.value) || 1 })}
+              onChange={(e) => handleFieldChange('sequenceNumber', parseInt(e.target.value) || 1)}
+              error={errors.sequenceNumber}
             />
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Description (Optional)</label>
-              <textarea
-                value={formData.description || ''}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Enter chapter description"
-                rows={3}
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-            </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => setShowModal(false)} className="flex-1">
                 Cancel
@@ -334,6 +345,16 @@ const Chapters: React.FC = () => {
             </div>
           </div>
         </BaseModal>
+
+        <ConfirmDialog
+          isOpen={deleteDialog.isOpen}
+          onClose={() => setDeleteDialog({ isOpen: false, chapterId: null })}
+          onConfirm={confirmDeleteChapter}
+          title="Delete Chapter"
+          message="Are you sure you want to delete this chapter? This action cannot be undone."
+          confirmText="Delete"
+          variant="danger"
+        />
       </div>
     </AdminLayout>
   );

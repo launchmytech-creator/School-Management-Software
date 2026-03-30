@@ -12,6 +12,7 @@ import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import StatusBadge from "../../components/common/StatusBadge";
 import EmptyState from "../../components/common/EmptyState";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 
 const AccountantList: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ const AccountantList: React.FC = () => {
   const [endDate, setEndDate] = useState("");
   const [selectedAccountant, _setSelectedAccountant] = useState<Accountant | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, accountantId: null as number | null });
 
   const fetchAccountants = React.useCallback(async () => {
     setLoading(true);
@@ -43,19 +45,24 @@ const AccountantList: React.FC = () => {
     fetchAccountants();
   }, [fetchAccountants]);
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to deactivate this accountant?")) return;
-    
+  const handleDelete = (id: number) => {
+    setDeleteDialog({ isOpen: true, accountantId: id });
+  };
+
+  const confirmDeleteAccountant = async () => {
+    if (!deleteDialog.accountantId) return;
     try {
-      await accountantService.deleteAccountant(id);
+      await accountantService.deleteAccountant(deleteDialog.accountantId);
       showNotification("Accountant deactivated successfully", "success");
       setAccountants(prev => prev.map(acc => 
-        acc.id === id ? { ...acc, isActive: false } : acc
+        acc.id === deleteDialog.accountantId ? { ...acc, isActive: false } : acc
       ));
       fetchAccountants();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to deactivate accountant.";
       showNotification(message, "error");
+    } finally {
+      setDeleteDialog({ isOpen: false, accountantId: null });
     }
   };
 
@@ -148,89 +155,89 @@ const AccountantList: React.FC = () => {
                <Loader2 className="size-10 text-blue-500 animate-spin" />
              </div>
            ) : filteredAccountants.length === 0 ? (
-             <EmptyState 
-                icon={Search}
-                title="No accountants found"
-                description="We couldn't find any financial staff matching your current filters. Try adjusting your search term or dates."
-                action={{
-                  label: "Reset All Filters",
-                  onClick: handleResetFilters
-                }}
-             />
-           ) : (
-             <table className="w-full text-left">
-                <thead>
-                   <tr className="border-b border-slate-50 bg-slate-50/30">
-                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Accountant</th>
-                      <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Gender</th>
-                      <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Email</th>
-                      <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone</th>
-                      <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                   {filteredAccountants.map((accountant) => (
-                     <tr key={accountant.id} className="group hover:bg-slate-50/50 transition-colors">
-                        <td className="px-8 py-6">
-                           <div className="flex items-center gap-4">
-                              <div className="size-12 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-500 rounded-2xl flex items-center justify-center font-black text-lg border border-blue-100 shadow-sm uppercase">
-                                 {accountant.fullName ? accountant.fullName.charAt(0) : "?"}
-                              </div>
-                              <div>
-                                 <span className="font-display font-black text-slate-900 text-base tracking-tight block">{accountant.fullName || "Unnamed Accountant"}</span>
-                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 block">
-                                   Joined: {new Date(accountant.createdAt).toLocaleDateString()}
-                                 </span>
-                              </div>
-                           </div>
-                        </td>
-                        <td className="px-6 py-6 font-bold text-xs text-slate-600 uppercase tracking-widest">
-                           <span className={`px-3 py-1 rounded-lg ${
-                             accountant.gender === "Male" ? "bg-sky-50 text-sky-600" : 
-                             accountant.gender === "Female" ? "bg-rose-50 text-rose-600" : 
-                             "bg-slate-50 text-slate-500"
-                           }`}>
-                             {accountant.gender || "N/A"}
-                           </span>
-                        </td>
-                        <td className="px-6 py-6">
-                           <span className="text-sm font-bold text-slate-500">{accountant.email}</span>
-                        </td>
-                        <td className="px-6 py-6">
-                           <span className="text-sm font-bold text-slate-500">{accountant.phone || "N/A"}</span>
-                        </td>
-                        <td className="px-6 py-6 text-center">
-                           <StatusBadge label={accountant.isActive ? 'Active' : 'Inactive'} variant={accountant.isActive ? 'success' : 'neutral'} />
-                         </td>
+              <EmptyState 
+                 icon={Search}
+                 title="No accountants found"
+                 description="We couldn't find any financial staff matching your current filters. Try adjusting your search term or dates."
+                 action={{
+                   label: "Reset All Filters",
+                   onClick: handleResetFilters
+                 }}
+              />
+            ) : (
+              <table className="w-full text-left">
+                 <thead>
+                    <tr className="border-b border-slate-50 bg-slate-50/30">
+                       <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Accountant</th>
+                       <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Gender</th>
+                       <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Email</th>
+                       <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone</th>
+                       <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+                       <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                    </tr>
+                 </thead>
+                 <tbody className="divide-y divide-slate-50">
+                    {filteredAccountants.map((accountant) => (
+                      <tr key={accountant.id} className="group hover:bg-slate-50/50 transition-colors">
                          <td className="px-8 py-6">
-                            <div className="flex items-center justify-end gap-2 px-1">
-                               <button 
-                                  onClick={() => navigate(`/admin/accountants/${accountant.id}`)}
-                                  className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
+                            <div className="flex items-center gap-4">
+                               <div className="size-12 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-500 rounded-2xl flex items-center justify-center font-black text-lg border border-blue-100 shadow-sm uppercase">
+                                  {accountant.fullName ? accountant.fullName.charAt(0) : "?"}
+                               </div>
+                               <div>
+                                  <span className="font-display font-black text-slate-900 text-base tracking-tight block">{accountant.fullName || "Unnamed Accountant"}</span>
+                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 block">
+                                    Joined: {new Date(accountant.createdAt).toLocaleDateString()}
+                                  </span>
+                               </div>
+                            </div>
+                         </td>
+                         <td className="px-6 py-6 font-bold text-xs text-slate-600 uppercase tracking-widest">
+                            <span className={`px-3 py-1 rounded-lg ${
+                              accountant.gender === "Male" ? "bg-sky-50 text-sky-600" : 
+                              accountant.gender === "Female" ? "bg-rose-50 text-rose-600" : 
+                              "bg-slate-50 text-slate-500"
+                            }`}>
+                              {accountant.gender || "N/A"}
+                            </span>
+                         </td>
+                         <td className="px-6 py-6">
+                            <span className="text-sm font-bold text-slate-500">{accountant.email}</span>
+                         </td>
+                         <td className="px-6 py-6">
+                            <span className="text-sm font-bold text-slate-500">{accountant.phone || "N/A"}</span>
+                         </td>
+                         <td className="px-6 py-6 text-center">
+                            <StatusBadge label={accountant.isActive ? 'Active' : 'Inactive'} variant={accountant.isActive ? 'success' : 'neutral'} />
+                          </td>
+                          <td className="px-8 py-6">
+                             <div className="flex items-center justify-end gap-2 px-1">
+                                <button 
+                                   onClick={() => navigate(`/admin/accountants/${accountant.id}`)}
+                                   className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
+                                >
+                                   <Eye className="size-4" />
+                                </button>
+                                <button 
+                                   onClick={() => navigate(`/admin/accountants/${accountant.id}/edit`)}
+                                   className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
+                                >
+                                   <Edit2 className="size-4" />
+                                </button>
+                                <button 
+                                   onClick={() => handleDelete(accountant.id)}
+                                   className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
                                >
-                                  <Eye className="size-4" />
-                               </button>
-                               <button 
-                                  onClick={() => navigate(`/admin/accountants/${accountant.id}/edit`)}
-                                  className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
-                               >
-                                  <Edit2 className="size-4" />
-                               </button>
-                               <button 
-                                  onClick={() => handleDelete(accountant.id)}
-                                  className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                              >
-                                 <Trash2 className="size-4" />
+                                  <Trash2 className="size-4" />
                               </button>
-                           </div>
-                        </td>
-                     </tr>
+                            </div>
+                         </td>
+                      </tr>
                     ))}
-                </tbody>
-             </table>
-           )}
-        </div>
+                 </tbody>
+              </table>
+            )}
+         </div>
       </div>
 
       <AccountantDetailsModal 
@@ -247,6 +254,16 @@ const AccountantList: React.FC = () => {
           address: selectedAccountant.address || "N/A",
           gender: selectedAccountant.gender || "Not specified"
         } : null}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, accountantId: null })}
+        onConfirm={confirmDeleteAccountant}
+        title="Deactivate Accountant"
+        message="Are you sure you want to deactivate this accountant?"
+        confirmText="Deactivate"
+        variant="warning"
       />
     </AdminLayout>
   );

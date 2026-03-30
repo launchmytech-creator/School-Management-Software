@@ -8,6 +8,7 @@ interface AdminStatCardProps {
   trend?: string;
   trendType?: 'positive' | 'negative' | 'neutral';
   color: string;
+  onClick?: () => void;
 }
 
 const AdminStatCard: React.FC<AdminStatCardProps> = ({ 
@@ -16,13 +17,17 @@ const AdminStatCard: React.FC<AdminStatCardProps> = ({
   icon: Icon, 
   trend, 
   trendType = 'neutral',
-  color 
+  color,
+  onClick
 }) => {
   const trendColor = trendType === 'positive' ? 'text-emerald-500 bg-emerald-50/50' : trendType === 'negative' ? 'text-rose-500 bg-rose-50/50' : 'text-slate-400 bg-slate-50';
   const TrendIcon = trendType === 'positive' ? TrendingUp : trendType === 'negative' ? TrendingDown : Info;
 
   return (
-    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-500 group">
+    <div 
+      onClick={onClick}
+      className={`bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-lg transition-all duration-500 group cursor-pointer hover:border-[#4A9FD4]/30 ${onClick ? '' : ''}`}
+    >
       <div className="flex justify-between items-start mb-6">
         <div>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{label}</p>

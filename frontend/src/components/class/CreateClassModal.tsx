@@ -22,20 +22,41 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
     section: '',
     defaultFeeAmount: 0,
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.name.trim()) {
+      newErrors.name = 'Class name is required';
+    }
+    if (!selectedYear?.id) {
+      newErrors.academicYear = 'Please select an academic year first';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFieldChange = (field: string, value: string | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedYear) {
-      showNotification('Please select an academic year first.', 'error');
-      return;
-    }
+    if (!validate()) return;
 
     setIsSubmitting(true);
     try {
       await classService.createClass({
         ...formData,
-        academicYearId: selectedYear.id,
+        academicYearId: selectedYear!.id,
       });
       showNotification('Class created successfully!', 'success');
       onSuccess();
@@ -69,24 +90,25 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-5">
-          <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl flex items-center justify-between mb-4">
-            <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Target Year</span>
-            <span className="text-sm font-black text-blue-700">{selectedYear?.name || 'None Selected'}</span>
+          <div className={`p-4 rounded-2xl flex items-center justify-between mb-4 ${errors.academicYear ? 'bg-red-50/50 border border-red-200' : 'bg-blue-50/50 border border-blue-100'}`}>
+            <span className={`text-[10px] font-black uppercase tracking-widest ${errors.academicYear ? 'text-red-600' : 'text-blue-600'}`}>Target Year</span>
+            <span className={`text-sm font-black ${errors.academicYear ? 'text-red-700' : 'text-blue-700'}`}>{selectedYear?.name || 'None Selected'}</span>
           </div>
+          {errors.academicYear && <p className="text-red-500 text-xs -mt-3">{errors.academicYear}</p>}
 
           <InputField
             label="Class Name"
             placeholder="e.g. Class 1, Kindergarten, etc."
-            required
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => handleFieldChange('name', e.target.value)}
+            error={errors.name}
           />
 
           <InputField
             label="Section"
             placeholder="e.g. A, B, Red, Blue"
             value={formData.section}
-            onChange={(e) => setFormData({ ...formData, section: e.target.value })}
+            onChange={(e) => handleFieldChange('section', e.target.value)}
           />
 
           <InputField
@@ -94,7 +116,7 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
             type="number"
             placeholder="25000"
             value={formData.defaultFeeAmount?.toString()}
-            onChange={(e) => setFormData({ ...formData, defaultFeeAmount: Number(e.target.value) })}
+            onChange={(e) => handleFieldChange('defaultFeeAmount', Number(e.target.value))}
           />
 
           <div className="pt-4 flex gap-3">

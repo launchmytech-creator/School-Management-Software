@@ -43,6 +43,7 @@ const FeeStructures: React.FC = () => {
     amount: 0,
     feeTerms: 0,
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fetchClasses = useCallback(async () => {
     try {
@@ -117,6 +118,7 @@ const FeeStructures: React.FC = () => {
 
   const handleOpenCreate = () => {
     setEditingStructure(null);
+    setErrors({});
     const defaultClassId = selectedClass ? parseInt(selectedClass) : (classes[0]?.id ?? 0);
     const defaultYearId = selectedYear ? parseInt(selectedYear) : (academicYears[0]?.id ?? 0);
     setFormData({
@@ -131,6 +133,7 @@ const FeeStructures: React.FC = () => {
 
   const handleOpenEdit = (structure: FeeStructure) => {
     setEditingStructure(structure);
+    setErrors({});
     setFormData({
       classId: structure.classId,
       academicYearId: structure.academicYearId,
@@ -142,8 +145,15 @@ const FeeStructures: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.feeType || !formData.amount || !formData.classId || !formData.academicYearId || !formData.feeTerms) {
-      showNotification('Please fill all required fields', 'error');
+    const newErrors: Record<string, string> = {};
+    if (!formData.classId && !editingStructure) newErrors.classId = 'Class is required';
+    if (!formData.academicYearId && !editingStructure) newErrors.academicYearId = 'Academic year is required';
+    if (!formData.feeType.trim()) newErrors.feeType = 'Fee type is required';
+    if (!formData.amount || formData.amount <= 0) newErrors.amount = 'Amount must be greater than 0';
+    if (!formData.feeTerms) newErrors.feeTerms = 'Fee terms is required';
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -402,11 +412,17 @@ const FeeStructures: React.FC = () => {
             {!editingStructure && (
               <>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Class</label>
+                  <div className="flex justify-between items-center px-1 mb-1">
+                    <label className={`block text-xs font-semibold ${errors.classId ? 'text-red-500' : 'text-slate-700'}`}>Class</label>
+                    {errors.classId && <span className="text-[10px] font-bold text-red-500">{errors.classId}</span>}
+                  </div>
                   <select
                     value={formData.classId || ''}
-                    onChange={(e) => setFormData({ ...formData, classId: parseInt(e.target.value) })}
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => {
+                      setFormData({ ...formData, classId: parseInt(e.target.value) });
+                      if (errors.classId) setErrors(prev => { const next = { ...prev }; delete next.classId; return next; });
+                    }}
+                    className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 ${errors.classId ? 'border-red-500 bg-red-50/30 focus:ring-red-500/10' : 'border-slate-200 focus:ring-blue-500'} text-slate-700`}
                   >
                     <option value="">Select Class</option>
                     {classes.map(cls => (
@@ -415,11 +431,17 @@ const FeeStructures: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Academic Year</label>
+                  <div className="flex justify-between items-center px-1 mb-1">
+                    <label className={`block text-xs font-semibold ${errors.academicYearId ? 'text-red-500' : 'text-slate-700'}`}>Academic Year</label>
+                    {errors.academicYearId && <span className="text-[10px] font-bold text-red-500">{errors.academicYearId}</span>}
+                  </div>
                   <select
                     value={formData.academicYearId || ''}
-                    onChange={(e) => setFormData({ ...formData, academicYearId: parseInt(e.target.value) })}
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => {
+                      setFormData({ ...formData, academicYearId: parseInt(e.target.value) });
+                      if (errors.academicYearId) setErrors(prev => { const next = { ...prev }; delete next.academicYearId; return next; });
+                    }}
+                    className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 ${errors.academicYearId ? 'border-red-500 bg-red-50/30 focus:ring-red-500/10' : 'border-slate-200 focus:ring-blue-500'} text-slate-700`}
                   >
                     <option value="">Select Year</option>
                     {academicYears.map(year => (
@@ -433,24 +455,38 @@ const FeeStructures: React.FC = () => {
               label="Fee Type"
               placeholder="e.g., Tuition Fee, Lab Fee, Library Fee"
               value={formData.feeType}
-              onChange={(e) => setFormData({ ...formData, feeType: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, feeType: e.target.value });
+                if (errors.feeType) setErrors(prev => { const next = { ...prev }; delete next.feeType; return next; });
+              }}
+              error={errors.feeType}
             />
             <InputField
               label="Amount"
               type="number"
               placeholder="Enter amount"
               value={formData.amount || ''}
-              onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+              onChange={(e) => {
+                setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 });
+                if (errors.amount) setErrors(prev => { const next = { ...prev }; delete next.amount; return next; });
+              }}
+              error={errors.amount}
             />
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Fee Terms</label>
+              <div className="flex justify-between items-center px-1 mb-1">
+                <label className={`block text-xs font-semibold ${errors.feeTerms ? 'text-red-500' : 'text-slate-700'}`}>Fee Terms</label>
+                {errors.feeTerms && <span className="text-[10px] font-bold text-red-500">{errors.feeTerms}</span>}
+              </div>
               <select
                 value={formData.feeTerms || ''}
-                onChange={(e) => setFormData({ 
-                  ...formData, 
-                  feeTerms: parseInt(e.target.value) || 0
-                })}
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => {
+                  setFormData({ 
+                    ...formData, 
+                    feeTerms: parseInt(e.target.value) || 0
+                  });
+                  if (errors.feeTerms) setErrors(prev => { const next = { ...prev }; delete next.feeTerms; return next; });
+                }}
+                className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 ${errors.feeTerms ? 'border-red-500 bg-red-50/30 focus:ring-red-500/10' : 'border-slate-200 focus:ring-blue-500'} text-slate-700`}
               >
                 <option value="">Select Fee Terms</option>
                 <option value="1">Yearly (1 installment)</option>

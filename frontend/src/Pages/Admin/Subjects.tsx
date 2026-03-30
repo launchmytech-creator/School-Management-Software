@@ -5,6 +5,7 @@ import PageHeader from '../../components/common/PageHeader';
 import { useNotification } from '../../context/NotificationContext';
 import { subjectService, type Subject, type Chapter } from '../../services/subjectService';
 import { BaseModal } from '../../components/common/BaseModal';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -20,9 +21,16 @@ const Subjects: React.FC = () => {
   const [showCreateSubjectModal, setShowCreateSubjectModal] = useState(false);
   const [showCreateChapterModal, setShowCreateChapterModal] = useState(false);
   const [showChapterListModal, setShowChapterListModal] = useState(false);
-  const [subjectForm, setSubjectForm] = useState({ name: '', code: '', description: '' });
+  const [subjectForm, setSubjectForm] = useState({ name: '', code: ''});
   const [chapterForm, setChapterForm] = useState({ name: '', sequenceNumber: '' });
+  const [subjectErrors, setSubjectErrors] = useState<Record<string, string>>({});
+  const [chapterErrors, setChapterErrors] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({
+    isOpen: false,
+    itemId: null as number | null,
+    loading: false,
+  });
 
   const fetchSubjects = useCallback(async () => {
     try {
@@ -50,8 +58,11 @@ const Subjects: React.FC = () => {
   }, [fetchSubjects]);
 
   const handleCreateSubject = async () => {
-    if (!subjectForm.name || !subjectForm.code) {
-      showNotification('Name and code are required', 'error');
+    const newErrors: Record<string, string> = {};
+    if (!subjectForm.name) newErrors.name = 'Subject name is required';
+    if (!subjectForm.code) newErrors.code = 'Subject code is required';
+    if (Object.keys(newErrors).length > 0) {
+      setSubjectErrors(newErrors);
       return;
     }
 
@@ -60,7 +71,8 @@ const Subjects: React.FC = () => {
       await subjectService.createSubject(subjectForm);
       showNotification('Subject created successfully', 'success');
       setShowCreateSubjectModal(false);
-      setSubjectForm({ name: '', code: '', description: '' });
+      setSubjectForm({ name: '', code: ''});
+      setSubjectErrors({});
       fetchSubjects();
     } catch {
       showNotification('Failed to create subject', 'error');
@@ -69,23 +81,39 @@ const Subjects: React.FC = () => {
     }
   };
 
+  const handleSubjectFieldChange = (field: string, value: string) => {
+    setSubjectForm(prev => ({ ...prev, [field]: value }));
+    if (subjectErrors[field]) {
+      setSubjectErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
   const handleCreateChapter = async () => {
-    if (!chapterForm.name || !selectedSubject) {
-      showNotification('Chapter name is required', 'error');
+    const newErrors: Record<string, string> = {};
+    if (!chapterForm.name) newErrors.name = 'Chapter name is required';
+    if (!selectedSubject) newErrors.subject = 'No subject selected';
+    if (Object.keys(newErrors).length > 0) {
+      setChapterErrors(newErrors);
       return;
     }
 
     try {
       setCreating(true);
+      const subjectId = selectedSubject!;
       await subjectService.createChapter({
-        subjectId: selectedSubject,
+        subjectId,
         name: chapterForm.name,
         sequenceNumber: chapterForm.sequenceNumber ? parseInt(chapterForm.sequenceNumber) : undefined,
       });
       showNotification('Chapter created successfully', 'success');
       setShowCreateChapterModal(false);
       setChapterForm({ name: '', sequenceNumber: '' });
-      fetchChapters(selectedSubject);
+      setChapterErrors({});
+      fetchChapters(subjectId);
     } catch {
       showNotification('Failed to create chapter', 'error');
     } finally {
@@ -93,15 +121,32 @@ const Subjects: React.FC = () => {
     }
   };
 
-  const handleDeleteSubject = async (id: number) => {
-    if (!confirm('Are you sure? This will also delete all chapters.')) return;
-    
+  const handleChapterFieldChange = (field: string, value: string) => {
+    setChapterForm(prev => ({ ...prev, [field]: value }));
+    if (chapterErrors[field]) {
+      setChapterErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleDeleteSubject = (id: number) => {
+    setDeleteDialog({ isOpen: true, itemId: id, loading: false });
+  };
+
+  const confirmDeleteSubject = async () => {
+    if (!deleteDialog.itemId) return;
     try {
-      await subjectService.deleteSubject(id);
+      setDeleteDialog({ ...deleteDialog, loading: true });
+      await subjectService.deleteSubject(deleteDialog.itemId);
       showNotification('Subject deleted successfully', 'success');
+      setDeleteDialog({ isOpen: false, itemId: null, loading: false });
       fetchSubjects();
     } catch {
       showNotification('Failed to delete subject', 'error');
+      setDeleteDialog({ ...deleteDialog, loading: false });
     }
   };
 
@@ -148,7 +193,7 @@ const Subjects: React.FC = () => {
                   </div>
                   <div className="flex gap-1">
                     <button
-                      onClick={() => { setSelectedSubject(subject.id); setShowCreateChapterModal(true); }}
+                      onClick={() => { setSelectedSubject(subject.id); setChapterErrors({}); setChapterForm({ name: '', sequenceNumber: '' }); setShowCreateChapterModal(true); }}
                       className="p-2 hover:bg-slate-100 rounded-lg"
                       title="Add Chapter"
                     >
@@ -172,9 +217,6 @@ const Subjects: React.FC = () => {
 
                 <h3 className="font-bold text-slate-900 mb-1">{subject.name}</h3>
                 <p className="text-sm text-slate-500 mb-3">Code: {subject.code}</p>
-                {subject.description && (
-                  <p className="text-sm text-slate-600 line-clamp-2">{subject.description}</p>
-                )}
 
                 <div className="flex gap-2 mt-4">
                   <button
@@ -212,26 +254,17 @@ const Subjects: React.FC = () => {
               label="Subject Name"
               placeholder="e.g., Mathematics"
               value={subjectForm.name}
-              onChange={(e) => setSubjectForm({ ...subjectForm, name: e.target.value })}
-              required
+              onChange={(e) => handleSubjectFieldChange('name', e.target.value)}
+              error={subjectErrors.name}
             />
             <InputField
               label="Subject Code"
               placeholder="e.g., MATH"
               value={subjectForm.code}
-              onChange={(e) => setSubjectForm({ ...subjectForm, code: e.target.value })}
-              required
+              onChange={(e) => handleSubjectFieldChange('code', e.target.value)}
+              error={subjectErrors.code}
             />
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
-              <textarea
-                value={subjectForm.description}
-                onChange={(e) => setSubjectForm({ ...subjectForm, description: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
-                placeholder="Optional description..."
-              />
-            </div>
+            
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => setShowCreateSubjectModal(false)} className="flex-1">Cancel</Button>
               <Button onClick={handleCreateSubject} loading={creating} className="flex-1">Create Subject</Button>
@@ -251,16 +284,19 @@ const Subjects: React.FC = () => {
               label="Chapter Name"
               placeholder="e.g., Chapter 1 - Introduction"
               value={chapterForm.name}
-              onChange={(e) => setChapterForm({ ...chapterForm, name: e.target.value })}
-              required
+              onChange={(e) => handleChapterFieldChange('name', e.target.value)}
+              error={chapterErrors.name}
             />
             <InputField
               label="Sequence Number"
               type="number"
               placeholder="e.g., 1"
               value={chapterForm.sequenceNumber}
-              onChange={(e) => setChapterForm({ ...chapterForm, sequenceNumber: e.target.value })}
+              onChange={(e) => handleChapterFieldChange('sequenceNumber', e.target.value)}
             />
+            {chapterErrors.subject && (
+              <p className="text-red-500 text-xs">{chapterErrors.subject}</p>
+            )}
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => setShowCreateChapterModal(false)} className="flex-1">Cancel</Button>
               <Button onClick={handleCreateChapter} loading={creating} className="flex-1">Add Chapter</Button>
@@ -308,6 +344,17 @@ const Subjects: React.FC = () => {
             )}
           </div>
         </BaseModal>
+
+        <ConfirmDialog
+          isOpen={deleteDialog.isOpen}
+          onClose={() => setDeleteDialog({ isOpen: false, itemId: null, loading: false })}
+          onConfirm={confirmDeleteSubject}
+          title="Delete Subject"
+          message="Are you sure you want to delete this subject? This will also delete all chapters under this subject."
+          confirmText="Delete"
+          variant="danger"
+          loading={deleteDialog.loading}
+        />
       </div>
     </AdminLayout>
   );

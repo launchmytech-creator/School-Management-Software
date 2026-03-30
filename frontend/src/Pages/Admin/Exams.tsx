@@ -50,6 +50,7 @@ const Exams: React.FC = () => {
   const [classSubjects, setClassSubjects] = useState<ClassSubject[]>([]);
   const [selectedSubjects, setSelectedSubjects] = useState<SubjectFormItem[]>([]);
   const [creating, setCreating] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fetchClasses = useCallback(async () => {
     try {
@@ -135,19 +136,36 @@ const Exams: React.FC = () => {
     );
   };
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.name.trim()) newErrors.name = 'Exam name is required';
+    if (!formData.classId) newErrors.classId = 'Class is required';
+    if (!formData.startDate) newErrors.startDate = 'Start date is required';
+    if (!formData.endDate) newErrors.endDate = 'End date is required';
+    if (selectedSubjects.length === 0) newErrors.subjects = 'Add at least one subject';
+    if (!selectedYear?.id) newErrors.academicYear = 'Academic year is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFieldChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
   const handleCreateExam = async () => {
-    if (!formData.name || !formData.classId || !formData.startDate || !formData.endDate) {
-      showNotification('Please fill all required fields', 'error');
+    if (!validate()) {
       return;
     }
 
     if (!selectedYear?.id) {
       showNotification('Please select an academic year first', 'error');
-      return;
-    }
-
-    if (selectedSubjects.length === 0) {
-      showNotification('Please add at least one subject', 'error');
       return;
     }
 
@@ -211,6 +229,7 @@ const Exams: React.FC = () => {
     });
     setSelectedSubjects([]);
     setClassSubjects([]);
+    setErrors({});
   };
 
   const handleDeleteExam = async (id: number) => {
@@ -369,18 +388,21 @@ const Exams: React.FC = () => {
                   label="Exam Name"
                   placeholder="e.g., Half Yearly Examination"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => handleFieldChange('name', e.target.value)}
+                  error={errors.name}
                   required
                 />
               </div>
 
               <div className="col-span-2">
-                <label className="block text-sm font-bold text-slate-700 mb-2">Class</label>
+                <div className="flex justify-between items-center px-1">
+                  <label className={`block text-xs font-semibold ${errors.classId ? 'text-red-500' : 'text-slate-700'}`}>Class</label>
+                  {errors.classId && <span className="text-[10px] font-bold text-red-500">{errors.classId}</span>}
+                </div>
                 <select
                   value={formData.classId}
                   onChange={(e) => handleClassChange(e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
+                  className={`w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 ${errors.classId ? 'border-red-500 bg-red-50/30 focus:ring-red-500/10' : 'border-slate-200 focus:ring-blue-500'}`}
                 >
                   <option value="">Select Class</option>
                   {classes.map(cls => (
@@ -418,7 +440,8 @@ const Exams: React.FC = () => {
                   label="Start Date"
                   type="date"
                   value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  onChange={(e) => handleFieldChange('startDate', e.target.value)}
+                  error={errors.startDate}
                   required
                 />
               </div>
@@ -428,7 +451,8 @@ const Exams: React.FC = () => {
                   label="End Date"
                   type="date"
                   value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                  onChange={(e) => handleFieldChange('endDate', e.target.value)}
+                  error={errors.endDate}
                   required
                 />
               </div>
@@ -448,9 +472,12 @@ const Exams: React.FC = () => {
             {/* Subjects Section */}
             <div className="border-t border-slate-200 pt-4">
               <div className="flex items-center justify-between mb-3">
-                <label className="block text-sm font-bold text-slate-700">
-                  Subjects <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center gap-2">
+                  <label className="block text-sm font-bold text-slate-700">
+                    Subjects <span className="text-red-500">*</span>
+                  </label>
+                  {errors.subjects && <span className="text-[10px] font-bold text-red-500">{errors.subjects}</span>}
+                </div>
                 <span className="text-xs text-slate-500">
                   {selectedSubjects.length} subject(s) added
                 </span>

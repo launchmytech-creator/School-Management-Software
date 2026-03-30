@@ -9,6 +9,7 @@ import { parentService } from '../../services/parentService';
 import type { Parent, LinkedStudent } from '../../types/parent';
 import { useNotification } from '../../context/NotificationContext';
 import LinkStudentModal from './LinkStudentModal';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 
 interface ParentDetailsModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ const ParentDetailsModal: React.FC<ParentDetailsModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [unlinking, setUnlinking] = useState<number | null>(null);
+  const [unlinkDialog, setUnlinkDialog] = useState({ isOpen: false, studentId: null as number | null });
 
   const fetchChildren = React.useCallback(async () => {
     if (!parent) return;
@@ -45,19 +47,23 @@ const ParentDetailsModal: React.FC<ParentDetailsModalProps> = ({
     }
   }, [isOpen, parent, fetchChildren]);
 
-  const handleUnlink = async (studentId: number) => {
-    if (!window.confirm("Are you sure you want to unlink this student?")) return;
-    
-    setUnlinking(studentId);
+  const handleUnlink = (studentId: number) => {
+    setUnlinkDialog({ isOpen: true, studentId });
+  };
+
+  const confirmUnlink = async () => {
+    if (!unlinkDialog.studentId) return;
+    setUnlinking(unlinkDialog.studentId);
     try {
-      await parentService.unlinkStudent(studentId);
+      await parentService.unlinkStudent(unlinkDialog.studentId);
       showNotification('Student unlinked successfully', 'success');
-      setChildren(prev => prev.filter(s => s.id !== studentId));
+      setChildren(prev => prev.filter(s => s.id !== unlinkDialog.studentId));
       onUpdate();
     } catch {
       showNotification('Failed to unlink student', 'error');
     } finally {
       setUnlinking(null);
+      setUnlinkDialog({ isOpen: false, studentId: null });
     }
   };
 
@@ -249,6 +255,16 @@ const ParentDetailsModal: React.FC<ParentDetailsModalProps> = ({
           fetchChildren();
           onUpdate();
         }}
+      />
+
+      <ConfirmDialog
+        isOpen={unlinkDialog.isOpen}
+        onClose={() => setUnlinkDialog({ isOpen: false, studentId: null })}
+        onConfirm={confirmUnlink}
+        title="Unlink Student"
+        message="Are you sure you want to unlink this student? This action cannot be undone."
+        confirmText="Unlink"
+        variant="warning"
       />
     </>
   );
