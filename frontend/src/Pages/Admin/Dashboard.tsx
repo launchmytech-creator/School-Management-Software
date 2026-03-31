@@ -94,54 +94,31 @@ const AdminDashboard: React.FC = () => {
 
   const statCards = [
     {
-      label: "TOTAL STUDENTS",
+      label: "Total Students",
       value: stats?.totalStudents?.toLocaleString() || "—",
       icon: Users,
-      trend: stats?.studentGrowth ? `+${stats.studentGrowth}%` : "No change",
-      trendType:
-        (stats?.studentGrowth ?? 0) >= 0
-          ? ("positive" as const)
-          : ("negative" as const),
-      color: "text-blue-500 bg-blue-50",
+      variant: 'blue' as const,
       onClick: () => navigate('/admin/students'),
     },
     {
-      label: "TOTAL TEACHERS",
+      label: "Total Teachers",
       value: stats?.totalTeachers?.toString() || "—",
       icon: UserRoundSearch,
-      trend: stats?.teacherGrowth ? `+${stats.teacherGrowth}` : "No change",
-      trendType:
-        (stats?.teacherGrowth ?? 0) >= 0
-          ? ("positive" as const)
-          : ("negative" as const),
-      color: "text-violet-500 bg-violet-50",
+      variant: 'default' as const,
       onClick: () => navigate('/admin/teachers'),
     },
     {
-      label: "FEE COLLECTED",
+      label: "Fee Collected",
       value: stats?.feeCollected ? formatCurrency(stats.feeCollected) : "—",
       icon: IndianRupee,
-      trend: stats?.feeCollectionPercentage
-        ? `${stats.feeCollectionPercentage}%`
-        : "No data",
-      trendType:
-        (stats?.feeCollectionPercentage ?? 0) >= 80
-          ? ("positive" as const)
-          : ("negative" as const),
-      color: "text-emerald-500 bg-emerald-50",
+      variant: 'emerald' as const,
       onClick: () => navigate('/admin/fees'),
     },
     {
-      label: "PENDING DEFAULTERS",
+      label: "Pending Defaulters",
       value: stats?.pendingDefaulters?.toString() || "—",
       icon: AlertCircle,
-      trend:
-        (stats?.pendingDefaulters ?? 0) > 0 ? "Action Required" : "All clear",
-      trendType:
-        (stats?.pendingDefaulters ?? 0) > 0
-          ? ("negative" as const)
-          : ("positive" as const),
-      color: "text-rose-500 bg-rose-50",
+      variant: 'rose' as const,
       onClick: () => navigate('/admin/fee-defaulters'),
     },
   ];
@@ -184,14 +161,14 @@ const AdminDashboard: React.FC = () => {
         />
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {statCards.map((stat, index) => (
             <AdminStatCard key={index} {...stat} />
           ))}
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <AttendanceChart
             present={attendanceOverview?.present || 0}
             total={attendanceOverview?.total || 0}
@@ -205,7 +182,7 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Bottom Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
           <div className="lg:col-span-2">
             <SyllabusCompletion items={syllabusProgress} />
           </div>

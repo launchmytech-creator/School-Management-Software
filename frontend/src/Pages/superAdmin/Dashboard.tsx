@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../../layouts/AdminLayout';
-import StatCard from '../../components/dashboard/StatCard';
+import AdminStatCard from '../../components/dashboard/AdminStatCard';
 import { SubscriptionPieChart } from '../../components/dashboard/DashboardCharts';
 import type { School } from '../../types/school';
 import SchoolDetailDrawer from '../../components/superAdmin/SchoolDetailDrawer';
 import { useSchool } from '../../context/SchoolContext';
+import { Building2, BadgeCheck, CreditCard, Crown, Gem } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -24,11 +25,11 @@ const Dashboard: React.FC = () => {
   };
 
   const statItems = [
-    { label: 'Total Schools', value: stats.total, icon: 'apartment', color: 'bg-blue-50', iconColor: 'text-blue-600', onClick: () => navigate('/super-admin/schools') },
-    { label: 'Active Subs', value: stats.active, icon: 'verified', color: 'bg-emerald-50', iconColor: 'text-emerald-500', onClick: () => navigate('/super-admin/schools?status=true') },
-    { label: 'Basic Plans', value: stats.basicPlans, icon: 'credit_card', color: 'bg-orange-50', iconColor: 'text-orange-500', onClick: () => navigate('/super-admin/schools?plan=BASIC') },
-    { label: 'Premium Plans', value: stats.premiumPlans, icon: 'workspace_premium', color: 'bg-purple-50', iconColor: 'text-purple-500', onClick: () => navigate('/super-admin/schools?plan=PREMIUM') },
-    { label: 'Business Plans', value: stats.businessPlans, icon: 'diamond', color: 'bg-indigo-50', iconColor: 'text-indigo-500', onClick: () => navigate('/super-admin/schools?plan=BUSINESS') },
+    { label: 'Total Schools', value: stats.total, icon: Building2, variant: 'blue' as const, onClick: () => navigate('/super-admin/schools') },
+    { label: 'Active Subs', value: stats.active, icon: BadgeCheck, variant: 'emerald' as const, onClick: () => navigate('/super-admin/schools?status=true') },
+    { label: 'Basic Plans', value: stats.basicPlans, icon: CreditCard, variant: 'amber' as const, onClick: () => navigate('/super-admin/schools?plan=BASIC') },
+    { label: 'Premium Plans', value: stats.premiumPlans, icon: Crown, variant: 'rose' as const, onClick: () => navigate('/super-admin/schools?plan=PREMIUM') },
+    { label: 'Business Plans', value: stats.businessPlans, icon: Gem, variant: 'default' as const, onClick: () => navigate('/super-admin/schools?plan=BUSINESS') },
   ];
 
   if (loading) {
@@ -54,9 +55,9 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {statItems.map((stat) => (
-            <StatCard key={stat.label} {...stat} />
+            <AdminStatCard key={stat.label} {...stat} />
           ))}
         </div>
 

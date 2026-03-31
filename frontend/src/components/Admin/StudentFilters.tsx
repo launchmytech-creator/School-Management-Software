@@ -22,18 +22,18 @@ const StudentFilters: React.FC<StudentFiltersProps> = ({ onFilterChange, current
   return (
     <div className="flex items-center gap-3">
       <select 
-        className="bg-slate-50 border-none rounded-xl py-3 px-4 text-sm font-bold text-slate-600 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer min-w-[140px]"
+        className="bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 transition-all cursor-pointer min-w-[140px]"
         onChange={(e) => onFilterChange('classId', e.target.value)}
         value={currentFilters?.classId || ''}
       >
-        <option value="">Class</option>
+        <option value="">All Classes</option>
         {classes.map(c => (
           <option key={c.id} value={c.id}>{c.name}</option>
         ))}
       </select>
 
       <select 
-        className="bg-slate-50 border-none rounded-xl py-3 px-4 text-sm font-bold text-slate-600 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer min-w-[140px]"
+        className="bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 transition-all cursor-pointer min-w-[120px]"
         onChange={(e) => onFilterChange('section', e.target.value)}
         value={currentFilters?.section || ''}
       >
@@ -44,30 +44,14 @@ const StudentFilters: React.FC<StudentFiltersProps> = ({ onFilterChange, current
       </select>
 
       <select 
-        className="bg-slate-50 border-none rounded-xl py-3 px-4 text-sm font-bold text-slate-600 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer min-w-[180px]"
-        onChange={(e) => onFilterChange('academicYear', e.target.value)}
-        value={currentFilters?.academicYear || ''}
-      >
-        <option value="">Academic Year</option>
-        <option value="2023-24">2023-24</option>
-        <option value="2024-25">2024-25</option>
-      </select>
-
-      <select 
-        className="bg-slate-50 border-none rounded-xl py-3 px-4 text-sm font-bold text-slate-600 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer min-w-[140px]"
+        className="bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 transition-all cursor-pointer min-w-[140px]"
         onChange={(e) => onFilterChange('status', e.target.value)}
         value={currentFilters?.status || ''}
       >
-        <option value="">Status</option>
+        <option value="">All Status</option>
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
       </select>
-
-      <button 
-        className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-xl px-4 py-3 font-bold text-[10px] uppercase tracking-widest transition-all"
-      >
-        More Filters
-      </button>
     </div>
   );
 };

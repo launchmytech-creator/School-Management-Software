@@ -40,9 +40,10 @@ const AccountantFeeDefaulters: React.FC = () => {
   const fetchDefaulters = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await feeService.getFeeDefaulters(
-        selectedClass ? parseInt(selectedClass) : undefined
-      );
+      const data = await feeService.getFeeDefaulters({
+        classId: selectedClass ? parseInt(selectedClass) : undefined,
+        academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
+      });
       setDefaulters(data);
     } catch {
       showNotification('Failed to fetch fee defaulters', 'error');
@@ -129,7 +130,7 @@ const AccountantFeeDefaulters: React.FC = () => {
   };
 
   return (
-    <AccountantLayout title="Fee Defaulters">
+    <AccountantLayout title="Fee Defaulters" subtitle="View and manage students with pending fees">
       <div className="space-y-6 pb-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-gradient-to-r from-rose-500 to-rose-600 rounded-xl p-6 text-white">

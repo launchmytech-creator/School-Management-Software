@@ -47,9 +47,10 @@ const FeeDefaulters: React.FC = () => {
   const fetchDefaulters = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await feeService.getFeeDefaulters(
-        selectedClass ? parseInt(selectedClass) : undefined
-      );
+      const data = await feeService.getFeeDefaulters({
+        classId: selectedClass ? parseInt(selectedClass) : undefined,
+        academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
+      });
       setDefaulters(data);
     } catch {
       showNotification('Failed to fetch fee defaulters', 'error');

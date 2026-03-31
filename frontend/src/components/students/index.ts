@@ -1,0 +1,1 @@
+export { StudentClassGroup } from './StudentClassGroup';

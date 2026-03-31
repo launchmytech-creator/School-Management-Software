@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import AdminLayout from "../../layouts/AdminLayout";
-import StatCard from "../../components/dashboard/StatCard";
+import AdminStatCard from "../../components/dashboard/AdminStatCard";
 import type { School } from "../../types/school";
 import SchoolDetailDrawer from "../../components/superAdmin/SchoolDetailDrawer";
 import { useSchool } from "../../context/SchoolContext";
 import { usePagination } from "../../hooks/usePagination";
+import { Building2, CheckCircle, XCircle } from "lucide-react";
 
 const Schools: React.FC = () => {
   const navigate = useNavigate();
@@ -65,23 +66,20 @@ const Schools: React.FC = () => {
     {
       label: "Total Schools",
       value: stats.total,
-      icon: "apartment",
-      color: "bg-slate-50",
-      iconColor: "text-slate-600",
+      icon: Building2,
+      variant: 'default' as const,
     },
     {
       label: "Active",
       value: stats.active,
-      icon: "check_circle",
-      color: "bg-emerald-50",
-      iconColor: "text-emerald-500",
+      icon: CheckCircle,
+      variant: 'emerald' as const,
     },
     {
       label: "Inactive",
       value: stats.inactive,
-      icon: "cancel",
-      color: "bg-red-50",
-      iconColor: "text-red-400",
+      icon: XCircle,
+      variant: 'rose' as const,
     },
   ];
 
@@ -112,9 +110,9 @@ const Schools: React.FC = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {statItems.map((stat) => (
-            <StatCard key={stat.label} {...stat} />
+            <AdminStatCard key={stat.label} {...stat} />
           ))}
         </div>
 

@@ -5,6 +5,7 @@ import AccountantFeeDefaulters from "../Pages/Accountant/FeeDefaulters";
 import FinancialReports from "../Pages/Accountant/FinancialReports";
 import AccountantStudents from "../Pages/Accountant/Students";
 import AccountantFeeStructures from "../Pages/Accountant/FeeStructures";
+import AccountantAnnouncements from "../Pages/Accountant/Announcements";
 
 const accountantRoutes = (
   <Routes>
@@ -14,6 +15,7 @@ const accountantRoutes = (
     <Route path="reports" element={<FinancialReports />} />
     <Route path="students" element={<AccountantStudents />} />
     <Route path="fee-structures" element={<AccountantFeeStructures />} />
+    <Route path="announcements" element={<AccountantAnnouncements />} />
   </Routes>
 );
 

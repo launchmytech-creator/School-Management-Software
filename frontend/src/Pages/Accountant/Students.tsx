@@ -1,20 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AccountantLayout from '../../layouts/AccountantLayout';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
-import { useAcademicYear } from '../../context/AcademicYearContext';
 import { studentService } from '../../services/studentService';
 import { classService } from '../../services/classService';
 import { feeService } from '../../services/feeService';
 import { feeStructureService } from '../../services/feeStructureService';
 import type { Class } from '../../types/class';
-import { Users, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Users, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
-import { SkeletonTable } from '../../components/common/Skeleton';
+import { Button } from '../../components/ui/button';
+import { StudentClassGroup } from '../../components/students';
 
-interface StudentWithFees {
-  id: string;
+interface EnrichedStudent {
+  id: number;
   fullName: string;
   admissionNumber: string;
   classId: string;
@@ -27,26 +27,19 @@ interface StudentWithFees {
   feeStatus: 'paid' | 'pending' | 'partial';
 }
 
-interface StudentFromService {
-  id: number;
-  fullName: string;
-  admissionNumber: string;
-  currentClassId?: number | null;
-  className?: string;
-  parentName?: string;
-  parentPhone?: string;
-}
-
 const AccountantStudents: React.FC = () => {
   const { showNotification } = useNotification();
-  const { selectedYear } = useAcademicYear();
-  const [loading, setLoading] = useState(true);
-  const [students, setStudents] = useState<StudentWithFees[]>([]);
+  
   const [classes, setClasses] = useState<Class[]>([]);
+  const [classStudents, setClassStudents] = useState<Record<string, EnrichedStudent[]>>({});
+  const [loadingClasses, setLoadingClasses] = useState<Set<string>>(new Set());
+  const [errorClasses, setErrorClasses] = useState<Set<string>>(new Set());
+  const [initialLoading, setInitialLoading] = useState(true);
   const [feeTypes, setFeeTypes] = useState<string[]>([]);
-  const [selectedClass, setSelectedClass] = useState<string>('');
   const [feeTypeFilter, setFeeTypeFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
+  const [selectedClassFilter, setSelectedClassFilter] = useState<string>('');
 
   useEffect(() => {
     const fetchFeeTypes = async () => {
@@ -60,29 +53,45 @@ const AccountantStudents: React.FC = () => {
     fetchFeeTypes();
   }, []);
 
-  const fetchData = useCallback(async () => {
+  const fetchClasses = useCallback(async () => {
     try {
-      setLoading(true);
+      const data = await classService.getClasses();
+      setClasses(data);
+    } catch {
+      showNotification('Failed to fetch classes', 'error');
+    } finally {
+      setInitialLoading(false);
+    }
+  }, [showNotification]);
+
+  useEffect(() => {
+    fetchClasses();
+  }, [fetchClasses]);
+
+  const fetchStudentsForClass = useCallback(async (classObj: Class) => {
+    const classIdStr = String(classObj.id);
+    
+    if (classStudents[classIdStr] || loadingClasses.has(classIdStr)) {
+      return;
+    }
+    
+    setLoadingClasses(prev => new Set(prev).add(classIdStr));
+    setErrorClasses(prev => {
+      const next = new Set(prev);
+      next.delete(classIdStr);
+      return next;
+    });
+    
+    try {
+      const studentsData = await studentService.getStudents({ classId: classObj.id });
       
-      const [studentsData, classesData] = await Promise.all([
-        studentService.getStudents({ 
-          classId: selectedClass || undefined,
-          academicYear: selectedYear?.id || undefined,
-        }),
-        classService.getClasses()
-      ]);
-
-      const classMap = new Map(classesData.map(c => [c.id, c.name]));
-
-      const studentsWithFees: StudentWithFees[] = await Promise.all(
-        (studentsData as StudentFromService[]).map(async (s) => {
+      const enrichedData: EnrichedStudent[] = await Promise.all(
+        studentsData.map(async (s) => {
           const studentId = String(s.id);
           const classIdStr = String(s.currentClassId || '');
           
           try {
-            const transactions = await feeService.getStudentFeeTransactions(
-              parseInt(studentId)
-            );
+            const transactions = await feeService.getStudentFeeTransactions(parseInt(studentId));
             
             const totalDue = transactions.reduce((sum, t) => sum + (t.amountDue || 0), 0);
             const totalPaid = transactions.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
@@ -93,12 +102,12 @@ const AccountantStudents: React.FC = () => {
             else if (totalPaid > 0) feeStatus = 'partial';
 
             return {
-              id: studentId,
+              id: s.id,
               fullName: s.fullName || '',
               admissionNumber: s.admissionNumber || studentId,
               classId: classIdStr,
-              className: classMap.get(classIdStr) || s.className || 'N/A',
-              parentName: s.parentName || 'N/A',
+              className: s.className || classObj.name || 'N/A',
+              parentName: s.parentName || '—',
               parentPhone: s.parentPhone || '',
               totalDue,
               totalPaid,
@@ -107,12 +116,12 @@ const AccountantStudents: React.FC = () => {
             };
           } catch {
             return {
-              id: studentId,
+              id: s.id,
               fullName: s.fullName || '',
               admissionNumber: s.admissionNumber || studentId,
               classId: classIdStr,
-              className: classMap.get(classIdStr) || s.className || 'N/A',
-              parentName: s.parentName || 'N/A',
+              className: s.className || classObj.name || 'N/A',
+              parentName: s.parentName || '—',
               parentPhone: s.parentPhone || '',
               totalDue: 0,
               totalPaid: 0,
@@ -122,43 +131,99 @@ const AccountantStudents: React.FC = () => {
           }
         })
       );
-
-      setStudents(studentsWithFees);
+      
+      setClassStudents(prev => ({ ...prev, [classIdStr]: enrichedData }));
     } catch {
-      showNotification('Failed to fetch students', 'error');
+      setErrorClasses(prev => new Set(prev).add(classIdStr));
+      showNotification(`Failed to load students for ${classObj.name}`, 'error');
     } finally {
-      setLoading(false);
+      setLoadingClasses(prev => {
+        const next = new Set(prev);
+        next.delete(classIdStr);
+        return next;
+      });
     }
-  }, [selectedClass, selectedYear, feeTypeFilter, showNotification]);
+  }, [classStudents, loadingClasses, showNotification]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const data = await classService.getClasses();
-        setClasses(data);
-      } catch {
-        console.error('Failed to fetch classes');
+  const handleExpandClass = (classObj: Class) => {
+    const classIdStr = String(classObj.id);
+    const isCurrentlyExpanded = expandedClasses.has(classIdStr);
+    
+    if (!isCurrentlyExpanded) {
+      fetchStudentsForClass(classObj);
+    }
+    
+    setExpandedClasses(prev => {
+      const next = new Set(prev);
+      if (next.has(classIdStr)) {
+        next.delete(classIdStr);
+      } else {
+        next.add(classIdStr);
       }
-    };
-    fetchClasses();
-  }, []);
-
-  const filteredStudents = students.filter(s =>
-    s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.admissionNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.parentName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const stats = {
-    total: students.length,
-    paid: students.filter(s => s.feeStatus === 'paid').length,
-    partial: students.filter(s => s.feeStatus === 'partial').length,
-    pending: students.filter(s => s.feeStatus === 'pending').length,
+      return next;
+    });
   };
+
+  const expandAll = () => {
+    classes.forEach(c => {
+      const classIdStr = String(c.id);
+      if (!expandedClasses.has(classIdStr) && !loadingClasses.has(classIdStr)) {
+        fetchStudentsForClass(c);
+      }
+    });
+    const allKeys = classes.map(c => c.id.toString());
+    setExpandedClasses(new Set(allKeys));
+  };
+
+  const collapseAll = () => {
+    setExpandedClasses(new Set());
+  };
+
+  const filteredClasses = useMemo(() => {
+    return classes.filter(c => {
+      if (selectedClassFilter && c.id.toString() !== selectedClassFilter) return false;
+      return true;
+    });
+  }, [classes, selectedClassFilter]);
+
+  const classGroups = useMemo(() => {
+    return filteredClasses.map(c => ({
+      classId: c.id.toString(),
+      className: c.name || 'Unassigned',
+      classSection: c.section || null,
+    })).sort((a, b) => {
+      const nameCompare = a.className.localeCompare(b.className);
+      if (nameCompare !== 0) return nameCompare;
+      return (a.classSection || '').localeCompare(b.classSection || '');
+    });
+  }, [filteredClasses]);
+
+  const getFilteredStudents = (classId: string): EnrichedStudent[] => {
+    const students = classStudents[classId] || [];
+    
+    return students.filter(s => {
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        if (!s.fullName?.toLowerCase().includes(search) && 
+            !s.admissionNumber?.toLowerCase().includes(search) &&
+            !s.parentName?.toLowerCase().includes(search)) {
+          return false;
+        }
+      }
+      return true;
+    }).sort((a, b) => a.fullName.localeCompare(b.fullName));
+  };
+
+  const stats = useMemo(() => {
+    const allStudents = Object.values(classStudents).flat();
+    return {
+      totalClasses: classGroups.length,
+      totalLoadedStudents: allStudents.length,
+      paid: allStudents.filter(s => s.feeStatus === 'paid').length,
+      partial: allStudents.filter(s => s.feeStatus === 'partial').length,
+      pending: allStudents.filter(s => s.feeStatus === 'pending').length,
+    };
+  }, [classStudents, classGroups]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -185,15 +250,55 @@ const AccountantStudents: React.FC = () => {
     }
   };
 
+  const renderStudentRow = (student: EnrichedStudent) => (
+    <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-full bg-accent-sky/20 flex items-center justify-center">
+            <span className="text-accent-sky font-bold text-sm">
+              {student.fullName.charAt(0)}
+            </span>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-900">{student.fullName}</p>
+            <p className="text-xs text-slate-500">{student.admissionNumber}</p>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="text-sm text-slate-600">{student.parentName}</div>
+        {student.parentPhone && (
+          <div className="text-xs text-slate-400">{student.parentPhone}</div>
+        )}
+      </td>
+      <td className="px-6 py-4 text-right text-sm font-semibold text-slate-900">
+        {formatCurrency(student.totalDue)}
+      </td>
+      <td className="px-6 py-4 text-right text-sm font-semibold text-emerald-600">
+        {formatCurrency(student.totalPaid)}
+      </td>
+      <td className="px-6 py-4 text-right">
+        <span className={`text-sm font-bold ${
+          student.balance > 0 ? 'text-rose-600' : 'text-emerald-600'
+        }`}>
+          {formatCurrency(student.balance)}
+        </span>
+      </td>
+      <td className="px-6 py-4 text-center">
+        {getStatusBadge(student.feeStatus)}
+      </td>
+    </tr>
+  );
+
   return (
-    <AccountantLayout title="Students">
+    <AccountantLayout title="Students" subtitle="View student information and fee details">
       <div className="space-y-6 pb-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-card border border-slate-200 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-primary">{stats.total}</p>
-                <p className="text-sm text-slate-500">Total Students</p>
+                <p className="text-2xl font-bold text-primary">{stats.totalClasses}</p>
+                <p className="text-sm text-slate-500">Total Classes</p>
               </div>
               <div className="p-3 bg-blue-50 rounded-xl">
                 <Users className="w-5 h-5 text-blue-500" />
@@ -201,7 +306,7 @@ const AccountantStudents: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-emerald-50 p-5 rounded-card border border-emerald-200">
+          <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-emerald-700">{stats.paid}</p>
@@ -213,7 +318,7 @@ const AccountantStudents: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-blue-50 p-5 rounded-card border border-blue-200">
+          <div className="bg-blue-50 p-5 rounded-xl border border-blue-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-blue-700">{stats.partial}</p>
@@ -225,7 +330,7 @@ const AccountantStudents: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-amber-50 p-5 rounded-card border border-amber-200">
+          <div className="bg-amber-50 p-5 rounded-xl border border-amber-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-amber-700">{stats.pending}</p>
@@ -236,18 +341,30 @@ const AccountantStudents: React.FC = () => {
               </div>
             </div>
           </div>
+
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-slate-700">{stats.totalLoadedStudents}</p>
+                <p className="text-sm text-slate-500">Students Loaded</p>
+              </div>
+              <div className="p-3 bg-slate-100 rounded-xl">
+                <Users className="w-5 h-5 text-slate-500" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <FilterBar 
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          onReset={() => { setSearchTerm(''); setSelectedClass(''); setFeeTypeFilter(''); }}
+          onReset={() => { setSearchTerm(''); setSelectedClassFilter(''); setFeeTypeFilter(''); }}
           searchPlaceholder="Search by student, parent, or admission number..."
         >
           <div className="flex items-center gap-3">
             <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
+              value={selectedClassFilter}
+              onChange={(e) => setSelectedClassFilter(e.target.value)}
               className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700"
             >
               <option value="">All Classes</option>
@@ -266,75 +383,82 @@ const AccountantStudents: React.FC = () => {
               ))}
             </select>
           </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={expandAll} className="gap-1.5">
+              <ChevronDown className="w-4 h-4" />
+              Expand All
+            </Button>
+            <Button variant="outline" size="sm" onClick={collapseAll} className="gap-1.5">
+              <ChevronRight className="w-4 h-4" />
+              Collapse All
+            </Button>
+          </div>
         </FilterBar>
 
-        {loading ? (
-          <SkeletonTable columns={6} rows={8} />
-        ) : filteredStudents.length > 0 ? (
-          <div className="bg-white rounded-card border border-slate-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Student</th>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Class</th>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Parent</th>
-                    <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Total Due</th>
-                    <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Paid</th>
-                    <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Balance</th>
-                    <th className="px-6 py-3.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredStudents.map((student) => (
-                    <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-full bg-accent-sky/20 flex items-center justify-center">
-                            <span className="text-accent-sky font-bold text-sm">
-                              {student.fullName.charAt(0)}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-slate-900">{student.fullName}</p>
-                            <p className="text-xs text-slate-500">{student.admissionNumber}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{student.className}</td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-slate-600">{student.parentName}</div>
-                        {student.parentPhone && (
-                          <div className="text-xs text-slate-400">{student.parentPhone}</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm font-semibold text-slate-900">
-                        {formatCurrency(student.totalDue)}
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm font-semibold text-emerald-600">
-                        {formatCurrency(student.totalPaid)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className={`text-sm font-bold ${
-                          student.balance > 0 ? 'text-rose-600' : 'text-emerald-600'
-                        }`}>
-                          {formatCurrency(student.balance)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {getStatusBadge(student.feeStatus)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        {initialLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 p-6 animate-pulse">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-slate-200 rounded-lg" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-32 bg-slate-200 rounded" />
+                    <div className="h-3 w-20 bg-slate-100 rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : classGroups.length > 0 ? (
+          <div className="space-y-4">
+            {classGroups.map((group) => {
+              const classObj = classes.find(c => c.id.toString() === group.classId);
+              const isExpanded = expandedClasses.has(group.classId);
+              const isLoading = loadingClasses.has(group.classId);
+              const hasError = errorClasses.has(group.classId);
+              const students = getFilteredStudents(group.classId);
+              
+              return (
+                <StudentClassGroup
+                  key={group.classId}
+                  className={group.className}
+                  classSection={group.classSection}
+                  students={students}
+                  isExpanded={isExpanded}
+                  isLoading={isLoading}
+                  hasError={hasError}
+                  onToggle={() => classObj && handleExpandClass(classObj)}
+                >
+                  {students.length > 0 ? (
+                    <table className="w-full">
+                      <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Student</th>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Parent</th>
+                          <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Total Due</th>
+                          <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Paid</th>
+                          <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Balance</th>
+                          <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {students.map(renderStudentRow)}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="py-8 text-center text-slate-500 text-sm">
+                      {searchTerm ? 'No students match your search' : 'No students in this class'}
+                    </div>
+                  )}
+                </StudentClassGroup>
+              );
+            })}
           </div>
         ) : (
           <EmptyState
-            icon={Users}
-            title="No students found"
-            description="No students match your current filters"
+            icon={Search}
+            title="No classes found"
+            description="No classes are available for the selected filters"
           />
         )}
       </div>
