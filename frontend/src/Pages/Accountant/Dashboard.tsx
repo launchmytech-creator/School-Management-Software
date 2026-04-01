@@ -18,6 +18,15 @@ import {
   Send,
   Download,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 interface FeeStats {
   todayCollection: number;
@@ -207,13 +216,7 @@ const AccountantDashboard: React.FC = () => {
         amount: monthlyMap.get(month) || 0,
       }));
 
-      const maxAmount = Math.max(...monthlyData.map((d) => d.amount), 1);
-      setChartData(
-        monthlyData.map((d) => ({
-          ...d,
-          height: (d.amount / maxAmount) * 100,
-        })),
-      );
+      setChartData(monthlyData);
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
       showNotification("Failed to load dashboard data", "error");
@@ -301,28 +304,28 @@ const AccountantDashboard: React.FC = () => {
       label: "Today's Collection",
       value: formatCurrency(stats.todayCollection),
       icon: DollarSign,
-      variant: 'emerald' as const,
+      variant: "emerald" as const,
       onClick: () => navigate("/accountant/fees"),
     },
     {
       label: "This Month",
       value: formatCurrency(stats.monthCollection),
       icon: Receipt,
-      variant: 'blue' as const,
+      variant: "blue" as const,
       onClick: () => navigate("/accountant/fees"),
     },
     {
       label: "Total Pending",
       value: formatCurrency(stats.pendingAmount),
       icon: AlertCircle,
-      variant: 'rose' as const,
+      variant: "rose" as const,
       onClick: () => navigate("/accountant/fee-defaulters"),
     },
     {
       label: "Receipts Today",
       value: stats.receiptsToday,
       icon: FileText,
-      variant: 'default' as const,
+      variant: "default" as const,
       onClick: () => navigate("/accountant/fees"),
     },
   ];
@@ -374,32 +377,70 @@ const AccountantDashboard: React.FC = () => {
                     <option value="yearly">Yearly</option>
                   </select>
                 </div>
-                <div className="flex items-end justify-between h-64 gap-4 px-2">
-                  {filteredChartData.map((data, index) => (
-                    <div
-                      key={data.month}
-                      className="flex-1 flex flex-col items-center gap-2 group"
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={filteredChartData}
+                      margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                     >
-                      <div
-                        className={`w-full rounded-t-xl transition-all ${
-                          index === filteredChartData.length - 1
-                            ? "bg-[#4A9FD4] rounded-t-xl shadow-lg"
-                            : "bg-blue-100 group-hover:bg-[#4A9FD4]/50"
-                        }`}
-                        style={{ height: `${Math.max(data.height, 5)}%` }}
-                        title={`${data.month}: ${formatCurrency(data.amount)}`}
-                      ></div>
-                      <span
-                        className={`text-xs font-semibold ${
-                          index === filteredChartData.length - 1
-                            ? "font-bold text-[#4A9FD4]"
-                            : "text-slate-500"
-                        }`}
-                      >
-                        {data.month}
-                      </span>
-                    </div>
-                  ))}
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="#e2e8f0"
+                      />
+                      <XAxis
+                        dataKey="month"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: "#64748b" }}
+                        dy={10}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: "#64748b" }}
+                        tickFormatter={(value) => {
+                          if (value >= 10000) {
+                            return `₹${(value / 100).toFixed(1)}k`;
+                          }
+                          if (value >= 1000) {
+                            return `₹${(value / 100).toFixed(1)}k`;
+                          }
+                          return `₹${value}`;
+                        }}
+                        dx={-10}
+                      />
+                      <Tooltip
+                        formatter={(value: number) => [
+                          formatCurrency(value),
+                          "Collection",
+                        ]}
+                        contentStyle={{
+                          borderRadius: 8,
+                          border: "1px solid #e2e8f0",
+                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="amount"
+                        stroke="#4A9FD4"
+                        strokeWidth={2}
+                        dot={{
+                          fill: "#4A9FD4",
+                          strokeWidth: 2,
+                          stroke: "#fff",
+                          r: 4,
+                        }}
+                        activeDot={{
+                          r: 6,
+                          fill: "#4A9FD4",
+                          strokeWidth: 2,
+                          stroke: "#fff",
+                        }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
 

@@ -7,3 +7,4 @@ export { ConfirmDialog } from './ConfirmDialog';
 export { default as StatusBadge } from './StatusBadge';
 export { LoadingSpinner } from './LoadingSpinner';
 export { Skeleton, SkeletonTable } from './Skeleton';
+export { default as ExamResults } from './ExamResults';

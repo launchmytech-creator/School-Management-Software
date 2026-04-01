@@ -2,6 +2,7 @@ import { apiRequest } from './api';
 
 export interface ExamResult {
   id: number;
+  examId: number;
   studentId: number;
   studentName: string;
   admissionNumber: string;
@@ -71,6 +72,7 @@ export interface EnterMarksDto {
 
 interface BackendExamResult {
   id: number;
+  exam_id: number;
   student_id: number;
   student_name: string;
   admission_number: string;
@@ -130,6 +132,7 @@ interface BackendStudentResult {
 
 const mapExamResult = (data: BackendExamResult): ExamResult => ({
   id: data.id,
+  examId: data.exam_id,
   studentId: data.student_id,
   studentName: data.student_name,
   admissionNumber: data.admission_number,

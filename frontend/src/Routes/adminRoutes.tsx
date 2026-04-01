@@ -7,7 +7,8 @@ import ClassDetail from "../Pages/Admin/ClassDetail";
 import ParentList from "../Pages/Admin/ParentList";
 import Students from "../Pages/Admin/Students";
 import AddStudent from "../Pages/Admin/AddStudent";
-import StudentProfile from "../Pages/Admin/StudentProfile";
+import EditStudent from "../Pages/Admin/EditStudent";
+import StudentProfile from "../components/common/StudentProfile";
 import StudentPromotion from "../Pages/Admin/StudentPromotion";
 import TeacherList from "../Pages/Admin/TeacherList";
 import TeacherAllocation from "../Pages/Admin/TeacherAllocation";
@@ -47,7 +48,8 @@ const adminRoutes = (
     {/* Student Management */}
     <Route path="students" element={withActiveYear(<Students />)} />
     <Route path="add-student" element={withActiveYear(<AddStudent />)} />
-    <Route path="students/:id" element={withActiveYear(<StudentProfile />)} />
+    <Route path="students/:id" element={withActiveYear(<StudentProfile layout="admin" />)} />
+    <Route path="students/:id/edit" element={withActiveYear(<EditStudent />)} />
     <Route
       path="student-promotion"
       element={withActiveYear(<StudentPromotion />)}

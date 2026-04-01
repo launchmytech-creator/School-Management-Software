@@ -1,38 +1,53 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
-import PageHeader from '../../components/common/PageHeader';
-import FilterBar from '../../components/common/FilterBar';
-import EmptyState from '../../components/common/EmptyState';
-import { useNotification } from '../../context/NotificationContext';
-import { 
-  feeStructureService, 
+import React, { useState, useEffect, useCallback } from "react";
+import AdminLayout from "../../layouts/AdminLayout";
+import PageHeader from "../../components/common/PageHeader";
+import FilterBar from "../../components/common/FilterBar";
+import EmptyState from "../../components/common/EmptyState";
+import { useNotification } from "../../context/NotificationContext";
+import {
+  feeStructureService,
   type FeeStructureGroup,
-  type CreateFeeStructureDto 
-} from '../../services/feeStructureService';
-import { feeService } from '../../services/feeService';
-import { classService } from '../../services/classService';
-import { academicYearService } from '../../services/academicYearService';
-import type { Class } from '../../types/class';
-import type { AcademicYear } from '../../types/academicYear';
-import { Receipt, Plus, Trash2, DollarSign, PlayCircle, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
-import { formatCurrency } from '../../lib/utils';
-import { BaseModal } from '../../components/common/BaseModal';
-import { Button } from '../../components/ui/button';
-import InputField from '../../components/ui/InputField';
-import { SkeletonTable } from '../../components/common/Skeleton';
+  type CreateFeeStructureDto,
+} from "../../services/feeStructureService";
+import { feeService } from "../../services/feeService";
+import { classService } from "../../services/classService";
+import { academicYearService } from "../../services/academicYearService";
+import type { Class } from "../../types/class";
+import type { AcademicYear } from "../../types/academicYear";
+import {
+  Receipt,
+  Plus,
+  Trash2,
+  DollarSign,
+  PlayCircle,
+  ChevronDown,
+  ChevronRight,
+  AlertTriangle,
+  Edit2,
+} from "lucide-react";
+import { formatCurrency } from "../../lib/utils";
+import { BaseModal } from "../../components/common/BaseModal";
+import { Button } from "../../components/ui/button";
+import InputField from "../../components/ui/InputField";
+import { SkeletonTable } from "../../components/common/Skeleton";
 
 const FeeStructures: React.FC = () => {
   const { showNotification } = useNotification();
   const [loading, setLoading] = useState(true);
-  const [groupedStructures, setGroupedStructures] = useState<FeeStructureGroup[]>([]);
+  const [groupedStructures, setGroupedStructures] = useState<
+    FeeStructureGroup[]
+  >([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [selectedClass, setSelectedClass] = useState<string>('');
-  const [selectedYear, setSelectedYear] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingStructure, setEditingStructure] = useState<{ group: FeeStructureGroup; componentId: number } | null>(null);
+  const [editingStructure, setEditingStructure] = useState<{
+    group: FeeStructureGroup;
+    componentId: number;
+  } | null>(null);
   const [saving, setSaving] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generateData, setGenerateData] = useState({
@@ -51,7 +66,7 @@ const FeeStructures: React.FC = () => {
   const [formData, setFormData] = useState<CreateFeeStructureDto>({
     classId: 0,
     academicYearId: 0,
-    feeType: '',
+    feeType: "",
     amount: 0,
     feeTerms: 1,
   });
@@ -62,7 +77,7 @@ const FeeStructures: React.FC = () => {
       const data = await classService.getClasses();
       setClasses(data);
     } catch {
-      showNotification('Failed to fetch classes', 'error');
+      showNotification("Failed to fetch classes", "error");
     }
   }, [showNotification]);
 
@@ -71,17 +86,22 @@ const FeeStructures: React.FC = () => {
       const data = await academicYearService.getAllYears();
       setAcademicYears(data);
     } catch {
-      showNotification('Failed to fetch academic years', 'error');
+      showNotification("Failed to fetch academic years", "error");
     }
   }, [showNotification]);
 
   const getFeeTermsLabel = (feeTerms: number): string => {
     switch (feeTerms) {
-      case 1: return 'Yearly';
-      case 2: return 'Half-yearly';
-      case 4: return 'Quarterly';
-      case 12: return 'Monthly';
-      default: return `${feeTerms} terms`;
+      case 1:
+        return "Yearly";
+      case 2:
+        return "Half-yearly";
+      case 4:
+        return "Quarterly";
+      case 12:
+        return "Monthly";
+      default:
+        return `${feeTerms} terms`;
     }
   };
 
@@ -92,15 +112,17 @@ const FeeStructures: React.FC = () => {
         classId?: number;
         academicYearId?: number;
       } = {};
-      
+
       if (selectedClass) filters.classId = parseInt(selectedClass);
       if (selectedYear) filters.academicYearId = parseInt(selectedYear);
-      
+
       const data = await feeStructureService.getFeeStructuresGrouped(filters);
       setGroupedStructures(data);
-      setExpandedGroups(new Set(data.map(g => `${g.classId}-${g.academicYearId}`)));
+      setExpandedGroups(
+        new Set(data.map((g) => `${g.classId}-${g.academicYearId}`)),
+      );
     } catch {
-      showNotification('Failed to fetch fee structures', 'error');
+      showNotification("Failed to fetch fee structures", "error");
     } finally {
       setLoading(false);
     }
@@ -115,16 +137,20 @@ const FeeStructures: React.FC = () => {
     fetchFeeStructuresGrouped();
   }, [fetchFeeStructuresGrouped]);
 
-  const filteredGroups = groupedStructures.filter(g =>
-    g.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    g.academicYearName.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredGroups = groupedStructures.filter(
+    (g) =>
+      g.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      g.academicYearName.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const totalAnnualRevenue = groupedStructures.reduce((sum, g) => sum + g.totalAnnualFee, 0);
+  const totalAnnualRevenue = groupedStructures.reduce(
+    (sum, g) => sum + g.totalAnnualFee,
+    0,
+  );
   const totalClasses = groupedStructures.length;
 
   const toggleGroup = (key: string) => {
-    setExpandedGroups(prev => {
+    setExpandedGroups((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
         next.delete(key);
@@ -138,15 +164,19 @@ const FeeStructures: React.FC = () => {
   const handleOpenCreate = () => {
     setEditingStructure(null);
     setErrors({});
-    const defaultClassId = selectedClass ? parseInt(selectedClass) : (classes[0]?.id ?? 0);
-    const defaultYearId = selectedYear ? parseInt(selectedYear) : (academicYears[0]?.id ?? 0);
+    const defaultClassId = selectedClass
+      ? parseInt(selectedClass)
+      : (classes[0]?.id ?? 0);
+    const defaultYearId = selectedYear
+      ? parseInt(selectedYear)
+      : (academicYears[0]?.id ?? 0);
     const existingGroup = groupedStructures.find(
-      g => g.classId === defaultClassId && g.academicYearId === defaultYearId
+      (g) => g.classId === defaultClassId && g.academicYearId === defaultYearId,
     );
     setFormData({
       classId: Number(defaultClassId),
       academicYearId: Number(defaultYearId),
-      feeType: '',
+      feeType: "",
       amount: 0,
       feeTerms: existingGroup?.feeTerms || 1,
     });
@@ -154,9 +184,9 @@ const FeeStructures: React.FC = () => {
   };
 
   const handleOpenEdit = (group: FeeStructureGroup, componentId: number) => {
-    const component = group.components.find(c => c.id === componentId);
+    const component = group.components.find((c) => c.id === componentId);
     if (!component) return;
-    
+
     setEditingStructure({ group, componentId });
     setErrors({});
     setFormData({
@@ -171,12 +201,14 @@ const FeeStructures: React.FC = () => {
 
   const handleSave = async () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.classId) newErrors.classId = 'Class is required';
-    if (!formData.academicYearId) newErrors.academicYearId = 'Academic year is required';
-    if (!formData.feeType.trim()) newErrors.feeType = 'Fee type is required';
-    if (!formData.amount || formData.amount <= 0) newErrors.amount = 'Amount must be greater than 0';
-    if (!formData.feeTerms) newErrors.feeTerms = 'Fee terms is required';
-    
+    if (!formData.classId) newErrors.classId = "Class is required";
+    if (!formData.academicYearId)
+      newErrors.academicYearId = "Academic year is required";
+    if (!formData.feeType.trim()) newErrors.feeType = "Fee type is required";
+    if (!formData.amount || formData.amount <= 0)
+      newErrors.amount = "Amount must be greater than 0";
+    if (!formData.feeTerms) newErrors.feeTerms = "Fee terms is required";
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -185,28 +217,41 @@ const FeeStructures: React.FC = () => {
     try {
       setSaving(true);
       if (editingStructure) {
-        await feeStructureService.updateFeeStructure(editingStructure.componentId, {
-          feeType: formData.feeType,
-          amount: formData.amount,
-        });
-        showNotification('Fee component updated successfully', 'success');
+        await feeStructureService.updateFeeStructure(
+          editingStructure.componentId,
+          {
+            feeType: formData.feeType,
+            amount: formData.amount,
+          },
+        );
+        showNotification("Fee component updated successfully", "success");
       } else {
         const response = await feeStructureService.createFeeStructure(formData);
         showNotification(
           `Added ${formData.feeType}. Total annual: ${formatCurrency(response.group.totalAnnualFee)} (${formatCurrency(response.group.perTermAmount)}/term)`,
-          'success'
+          "success",
         );
       }
       setShowCreateModal(false);
       fetchFeeStructuresGrouped();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes('same feeTerms') || errorMessage.includes('feeTerms')) {
-        showNotification('Fee terms must match existing fee structure for this class and academic year', 'error');
-      } else if (errorMessage.includes('already exists')) {
-        showNotification('This fee type already exists for this class and academic year', 'error');
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (
+        errorMessage.includes("same feeTerms") ||
+        errorMessage.includes("feeTerms")
+      ) {
+        showNotification(
+          "Fee terms must match existing fee structure for this class and academic year",
+          "error",
+        );
+      } else if (errorMessage.includes("already exists")) {
+        showNotification(
+          "This fee type already exists for this class and academic year",
+          "error",
+        );
       } else {
-        showNotification('Failed to save fee structure', 'error');
+        showNotification("Failed to save fee structure", "error");
       }
     } finally {
       setSaving(false);
@@ -214,32 +259,40 @@ const FeeStructures: React.FC = () => {
   };
 
   const handleDeleteComponent = async (componentId: number) => {
-    if (!confirm('Are you sure you want to delete this fee component?')) return;
-    
+    if (!confirm("Are you sure you want to delete this fee component?")) return;
+
     try {
       await feeStructureService.deleteFeeStructure(componentId);
-      showNotification('Fee component deleted successfully', 'success');
+      showNotification("Fee component deleted successfully", "success");
       fetchFeeStructuresGrouped();
     } catch {
-      showNotification('Failed to delete fee component', 'error');
+      showNotification("Failed to delete fee component", "error");
     }
   };
 
   const handleDeleteGroup = async (group: FeeStructureGroup) => {
-    if (!confirm(`Are you sure you want to delete ALL fee components for ${group.className} - ${group.academicYearName}? This will remove all ${group.components.length} components.`)) return;
-    
+    if (
+      !confirm(
+        `Are you sure you want to delete ALL fee components for ${group.className} - ${group.academicYearName}? This will remove all ${group.components.length} components.`,
+      )
+    )
+      return;
+
     try {
-      await feeStructureService.deleteFeeStructureGroup(group.classId, group.academicYearId);
-      showNotification('All fee components deleted successfully', 'success');
+      await feeStructureService.deleteFeeStructureGroup(
+        group.classId,
+        group.academicYearId,
+      );
+      showNotification("All fee components deleted successfully", "success");
       fetchFeeStructuresGrouped();
     } catch {
-      showNotification('Failed to delete fee structures', 'error');
+      showNotification("Failed to delete fee structures", "error");
     }
   };
 
   const handleGenerateTransactions = async () => {
     if (!generateData.classId || !generateData.academicYearId) {
-      showNotification('Please select a class and academic year', 'error');
+      showNotification("Please select a class and academic year", "error");
       return;
     }
 
@@ -251,20 +304,26 @@ const FeeStructures: React.FC = () => {
         academicYearId: generateData.academicYearId,
       });
       setGenerationResult(result);
-      
+
       if (result.generated > 0) {
         showNotification(
-          `Generated ${result.generated} transactions. ${result.skippedStudents > 0 ? `(${result.skippedStudents} students skipped - already have transactions)` : ''}`,
-          'success'
+          `Generated ${result.generated} transactions. ${result.skippedStudents > 0 ? `(${result.skippedStudents} students skipped - already have transactions)` : ""}`,
+          "success",
         );
       } else if (result.skippedStudents > 0) {
-        showNotification('All students already have transactions for this year.', 'info');
+        showNotification(
+          "All students already have transactions for this year.",
+          "info",
+        );
       } else {
-        showNotification('No transactions were generated.', 'info');
+        showNotification("No transactions were generated.", "info");
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to generate fee transactions';
-      showNotification(message, 'error');
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to generate fee transactions";
+      showNotification(message, "error");
     } finally {
       setGenerating(false);
     }
@@ -279,32 +338,33 @@ const FeeStructures: React.FC = () => {
     setShowGenerateModal(true);
   };
 
-  const getGroupKey = (group: FeeStructureGroup) => `${group.classId}-${group.academicYearId}`;
+  const getGroupKey = (group: FeeStructureGroup) =>
+    `${group.classId}-${group.academicYearId}`;
 
   return (
     <AdminLayout title="Fee Structures">
       <div className="space-y-6 pb-12">
-        <PageHeader 
+        <PageHeader
           title="Fee Structures"
           subtitle="Manage fee structures for different classes"
           breadcrumb={{
             links: [
               { label: "Dashboard", href: "/admin/dashboard" },
-              { label: "Fee Structures", active: true }
-            ]
+              { label: "Fee Structures", active: true },
+            ],
           }}
           actions={[
             {
               label: "Add Component",
               icon: Plus,
-              onClick: handleOpenCreate
+              onClick: handleOpenCreate,
             },
             {
               label: "Generate Transactions",
               icon: PlayCircle,
               onClick: openGenerateModal,
-              variant: 'success'
-            }
+              variant: "success",
+            },
           ]}
         />
 
@@ -312,7 +372,9 @@ const FeeStructures: React.FC = () => {
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-slate-900">{totalClasses}</p>
+                <p className="text-2xl font-bold text-slate-900">
+                  {totalClasses}
+                </p>
                 <p className="text-sm text-slate-500">Classes with Fees</p>
               </div>
               <div className="p-3 bg-blue-50 rounded-xl">
@@ -324,7 +386,9 @@ const FeeStructures: React.FC = () => {
           <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-emerald-700">{formatCurrency(totalAnnualRevenue)}</p>
+                <p className="text-2xl font-bold text-emerald-700">
+                  {formatCurrency(totalAnnualRevenue)}
+                </p>
                 <p className="text-sm text-emerald-600">Total Annual Fee</p>
               </div>
               <div className="p-3 bg-emerald-100 rounded-xl">
@@ -348,10 +412,14 @@ const FeeStructures: React.FC = () => {
           </div>
         </div>
 
-        <FilterBar 
+        <FilterBar
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          onReset={() => { setSearchTerm(''); setSelectedClass(''); setSelectedYear(''); }}
+          onReset={() => {
+            setSearchTerm("");
+            setSelectedClass("");
+            setSelectedYear("");
+          }}
           searchPlaceholder="Search by class or academic year..."
         >
           <select
@@ -360,8 +428,10 @@ const FeeStructures: React.FC = () => {
             className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 min-w-40"
           >
             <option value="">All Classes</option>
-            {classes.map(cls => (
-              <option key={cls.id} value={cls.id}>{cls.name} {cls.section ? `- ${cls.section}` : ''}</option>
+            {classes.map((cls) => (
+              <option key={cls.id} value={cls.id}>
+                {cls.name} {cls.section ? `- ${cls.section}` : ""}
+              </option>
             ))}
           </select>
           <select
@@ -370,8 +440,10 @@ const FeeStructures: React.FC = () => {
             className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 min-w-40"
           >
             <option value="">All Years</option>
-            {academicYears.map(year => (
-              <option key={year.id} value={year.id}>{year.name}</option>
+            {academicYears.map((year) => (
+              <option key={year.id} value={year.id}>
+                {year.name}
+              </option>
             ))}
           </select>
         </FilterBar>
@@ -383,10 +455,13 @@ const FeeStructures: React.FC = () => {
             {filteredGroups.map((group) => {
               const groupKey = getGroupKey(group);
               const isExpanded = expandedGroups.has(groupKey);
-              
+
               return (
-                <div key={groupKey} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                  <div 
+                <div
+                  key={groupKey}
+                  className="bg-white rounded-xl border border-slate-200 overflow-hidden"
+                >
+                  <div
                     className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-slate-50 transition-colors"
                     onClick={() => toggleGroup(groupKey)}
                   >
@@ -398,23 +473,36 @@ const FeeStructures: React.FC = () => {
                       )}
                       <div>
                         <h3 className="text-base font-semibold text-slate-900">
-                          {group.className} {group.classSection ? `- Section ${group.classSection}` : ''}
+                          {group.className}{" "}
+                          {group.classSection
+                            ? `- Section ${group.classSection}`
+                            : ""}
                         </h3>
-                        <p className="text-sm text-slate-500">{group.academicYearName}</p>
+                        <p className="text-sm text-slate-500">
+                          {group.academicYearName}
+                        </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-6">
                       <div className="text-right">
-                        <p className="text-sm font-medium text-slate-600">{getFeeTermsLabel(group.feeTerms)}</p>
-                        <p className="text-xs text-slate-500">{group.components.length} components</p>
+                        <p className="text-sm font-medium text-slate-600">
+                          {getFeeTermsLabel(group.feeTerms)}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {group.components.length} components
+                        </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-emerald-600">{formatCurrency(group.perTermAmount)}</p>
+                        <p className="text-lg font-bold text-emerald-600">
+                          {formatCurrency(group.perTermAmount)}
+                        </p>
                         <p className="text-xs text-slate-500">per term</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-purple-600">{formatCurrency(group.totalAnnualFee)}</p>
+                        <p className="text-lg font-bold text-purple-600">
+                          {formatCurrency(group.totalAnnualFee)}
+                        </p>
                         <p className="text-xs text-slate-500">annual</p>
                       </div>
                       <button
@@ -429,42 +517,63 @@ const FeeStructures: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                  
+
                   {isExpanded && (
                     <div className="border-t border-slate-200">
                       <table className="w-full">
                         <thead className="bg-slate-50 border-b border-slate-200">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Fee Type</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Annual Amount</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Per Term</th>
-                            <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              Fee Type
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              Annual Amount
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              Per Term
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              Actions
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {group.components.map((component) => (
-                            <tr key={component.id} className="hover:bg-slate-50/50 transition-colors">
+                            <tr
+                              key={component.id}
+                              className="hover:bg-slate-50/50 transition-colors"
+                            >
                               <td className="px-6 py-4">
-                                <span className="text-sm font-medium text-slate-900">{component.feeType}</span>
+                                <span className="text-sm font-medium text-slate-900">
+                                  {component.feeType}
+                                </span>
                               </td>
                               <td className="px-6 py-4">
-                                <span className="text-sm font-semibold text-slate-700">{formatCurrency(component.annualAmount)}</span>
+                                <span className="text-sm font-semibold text-slate-700">
+                                  {formatCurrency(component.annualAmount)}
+                                </span>
                               </td>
                               <td className="px-6 py-4">
                                 <span className="text-sm text-slate-600">
-                                  {formatCurrency(component.annualAmount / group.feeTerms)}
+                                  {formatCurrency(
+                                    component.annualAmount / group.feeTerms,
+                                  )}
                                 </span>
                               </td>
                               <td className="px-6 py-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
                                   <button
-                                    onClick={() => handleOpenEdit(group, component.id)}
+                                    onClick={() =>
+                                      handleOpenEdit(group, component.id)
+                                    }
                                     className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
                                   >
                                     <Edit2 className="w-4 h-4 text-blue-500" />
                                   </button>
                                   <button
-                                    onClick={() => handleDeleteComponent(component.id)}
+                                    onClick={() =>
+                                      handleDeleteComponent(component.id)
+                                    }
                                     className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                                   >
                                     <Trash2 className="w-4 h-4 text-red-500" />
@@ -485,11 +594,15 @@ const FeeStructures: React.FC = () => {
           <EmptyState
             icon={Receipt}
             title="No fee structures found"
-            description={searchTerm || selectedClass || selectedYear ? "Try adjusting your filters" : "Add fee structures to get started"}
+            description={
+              searchTerm || selectedClass || selectedYear
+                ? "Try adjusting your filters"
+                : "Add fee structures to get started"
+            }
             action={{
               label: "Add Fee Component",
               icon: Plus,
-              onClick: handleOpenCreate
+              onClick: handleOpenCreate,
             }}
           />
         )}
@@ -497,7 +610,7 @@ const FeeStructures: React.FC = () => {
         <BaseModal
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
-          title={editingStructure ? 'Edit Fee Component' : 'Add Fee Component'}
+          title={editingStructure ? "Edit Fee Component" : "Add Fee Component"}
           size="md"
         >
           <div className="p-6 space-y-4">
@@ -505,77 +618,117 @@ const FeeStructures: React.FC = () => {
               <>
                 <div>
                   <div className="flex justify-between items-center px-1 mb-1">
-                    <label className={`block text-xs font-semibold ${errors.classId ? 'text-red-500' : 'text-slate-700'}`}>Class</label>
-                    {errors.classId && <span className="text-[10px] font-bold text-red-500">{errors.classId}</span>}
+                    <label
+                      className={`block text-xs font-semibold ${errors.classId ? "text-red-500" : "text-slate-700"}`}
+                    >
+                      Class
+                    </label>
+                    {errors.classId && (
+                      <span className="text-[10px] font-bold text-red-500">
+                        {errors.classId}
+                      </span>
+                    )}
                   </div>
                   <select
-                    value={formData.classId || ''}
+                    value={formData.classId || ""}
                     onChange={(e) => {
                       const newClassId = parseInt(e.target.value);
                       const existingGroup = groupedStructures.find(
-                        g => g.classId === newClassId && g.academicYearId === formData.academicYearId
+                        (g) =>
+                          g.classId === newClassId &&
+                          g.academicYearId === formData.academicYearId,
                       );
-                      setFormData({ 
-                        ...formData, 
+                      setFormData({
+                        ...formData,
                         classId: newClassId,
                         feeTerms: existingGroup?.feeTerms || formData.feeTerms,
                       });
-                      if (errors.classId) setErrors(prev => { const next = { ...prev }; delete next.classId; return next; });
+                      if (errors.classId)
+                        setErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.classId;
+                          return next;
+                        });
                     }}
-                    className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 ${errors.classId ? 'border-red-500 bg-red-50/30 focus:ring-red-500/10' : 'border-slate-200 focus:ring-blue-500'} text-slate-700`}
+                    className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 ${errors.classId ? "border-red-500 bg-red-50/30 focus:ring-red-500/10" : "border-slate-200 focus:ring-blue-500"} text-slate-700`}
                   >
                     <option value="">Select Class</option>
-                    {classes.map(cls => (
-                      <option key={cls.id} value={cls.id}>{cls.name} {cls.section ? `- ${cls.section}` : ''}</option>
+                    {classes.map((cls) => (
+                      <option key={cls.id} value={cls.id}>
+                        {cls.name} {cls.section ? `- ${cls.section}` : ""}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <div className="flex justify-between items-center px-1 mb-1">
-                    <label className={`block text-xs font-semibold ${errors.academicYearId ? 'text-red-500' : 'text-slate-700'}`}>Academic Year</label>
-                    {errors.academicYearId && <span className="text-[10px] font-bold text-red-500">{errors.academicYearId}</span>}
+                    <label
+                      className={`block text-xs font-semibold ${errors.academicYearId ? "text-red-500" : "text-slate-700"}`}
+                    >
+                      Academic Year
+                    </label>
+                    {errors.academicYearId && (
+                      <span className="text-[10px] font-bold text-red-500">
+                        {errors.academicYearId}
+                      </span>
+                    )}
                   </div>
                   <select
-                    value={formData.academicYearId || ''}
+                    value={formData.academicYearId || ""}
                     onChange={(e) => {
                       const newYearId = parseInt(e.target.value);
                       const existingGroup = groupedStructures.find(
-                        g => g.classId === formData.classId && g.academicYearId === newYearId
+                        (g) =>
+                          g.classId === formData.classId &&
+                          g.academicYearId === newYearId,
                       );
-                      setFormData({ 
-                        ...formData, 
+                      setFormData({
+                        ...formData,
                         academicYearId: newYearId,
                         feeTerms: existingGroup?.feeTerms || formData.feeTerms,
                       });
-                      if (errors.academicYearId) setErrors(prev => { const next = { ...prev }; delete next.academicYearId; return next; });
+                      if (errors.academicYearId)
+                        setErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.academicYearId;
+                          return next;
+                        });
                     }}
-                    className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 ${errors.academicYearId ? 'border-red-500 bg-red-50/30 focus:ring-red-500/10' : 'border-slate-200 focus:ring-blue-500'} text-slate-700`}
+                    className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 ${errors.academicYearId ? "border-red-500 bg-red-50/30 focus:ring-red-500/10" : "border-slate-200 focus:ring-blue-500"} text-slate-700`}
                   >
                     <option value="">Select Year</option>
-                    {academicYears.map(year => (
-                      <option key={year.id} value={year.id}>{year.name}</option>
+                    {academicYears.map((year) => (
+                      <option key={year.id} value={year.id}>
+                        {year.name}
+                      </option>
                     ))}
                   </select>
                 </div>
-                {formData.classId && formData.academicYearId && (
+                {formData.classId &&
+                  formData.academicYearId &&
                   (() => {
                     const existingGroup = groupedStructures.find(
-                      g => g.classId === formData.classId && g.academicYearId === formData.academicYearId
+                      (g) =>
+                        g.classId === formData.classId &&
+                        g.academicYearId === formData.academicYearId,
                     );
                     if (existingGroup) {
                       return (
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                           <p className="text-sm text-blue-700">
-                            <strong>Note:</strong> This class+year already has fee components. 
-                            Fee terms is locked to <strong>{getFeeTermsLabel(existingGroup.feeTerms)}</strong>.
-                            Total annual: {formatCurrency(existingGroup.totalAnnualFee)}.
+                            <strong>Note:</strong> This class+year already has
+                            fee components. Fee terms is locked to{" "}
+                            <strong>
+                              {getFeeTermsLabel(existingGroup.feeTerms)}
+                            </strong>
+                            . Total annual:{" "}
+                            {formatCurrency(existingGroup.totalAnnualFee)}.
                           </p>
                         </div>
                       );
                     }
                     return null;
-                  })()
-                )}
+                  })()}
               </>
             )}
             <InputField
@@ -584,7 +737,12 @@ const FeeStructures: React.FC = () => {
               value={formData.feeType}
               onChange={(e) => {
                 setFormData({ ...formData, feeType: e.target.value });
-                if (errors.feeType) setErrors(prev => { const next = { ...prev }; delete next.feeType; return next; });
+                if (errors.feeType)
+                  setErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.feeType;
+                    return next;
+                  });
               }}
               error={errors.feeType}
             />
@@ -592,40 +750,66 @@ const FeeStructures: React.FC = () => {
               label="Annual Amount"
               type="number"
               placeholder="Enter annual amount"
-              value={formData.amount || ''}
+              value={formData.amount || ""}
               onChange={(e) => {
-                setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 });
-                if (errors.amount) setErrors(prev => { const next = { ...prev }; delete next.amount; return next; });
+                setFormData({
+                  ...formData,
+                  amount: parseFloat(e.target.value) || 0,
+                });
+                if (errors.amount)
+                  setErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.amount;
+                    return next;
+                  });
               }}
               error={errors.amount}
             />
             {formData.amount > 0 && formData.feeTerms > 0 && (
               <div className="bg-slate-50 rounded-lg p-3">
                 <p className="text-sm text-slate-600">
-                  <strong>Per term amount:</strong> {formatCurrency(formData.amount / formData.feeTerms)}
-                  <span className="text-slate-400 ml-2">({formData.amount} / {formData.feeTerms})</span>
+                  <strong>Per term amount:</strong>{" "}
+                  {formatCurrency(formData.amount / formData.feeTerms)}
+                  <span className="text-slate-400 ml-2">
+                    ({formData.amount} / {formData.feeTerms})
+                  </span>
                 </p>
               </div>
             )}
             {!editingStructure && (
               <div>
                 <div className="flex justify-between items-center px-1 mb-1">
-                  <label className={`block text-xs font-semibold ${errors.feeTerms ? 'text-red-500' : 'text-slate-700'}`}>Fee Terms</label>
-                  {errors.feeTerms && <span className="text-[10px] font-bold text-red-500">{errors.feeTerms}</span>}
+                  <label
+                    className={`block text-xs font-semibold ${errors.feeTerms ? "text-red-500" : "text-slate-700"}`}
+                  >
+                    Fee Terms
+                  </label>
+                  {errors.feeTerms && (
+                    <span className="text-[10px] font-bold text-red-500">
+                      {errors.feeTerms}
+                    </span>
+                  )}
                 </div>
                 <select
-                  value={formData.feeTerms || ''}
+                  value={formData.feeTerms || ""}
                   onChange={(e) => {
-                    setFormData({ 
-                      ...formData, 
-                      feeTerms: parseInt(e.target.value) || 0
+                    setFormData({
+                      ...formData,
+                      feeTerms: parseInt(e.target.value) || 0,
                     });
-                    if (errors.feeTerms) setErrors(prev => { const next = { ...prev }; delete next.feeTerms; return next; });
+                    if (errors.feeTerms)
+                      setErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.feeTerms;
+                        return next;
+                      });
                   }}
                   disabled={groupedStructures.some(
-                    g => g.classId === formData.classId && g.academicYearId === formData.academicYearId
+                    (g) =>
+                      g.classId === formData.classId &&
+                      g.academicYearId === formData.academicYearId,
                   )}
-                  className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 ${errors.feeTerms ? 'border-red-500 bg-red-50/30 focus:ring-red-500/10' : 'border-slate-200 focus:ring-blue-500'} text-slate-700 disabled:bg-slate-100 disabled:cursor-not-allowed`}
+                  className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 ${errors.feeTerms ? "border-red-500 bg-red-50/30 focus:ring-red-500/10" : "border-slate-200 focus:ring-blue-500"} text-slate-700 disabled:bg-slate-100 disabled:cursor-not-allowed`}
                 >
                   <option value="">Select Fee Terms</option>
                   <option value="1">Yearly (1 installment)</option>
@@ -635,17 +819,25 @@ const FeeStructures: React.FC = () => {
                 </select>
                 <p className="text-xs text-slate-500 mt-1">
                   {groupedStructures.some(
-                    g => g.classId === formData.classId && g.academicYearId === formData.academicYearId
-                  ) ? 'Fee terms is locked because this class+year already has components.' : 'All components in the same class+year must have the same fee terms.'}
+                    (g) =>
+                      g.classId === formData.classId &&
+                      g.academicYearId === formData.academicYearId,
+                  )
+                    ? "Fee terms is locked because this class+year already has components."
+                    : "All components in the same class+year must have the same fee terms."}
                 </p>
               </div>
             )}
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1">
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateModal(false)}
+                className="flex-1"
+              >
                 Cancel
               </Button>
               <Button onClick={handleSave} loading={saving} className="flex-1">
-                {editingStructure ? 'Update' : 'Create'}
+                {editingStructure ? "Update" : "Create"}
               </Button>
             </div>
           </div>
@@ -660,13 +852,15 @@ const FeeStructures: React.FC = () => {
           <div className="p-6 space-y-4">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm text-amber-700 font-medium">
-                    This will create fee transactions for ALL active students in the selected class.
+                    This will create fee transactions for ALL active students in
+                    the selected class.
                   </p>
                   <p className="text-xs text-amber-600 mt-1">
-                    Students who already have transactions for this year will be skipped.
+                    Students who already have transactions for this year will be
+                    skipped.
                   </p>
                 </div>
               </div>
@@ -674,116 +868,173 @@ const FeeStructures: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Class</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Class
+                </label>
                 <select
-                  value={generateData.classId || ''}
+                  value={generateData.classId || ""}
                   onChange={(e) => {
                     const classId = parseInt(e.target.value);
-                    setGenerateData(prev => ({ ...prev, classId }));
-                    const group = groupedStructures.find(g => g.classId === classId);
+                    setGenerateData((prev) => ({ ...prev, classId }));
+                    const group = groupedStructures.find(
+                      (g) => g.classId === classId,
+                    );
                     if (group) {
-                      setGenerateData(prev => ({ ...prev, academicYearId: group.academicYearId }));
+                      setGenerateData((prev) => ({
+                        ...prev,
+                        academicYearId: group.academicYearId,
+                      }));
                     }
                   }}
                   className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Class</option>
-                  {classes.map(cls => (
-                    <option key={cls.id} value={cls.id}>{cls.name} {cls.section ? `- ${cls.section}` : ''}</option>
+                  {classes.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name} {cls.section ? `- ${cls.section}` : ""}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Academic Year</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Academic Year
+                </label>
                 <select
-                  value={generateData.academicYearId || ''}
-                  onChange={(e) => setGenerateData(prev => ({ ...prev, academicYearId: parseInt(e.target.value) }))}
+                  value={generateData.academicYearId || ""}
+                  onChange={(e) =>
+                    setGenerateData((prev) => ({
+                      ...prev,
+                      academicYearId: parseInt(e.target.value),
+                    }))
+                  }
                   className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Year</option>
-                  {academicYears.map(year => (
-                    <option key={year.id} value={year.id}>{year.name}</option>
+                  {academicYears.map((year) => (
+                    <option key={year.id} value={year.id}>
+                      {year.name}
+                    </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {generateData.classId > 0 && generateData.academicYearId > 0 && (() => {
-              const selectedGroup = groupedStructures.find(
-                g => g.classId === generateData.classId && g.academicYearId === generateData.academicYearId
-              );
-              if (!selectedGroup) {
+            {generateData.classId > 0 &&
+              generateData.academicYearId > 0 &&
+              (() => {
+                const selectedGroup = groupedStructures.find(
+                  (g) =>
+                    g.classId === generateData.classId &&
+                    g.academicYearId === generateData.academicYearId,
+                );
+                if (!selectedGroup) {
+                  return (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <p className="text-sm text-red-700">
+                        No fee structure exists for this class and academic
+                        year. Please create fee components first.
+                      </p>
+                    </div>
+                  );
+                }
                 return (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <p className="text-sm text-red-700">
-                      No fee structure exists for this class and academic year. Please create fee components first.
-                    </p>
+                  <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+                    <h4 className="text-sm font-semibold text-slate-700">
+                      Fee Structure Preview
+                    </h4>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-2xl font-bold text-slate-900">
+                          {formatCurrency(selectedGroup.totalAnnualFee)}
+                        </p>
+                        <p className="text-xs text-slate-500">Annual Total</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-emerald-600">
+                          {formatCurrency(selectedGroup.perTermAmount)}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Per Term ({getFeeTermsLabel(selectedGroup.feeTerms)})
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-purple-600">
+                          {selectedGroup.components.length}
+                        </p>
+                        <p className="text-xs text-slate-500">Components</p>
+                      </div>
+                    </div>
+                    <div className="border-t border-slate-200 pt-3">
+                      <p className="text-xs text-slate-500 mb-2">
+                        Per-term breakdown:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedGroup.components.map((c) => (
+                          <span
+                            key={c.id}
+                            className="px-2 py-1 bg-white rounded text-xs"
+                          >
+                            {c.feeType}:{" "}
+                            {formatCurrency(
+                              c.annualAmount / selectedGroup.feeTerms,
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 );
-              }
-              return (
-                <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-                  <h4 className="text-sm font-semibold text-slate-700">Fee Structure Preview</h4>
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <p className="text-2xl font-bold text-slate-900">{formatCurrency(selectedGroup.totalAnnualFee)}</p>
-                      <p className="text-xs text-slate-500">Annual Total</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-emerald-600">{formatCurrency(selectedGroup.perTermAmount)}</p>
-                      <p className="text-xs text-slate-500">Per Term ({getFeeTermsLabel(selectedGroup.feeTerms)})</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-purple-600">{selectedGroup.components.length}</p>
-                      <p className="text-xs text-slate-500">Components</p>
-                    </div>
-                  </div>
-                  <div className="border-t border-slate-200 pt-3">
-                    <p className="text-xs text-slate-500 mb-2">Per-term breakdown:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedGroup.components.map(c => (
-                        <span key={c.id} className="px-2 py-1 bg-white rounded text-xs">
-                          {c.feeType}: {formatCurrency(c.annualAmount / selectedGroup.feeTerms)}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+              })()}
 
             {generationResult && (
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-emerald-700 mb-3">Generation Complete</h4>
+                <h4 className="text-sm font-semibold text-emerald-700 mb-3">
+                  Generation Complete
+                </h4>
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
-                    <p className="text-2xl font-bold text-emerald-600">{generationResult.generated}</p>
-                    <p className="text-xs text-emerald-600">Transactions Generated</p>
+                    <p className="text-2xl font-bold text-emerald-600">
+                      {generationResult.generated}
+                    </p>
+                    <p className="text-xs text-emerald-600">
+                      Transactions Generated
+                    </p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-slate-600">{generationResult.skippedStudents}</p>
+                    <p className="text-2xl font-bold text-slate-600">
+                      {generationResult.skippedStudents}
+                    </p>
                     <p className="text-xs text-slate-500">Students Skipped</p>
                   </div>
                 </div>
                 <div className="mt-3 pt-3 border-t border-emerald-200">
                   <p className="text-xs text-emerald-600">
-                    <strong>Per term:</strong> {formatCurrency(generationResult.perTermAmount)} | 
-                    <strong> Annual:</strong> {formatCurrency(generationResult.totalAnnualFee)}
+                    <strong>Per term:</strong>{" "}
+                    {formatCurrency(generationResult.perTermAmount)} |
+                    <strong> Annual:</strong>{" "}
+                    {formatCurrency(generationResult.totalAnnualFee)}
                   </p>
                 </div>
               </div>
             )}
 
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowGenerateModal(false)} className="flex-1">
-                {generationResult ? 'Close' : 'Cancel'}
+              <Button
+                variant="outline"
+                onClick={() => setShowGenerateModal(false)}
+                className="flex-1"
+              >
+                {generationResult ? "Close" : "Cancel"}
               </Button>
               {!generationResult && (
-                <Button 
-                  onClick={handleGenerateTransactions} 
-                  loading={generating} 
+                <Button
+                  onClick={handleGenerateTransactions}
+                  loading={generating}
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-                  disabled={!generateData.classId || !generateData.academicYearId}
+                  disabled={
+                    !generateData.classId || !generateData.academicYearId
+                  }
                 >
                   Generate Transactions
                 </Button>

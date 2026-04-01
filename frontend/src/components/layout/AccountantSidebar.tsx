@@ -11,6 +11,23 @@ const navItems = [
     path: "/accountant/fee-defaulters",
   },
   { name: "Students", icon: "group", path: "/accountant/students" },
+  { name: "Add Student", icon: "person_add", path: "/accountant/add-student" },
+  { name: "Attendance", icon: "how_to_reg", path: "/accountant/attendance" },
+  {
+    name: "Exams",
+    icon: "assignment",
+    path: "/accountant/exams",
+  },
+  {
+    name: "Marks Entry",
+    icon: "edit_note",
+    path: "/accountant/marks-entry",
+  },
+  {
+    name: "Exam Results",
+    icon: "grade",
+    path: "/accountant/exam-results",
+  },
   {
     name: "Fee Structures",
     icon: "receipt_long",
@@ -21,7 +38,6 @@ const navItems = [
     icon: "campaign",
     path: "/accountant/announcements",
   },
-  { name: "Reports", icon: "analytics", path: "/accountant/reports" },
 ];
 
 const AccountantSidebar: React.FC = () => {
