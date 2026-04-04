@@ -127,3 +127,18 @@ export const getLocalDateString = (date?: Date): string => {
   const d = date || new Date();
   return d.toLocaleDateString('en-CA');
 };
+
+export const getFeeTermsLabel = (feeTerms: number): string => {
+  switch (feeTerms) {
+    case 1:
+      return "Yearly";
+    case 2:
+      return "Half-yearly";
+    case 4:
+      return "Quarterly";
+    case 12:
+      return "Monthly";
+    default:
+      return `${feeTerms} terms`;
+  }
+};

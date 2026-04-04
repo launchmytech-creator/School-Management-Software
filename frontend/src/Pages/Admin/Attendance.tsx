@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
-import { attendanceService, type AttendanceRecord } from '../../services/attendanceService';
-import { classService } from '../../services/classService';
-import type { Class } from '../../types/class';
+import { useClasses } from '../../hooks/queries/useClasses';
+import { useClassAttendance } from '../../hooks/queries/useAttendance';
 import { Users, CheckCircle, XCircle, Clock, CalendarCheck } from 'lucide-react';
 import { formatDate, getLocalDateString } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
@@ -16,50 +15,16 @@ import { SkeletonTable } from '../../components/common/Skeleton';
 const Attendance: React.FC = () => {
   const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
-  const [loading, setLoading] = useState(true);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
+  
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
   const [showMarkModal, setShowMarkModal] = useState(false);
 
-  const fetchClasses = useCallback(async () => {
-    try {
-      const data = await classService.getClasses(selectedYear?.id);
-      setClasses(data);
-    } catch {
-      showNotification('Failed to fetch classes', 'error');
-    }
-  }, [selectedYear, showNotification]);
-
-  const fetchAttendance = useCallback(async () => {
-    if (!selectedClass || !selectedDate) {
-      setAttendance([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const data = await attendanceService.getClassAttendanceByDate(
-        parseInt(selectedClass),
-        selectedDate
-      );
-      setAttendance(data);
-    } catch {
-      showNotification('Failed to fetch attendance', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedClass, selectedDate, showNotification]);
-
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
-
-  useEffect(() => {
-    fetchAttendance();
-  }, [fetchAttendance]);
+  const { data: classes = [] } = useClasses(selectedYear?.id);
+  const { data: attendance = [], isLoading } = useClassAttendance(
+    selectedClass ? parseInt(selectedClass) : 0,
+    selectedDate
+  );
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -189,7 +154,7 @@ const Attendance: React.FC = () => {
           </div>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <SkeletonTable columns={3} rows={8} />
         ) : selectedClass ? (
           attendance.length > 0 ? (

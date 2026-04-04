@@ -69,7 +69,7 @@ export const attendanceService = {
     const queryParams = new URLSearchParams();
     if (params.classId) queryParams.append('classId', String(params.classId));
     if (params.studentId) queryParams.append('studentId', String(params.studentId));
-    if (params.date) queryParams.append('date', params.date);
+    if (params.date) queryParams.append('attendanceDate', params.date);
     if (params.startDate) queryParams.append('startDate', params.startDate);
     if (params.endDate) queryParams.append('endDate', params.endDate);
     

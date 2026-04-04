@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ParentLayout from '../../layouts/ParentLayout';
 import { useAuth } from '../../context/AuthContext';
-import { parentService } from '../../services/parentService';
+import { useParentChildren } from '../../hooks/queries';
 import { attendanceService } from '../../services/attendanceService';
 import { holidayService } from '../../services/holidayService';
 import type { LinkedStudent } from '../../types/parent';
@@ -67,6 +67,8 @@ const CircularProgress: React.FC<{ pct: number }> = ({ pct }) => {
 const today = new Date();
 const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
+const EMPTY_CHILDREN: LinkedStudent[] = [];
+
 const ParentAttendance: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -74,23 +76,20 @@ const ParentAttendance: React.FC = () => {
   const [viewYear, setViewYear]   = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
 
-  const [children, setChildren]     = useState<LinkedStudent[]>([]);
+  const { data: childrenData, isLoading: childrenLoading } = useParentChildren(Number(user?.id));
+  const children = childrenData || EMPTY_CHILDREN;
+
   const [selected, setSelected]     = useState<LinkedStudent | null>(null);
   const [records, setRecords]       = useState<AttendanceRecord[]>([]);
   const [holidays, setHolidays]     = useState<Holiday[]>([]);
-  const [loading, setLoading]       = useState(true);
   const [monthOpenDays, setMonthOpenDays] = useState<number>(0);
 
-  // ── fetch children ──────────────────────────────────────────────────────────
+  // ── set initial child ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (!user?.id) return;
-    parentService.getParentChildren(Number(user.id))
-      .then(data => {
-        setChildren(data);
-        if (data.length > 0) setSelected(data[0]);
-      })
-      .finally(() => setLoading(false));
-  }, [user?.id]);
+    if (children.length > 0 && !selected) {
+      setSelected(children[0]);
+    }
+  }, [children, selected]);
 
   // ── fetch attendance for selected child ─────────────────────────────────────
   const fetchAttendance = useCallback(async () => {
@@ -174,7 +173,7 @@ const ParentAttendance: React.FC = () => {
     else setViewMonth(m => m + 1);
   };
 
-  if (loading) {
+  if (childrenLoading) {
     return (
       <ParentLayout title="Attendance Tracker">
         <div className="flex items-center justify-center min-h-[60vh]">

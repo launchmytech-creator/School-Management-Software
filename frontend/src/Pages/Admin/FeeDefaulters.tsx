@@ -1,79 +1,26 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import { useNotification } from '../../context/NotificationContext';
-import { useAcademicYear } from '../../context/AcademicYearContext';
-import { feeService, type FeeDefaulter } from '../../services/feeService';
-import { feeStructureService } from '../../services/feeStructureService';
-import { classService } from '../../services/classService';
-import type { Class } from '../../types/class';
+import { useFeeDefaultersPage } from '../../hooks/useFeeDefaultersPage';
 import { AlertTriangle, Phone, User, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
 const FeeDefaulters: React.FC = () => {
   const { showNotification } = useNotification();
-  const { selectedYear } = useAcademicYear();
-  const [loading, setLoading] = useState(true);
-  const [defaulters, setDefaulters] = useState<FeeDefaulter[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [feeTypes, setFeeTypes] = useState<string[]>([]);
-  const [selectedClass, setSelectedClass] = useState<string>('');
-  const [feeTypeFilter, setFeeTypeFilter] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    const fetchFeeTypes = async () => {
-      try {
-        const types = await feeStructureService.getUniqueFeeTypes();
-        setFeeTypes(types);
-      } catch {
-        // Ignore error
-      }
-    };
-    fetchFeeTypes();
-  }, []);
-
-  const fetchClasses = useCallback(async () => {
-    try {
-      const data = await classService.getClasses();
-      setClasses(data);
-    } catch {
-      showNotification('Failed to fetch classes', 'error');
-    }
-  }, [showNotification]);
-
-  const fetchDefaulters = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await feeService.getFeeDefaulters({
-        classId: selectedClass ? parseInt(selectedClass) : undefined,
-        academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
-      });
-      setDefaulters(data);
-    } catch {
-      showNotification('Failed to fetch fee defaulters', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedClass, selectedYear, showNotification]);
-
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
-
-  useEffect(() => {
-    fetchDefaulters();
-  }, [fetchDefaulters]);
-
-  const totalDue = defaulters.reduce((sum, d) => sum + d.totalDue, 0);
-
-  const filteredDefaulters = defaulters.filter(d =>
-    d.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    d.admissionNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    d.parentName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const {
+    classes,
+    filteredDefaulters,
+    isLoading,
+    totalDue,
+    withContactCount,
+    selectedClass,
+    setSelectedClass,
+    searchTerm,
+    setSearchTerm,
+  } = useFeeDefaultersPage();
 
   return (
     <AdminLayout title="Fee Defaulters">
@@ -90,7 +37,6 @@ const FeeDefaulters: React.FC = () => {
           }}
         />
 
-        {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-gradient-to-r from-rose-500 to-rose-600 rounded-xl p-6 text-white">
             <div className="flex items-center gap-4">
@@ -98,7 +44,7 @@ const FeeDefaulters: React.FC = () => {
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-3xl font-bold">{defaulters.length}</p>
+                <p className="text-3xl font-bold">{filteredDefaulters.length}</p>
                 <p className="text-rose-100">Total Defaulters</p>
               </div>
             </div>
@@ -120,9 +66,7 @@ const FeeDefaulters: React.FC = () => {
                 <Phone className="w-6 h-6 text-amber-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-900">
-                  {defaulters.filter(d => d.parentPhone).length}
-                </p>
+                <p className="text-2xl font-bold text-slate-900">{withContactCount}</p>
                 <p className="text-sm text-slate-500">With Contact Info</p>
               </div>
             </div>
@@ -145,19 +89,9 @@ const FeeDefaulters: React.FC = () => {
               <option key={cls.id} value={cls.id}>{cls.name}</option>
             ))}
           </select>
-          <select
-            value={feeTypeFilter}
-            onChange={(e) => setFeeTypeFilter(e.target.value)}
-            className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700"
-          >
-            <option value="">All Fee Types</option>
-            {feeTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
         </FilterBar>
 
-        {loading ? (
+        {isLoading ? (
           <div className="bg-white rounded-2xl p-12 flex items-center justify-center">
             <LoadingSpinner size="lg" message="Loading defaulters..." />
           </div>

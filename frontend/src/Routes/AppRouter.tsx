@@ -1,12 +1,24 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "../Pages/Auth/Login";
 import PublicRoute from "./PublicRoute";
 import ProtectedRoute from "./ProtectedRoute";
-import superAdminRoutes from "./superAdminRoutes";
-import adminRoutes from "./adminRoutes";
-import accountantRoutes from "./accountantRoutes";
-import teacherRoutes from "./teacherRoutes";
-import parentRoutes from "./parentRoutes";
+
+// Route chunks — only loaded when the user navigates to that role's pages
+const SuperAdminRoutes = lazy(() => import("./superAdminRoutes"));
+const AdminRoutes = lazy(() => import("./adminRoutes"));
+const AccountantRoutes = lazy(() => import("./accountantRoutes"));
+const TeacherRoutes = lazy(() => import("./teacherRoutes"));
+const ParentRoutes = lazy(() => import("./parentRoutes"));
+
+const PageLoader = () => (
+  <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+      <p className="text-sm text-slate-400 font-medium">Loading...</p>
+    </div>
+  </div>
+);
 
 const AppRouter = () => (
   <Routes>
@@ -24,7 +36,9 @@ const AppRouter = () => (
       path="/super-admin/*"
       element={
         <ProtectedRoute allowedRoles={["super_admin"]}>
-          {superAdminRoutes}
+          <Suspense fallback={<PageLoader />}>
+            <SuperAdminRoutes />
+          </Suspense>
         </ProtectedRoute>
       }
     />
@@ -33,7 +47,9 @@ const AppRouter = () => (
       path="/admin/*"
       element={
         <ProtectedRoute allowedRoles={["school_admin"]}>
-          {adminRoutes}
+          <Suspense fallback={<PageLoader />}>
+            <AdminRoutes />
+          </Suspense>
         </ProtectedRoute>
       }
     />
@@ -42,7 +58,9 @@ const AppRouter = () => (
       path="/accountant/*"
       element={
         <ProtectedRoute allowedRoles={["accountant"]}>
-          {accountantRoutes}
+          <Suspense fallback={<PageLoader />}>
+            <AccountantRoutes />
+          </Suspense>
         </ProtectedRoute>
       }
     />
@@ -51,7 +69,9 @@ const AppRouter = () => (
       path="/teacher/*"
       element={
         <ProtectedRoute allowedRoles={["teacher"]}>
-          {teacherRoutes}
+          <Suspense fallback={<PageLoader />}>
+            <TeacherRoutes />
+          </Suspense>
         </ProtectedRoute>
       }
     />
@@ -60,7 +80,9 @@ const AppRouter = () => (
       path="/parent/*"
       element={
         <ProtectedRoute allowedRoles={["parent"]}>
-          {parentRoutes}
+          <Suspense fallback={<PageLoader />}>
+            <ParentRoutes />
+          </Suspense>
         </ProtectedRoute>
       }
     />
@@ -70,3 +92,4 @@ const AppRouter = () => (
 );
 
 export default AppRouter;
+

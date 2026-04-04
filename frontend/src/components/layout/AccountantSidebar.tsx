@@ -41,7 +41,7 @@ const navItems = [
 ];
 
 const AccountantSidebar: React.FC = () => {
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {

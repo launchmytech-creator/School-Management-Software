@@ -10,7 +10,7 @@ const withActiveYear = (element: React.ReactElement) => (
   <RequiresActiveYear>{element}</RequiresActiveYear>
 );
 
-const teacherRoutes = (
+const TeacherRoutes = () => (
   <Routes>
     <Route path="dashboard" element={<TeacherDashboard />} />
     <Route path="my-classes" element={withActiveYear(<TeacherMyClasses />)} />
@@ -20,4 +20,4 @@ const teacherRoutes = (
   </Routes>
 );
 
-export default teacherRoutes;
+export default TeacherRoutes;

@@ -4,12 +4,8 @@ import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { timetableService, type TimetableEntry } from '../../services/timetableService';
-import { classService } from '../../services/classService';
-import { academicYearService } from '../../services/academicYearService';
-import { subjectService } from '../../services/subjectService';
-import type { Class } from '../../types/class';
-import type { AcademicYear } from '../../types/academicYear';
-import type { Subject } from '../../services/subjectService';
+import { useClasses, useSubjects } from '../../hooks/queries';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { Calendar, Plus, Clock, BookOpen, User } from 'lucide-react';
 import { BaseModal } from '../../components/common/BaseModal';
 import { Button } from '../../components/ui/button';
@@ -22,9 +18,9 @@ const Timetables: React.FC = () => {
   const { showNotification } = useNotification();
   const [loading, setLoading] = useState(true);
   const [timetables, setTimetables] = useState<TimetableEntry[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const { allYears: academicYears } = useAcademicYear();
+  const { data: classes = [] } = useClasses();
+  const { data: subjects = [] } = useSubjects();
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
@@ -56,24 +52,6 @@ const Timetables: React.FC = () => {
       setLoading(false);
     }
   }, [selectedClass, selectedYear, showNotification]);
-
-  useEffect(() => {
-    const fetchDropdowns = async () => {
-      try {
-        const [cls, yrs, subs] = await Promise.all([
-          classService.getClasses(),
-          academicYearService.getAllYears(),
-          subjectService.getSubjects(),
-        ]);
-        setClasses(cls);
-        setAcademicYears(yrs);
-        setSubjects(subs);
-      } catch {
-        showNotification('Failed to fetch data', 'error');
-      }
-    };
-    fetchDropdowns();
-  }, []);
 
   useEffect(() => {
     if (selectedClass || selectedYear) {

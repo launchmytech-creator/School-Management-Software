@@ -3,6 +3,7 @@ export type FeeTerm = 'YEARLY' | 'HALF-YEARLY' | 'QUARTERLY' | 'MONTHLY';
 
 export interface School {
   id: string;
+  code: string;
   name: string;
   address: string;
   phone: string;
@@ -11,6 +12,7 @@ export interface School {
   logo?: string;
   plan: SubscriptionTier;
   feeTerm: FeeTerm;
+  subscriptionStatus: string;
   status: boolean;
   createdAt: string;
   teacherCount?: number;
@@ -64,5 +66,7 @@ export interface SchoolAdmin {
 
 export interface UpdateSchoolAdminData {
   fullName?: string;
+  email?: string;
   phone?: string;
+  password?: string;
 }

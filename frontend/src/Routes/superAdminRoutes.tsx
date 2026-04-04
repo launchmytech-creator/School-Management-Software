@@ -4,7 +4,7 @@ import SuperAdminDashboard from "../Pages/superAdmin/Dashboard";
 import Schools from "../Pages/superAdmin/Schools";
 import CreateSchool from "../Pages/superAdmin/CreateSchool";
 
-const superAdminRoutes = (
+const SuperAdminRoutes = () => (
   <SchoolProvider>
     <Routes>
       <Route path="dashboard" element={<SuperAdminDashboard />} />
@@ -14,4 +14,4 @@ const superAdminRoutes = (
   </SchoolProvider>
 );
 
-export default superAdminRoutes;
+export default SuperAdminRoutes;

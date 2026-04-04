@@ -3,10 +3,8 @@ import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import { useNotification } from '../../context/NotificationContext';
 import { reportService, type AttendanceReport, type FeesReport, type SummaryReport } from '../../services/reportService';
-import { classService } from '../../services/classService';
-import { academicYearService } from '../../services/academicYearService';
-import type { Class } from '../../types/class';
-import type { AcademicYear } from '../../types/academicYear';
+import { useClasses } from '../../hooks/queries';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { BarChart3, Users, DollarSign, GraduationCap, Clock, Download } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
 
@@ -16,26 +14,15 @@ const Reports: React.FC = () => {
   const { showNotification } = useNotification();
   const [_loading, setLoading] = useState(true);
   const [reportType, setReportType] = useState<ReportType>('summary');
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
+  const { data: classes = [] } = useClasses();
+  const { allYears: academicYears } = useAcademicYear();
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [summary, setSummary] = useState<SummaryReport | null>(null);
   const [attendanceData, setAttendanceData] = useState<AttendanceReport[]>([]);
   const [feesData, setFeesData] = useState<FeesReport[]>([]);
 
-  const fetchDropdowns = useCallback(async () => {
-    try {
-      const [cls, yrs] = await Promise.all([
-        classService.getClasses(),
-        academicYearService.getAllYears(),
-      ]);
-      setClasses(cls);
-      setAcademicYears(yrs);
-    } catch {
-      showNotification('Failed to fetch data', 'error');
-    }
-  }, [showNotification]);
+
 
   const fetchReports = useCallback(async () => {
     try {
@@ -46,18 +33,21 @@ const Reports: React.FC = () => {
       };
 
       switch (reportType) {
-        case 'summary':
+        case 'summary': {
           const summaryData = await reportService.getSummaryReport(filters);
           setSummary(summaryData);
           break;
-        case 'attendance':
+        }
+        case 'attendance': {
           const attendanceReport = await reportService.getAttendanceReport(filters);
           setAttendanceData(attendanceReport);
           break;
-        case 'fees':
+        }
+        case 'fees': {
           const feesReport = await reportService.getFeesReport(filters);
           setFeesData(feesReport);
           break;
+        }
       }
     } catch {
       showNotification('Failed to fetch report', 'error');
@@ -66,9 +56,7 @@ const Reports: React.FC = () => {
     }
   }, [reportType, selectedClass, selectedYear, showNotification]);
 
-  useEffect(() => {
-    fetchDropdowns();
-  }, []);
+
 
   useEffect(() => {
     fetchReports();

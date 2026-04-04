@@ -95,10 +95,10 @@ const mapGroupFromBackend = (data: BackendFeeStructureGroup): FeeStructureGroup 
   className: data.class_name,
   classSection: data.class_section,
   academicYearName: data.academic_year_name,
-  feeTerms: data.fee_terms,
-  totalAnnualFee: typeof data.total_annual_fee === 'string' ? parseFloat(data.total_annual_fee) : data.total_annual_fee,
-  perTermAmount: typeof data.per_term_amount === 'string' ? parseFloat(data.per_term_amount) : data.per_term_amount,
-  components: data.components.map(c => ({
+  feeTerms: data.fee_terms ?? 1,
+  totalAnnualFee: (typeof data.total_annual_fee === 'string' ? parseFloat(data.total_annual_fee) : data.total_annual_fee) || 0,
+  perTermAmount: (typeof data.per_term_amount === 'string' ? parseFloat(data.per_term_amount) : data.per_term_amount) || 0,
+  components: (data.components || []).map(c => ({
     id: c.id,
     feeType: c.fee_type,
     annualAmount: typeof c.annual_amount === 'string' ? parseFloat(c.annual_amount) : c.annual_amount,

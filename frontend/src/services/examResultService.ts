@@ -196,12 +196,14 @@ export const examResultService = {
     examId?: number;
     classId?: number;
     subjectId?: number;
+    academicYearId?: number;
   }): Promise<ExamResult[]> => {
     const params = new URLSearchParams();
     if (filters?.studentId) params.append('studentId', String(filters.studentId));
     if (filters?.examId) params.append('examId', String(filters.examId));
     if (filters?.classId) params.append('classId', String(filters.classId));
     if (filters?.subjectId) params.append('subjectId', String(filters.subjectId));
+    if (filters?.academicYearId) params.append('academicYearId', String(filters.academicYearId));
     
     const queryString = params.toString();
     const response = await apiRequest<BackendExamResult[]>(`/exam-results${queryString ? `?${queryString}` : ''}`);
@@ -233,9 +235,12 @@ export const examResultService = {
     return response.map(mapExamSubjectResult);
   },
 
-  getClassPerformance: async (examId: number): Promise<ClassPerformance[]> => {
+  getClassPerformance: async (examId: number, academicYearId?: number): Promise<ClassPerformance[]> => {
+    const params = new URLSearchParams();
+    if (academicYearId) params.append('academicYearId', String(academicYearId));
+    const queryString = params.toString();
     const response = await apiRequest<BackendClassPerformance[]>(
-      `/exam-results/exam/${examId}/performance`
+      `/exam-results/exam/${examId}/performance${queryString ? `?${queryString}` : ''}`
     );
     return response.map(mapClassPerformance);
   },

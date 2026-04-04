@@ -1,69 +1,42 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../../layouts/AdminLayout";
 import AdminStatCard from "../../components/dashboard/AdminStatCard";
-import AttendanceChart from "../../components/dashboard/AttendanceChart";
-import FeeStatusChart from "../../components/dashboard/FeeStatusChart";
-import SyllabusCompletion from "../../components/dashboard/SyllabusCompletion";
-import RecentActivity from "../../components/dashboard/RecentActivity";
 import PageHeader from "../../components/common/PageHeader";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import { useAdminDashboard } from "../../hooks/queries";
+
+const AttendanceChart = lazy(() => 
+  import("../../components/dashboard/AttendanceChart").then(m => ({ default: m.default }))
+);
+
+const FeeStatusChart = lazy(() => 
+  import("../../components/dashboard/FeeStatusChart").then(m => ({ default: m.default }))
+);
 import {
   Users,
   UserRoundSearch,
   IndianRupee,
   AlertCircle,
-  GraduationCap,
-  CalendarCheck,
 } from "lucide-react";
-import { useNotification } from "../../context/NotificationContext";
-import {
-  dashboardService,
-  type AdminDashboardStats,
-  type DashboardActivity,
-  type AttendanceOverview,
-  type FeeOverview,
-} from "../../services/dashboardService";
-import {
-  syllabusService,
-  type ClassProgress,
-} from "../../services/syllabusService";
-import { useAcademicYear } from "../../context/AcademicYearContext";
+
+interface SyllabusItem {
+  classId: number;
+  className: string;
+  classSection: string | null;
+  totalChapters: number;
+  completedChapters: number;
+  overallPercentage: number;
+}
 
 const AdminDashboard: React.FC = () => {
-  const { showNotification } = useNotification();
-  const { selectedYear } = useAcademicYear();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<AdminDashboardStats | null>(null);
-  const [activities, setActivities] = useState<DashboardActivity[]>([]);
-  const [attendanceOverview, setAttendanceOverview] =
-    useState<AttendanceOverview | null>(null);
-  const [feeOverview, setFeeOverview] = useState<FeeOverview | null>(null);
-  const [syllabusProgress, setSyllabusProgress] = useState<ClassProgress[]>([]);
+  const { data, isLoading } = useAdminDashboard();
 
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [dashboardData, syllabusData] = await Promise.all([
-        dashboardService.getAdminDashboard(),
-        syllabusService.getAllClassesProgress(),
-      ]);
-      setStats(dashboardData.stats);
-      setActivities(dashboardData.recentActivity);
-      setAttendanceOverview(dashboardData.attendanceOverview);
-      setFeeOverview(dashboardData.feeOverview);
-      setSyllabusProgress(syllabusData.classes);
-    } catch {
-      showNotification("Failed to load dashboard data", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [showNotification]);
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData, selectedYear]);
+  const stats = data?.stats ?? null;
+  const attendanceOverview = data?.attendanceOverview ?? null;
+  const feeOverview = data?.feeOverview ?? null;
+  const syllabusProgress: SyllabusItem[] = data?.syllabusProgress ?? [];
 
   const today = new Intl.DateTimeFormat("en-US", {
     weekday: "long",
@@ -72,7 +45,7 @@ const AdminDashboard: React.FC = () => {
     day: "numeric",
   }).format(new Date());
 
-  if (loading) {
+  if (isLoading) {
     return (
       <AdminLayout title="Dashboard">
         <div className="flex items-center justify-center h-96">
@@ -123,32 +96,15 @@ const AdminDashboard: React.FC = () => {
     },
   ];
 
-  const formattedActivities =
-    activities.length > 0
-      ? activities.map((activity, index) => ({
-          id: activity.id || String(index),
-          title: activity.title,
-          description: activity.description,
-          time: activity.timestamp
-            ? new Date(activity.timestamp).toLocaleString()
-            : "",
-          icon: GraduationCap,
-          color: activity.color || "text-slate-400 bg-slate-50",
-        }))
-      : [
-          {
-            id: "1",
-            title: "Welcome to Dashboard",
-            description: "Your dashboard is ready",
-            time: "",
-            icon: CalendarCheck,
-            color: "text-blue-500 bg-blue-50",
-          },
-        ];
+  const getProgressColor = (percentage: number): string => {
+    if (percentage >= 80) return '#10B981';
+    if (percentage >= 50) return '#F59E0B';
+    return '#EF4444';
+  };
 
   return (
     <AdminLayout title="Dashboard">
-      <div className="space-y-10 pb-12 bg-">
+      <div className="space-y-10 pb-12">
         <PageHeader
           title="Overview"
           subtitle={`Welcome back, Admin. Today is ${today}`}
@@ -160,35 +116,78 @@ const AdminDashboard: React.FC = () => {
           }}
         />
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {statCards.map((stat, index) => (
             <AdminStatCard key={index} {...stat} />
           ))}
         </div>
 
-        {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AttendanceChart
-            present={attendanceOverview?.present || 0}
-            total={attendanceOverview?.total || 0}
-            onViewDetails={() => navigate("/admin/attendance")}
-          />
-          <FeeStatusChart
-            paid={feeOverview?.collected || 0}
-            pending={feeOverview?.pending || 0}
-            partial={feeOverview?.waived || 0}
-          />
+          <Suspense fallback={
+            <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm h-64 flex items-center justify-center">
+              <LoadingSpinner size="md" message="Loading chart..." />
+            </div>
+          }>
+            <AttendanceChart
+              present={attendanceOverview?.present || 0}
+              total={attendanceOverview?.total || 0}
+              onViewDetails={() => navigate("/admin/attendance")}
+            />
+          </Suspense>
+          <Suspense fallback={
+            <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm h-64 flex items-center justify-center">
+              <LoadingSpinner size="md" message="Loading chart..." />
+            </div>
+          }>
+            <FeeStatusChart
+              paid={feeOverview?.collected || 0}
+              pending={feeOverview?.pending || 0}
+              partial={feeOverview?.waived || 0}
+            />
+          </Suspense>
         </div>
 
-        {/* Bottom Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-          <div className="lg:col-span-2">
-            <SyllabusCompletion items={syllabusProgress} />
-          </div>
-          <div className="lg:col-span-1">
-            <RecentActivity activities={formattedActivities} />
-          </div>
+        <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+          <h3 className="text-lg font-display font-bold text-slate-800 tracking-tight mb-8">
+            Syllabus Completion
+          </h3>
+
+          {syllabusProgress.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-slate-500">No syllabus data available</p>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {syllabusProgress.slice(0, 5).map((item) => {
+                const color = getProgressColor(item.overallPercentage);
+                const displayName = item.classSection
+                  ? `${item.className} - Section ${item.classSection}`
+                  : item.className;
+
+                return (
+                  <div key={item.classId} className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-800 font-bold text-sm tracking-tight">
+                        {displayName}
+                      </span>
+                      <span className="text-accent font-black text-sm">
+                        {item.overallPercentage}%
+                      </span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-1000 ease-out"
+                        style={{
+                          width: `${item.overallPercentage}%`,
+                          backgroundColor: color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </AdminLayout>

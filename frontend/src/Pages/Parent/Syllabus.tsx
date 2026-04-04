@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ParentLayout from '../../layouts/ParentLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
-import { parentService } from '../../services/parentService';
+import { useParentChildren } from '../../hooks/queries';
 import { syllabusService, type ChapterWithStatus } from '../../services/syllabusService';
 import { subjectService } from '../../services/subjectService';
 import { studentService } from '../../services/studentService';
@@ -189,27 +189,25 @@ const SubjectCard: React.FC<{
 
 // ── main page ─────────────────────────────────────────────────────────────────
 
+const EMPTY_CHILDREN: LinkedStudent[] = [];
+
 const ParentSyllabus: React.FC = () => {
   const { user } = useAuth();
   const { selectedYear } = useAcademicYear();
 
-  const [loading, setLoading]       = useState(true);
-  const [children, setChildren]     = useState<LinkedStudent[]>([]);
+  const { data: childrenData, isLoading: loading } = useParentChildren(Number(user?.id));
+  const children = childrenData || EMPTY_CHILDREN;
   const [selected, setSelected]     = useState<LinkedStudent | null>(null);
   const [subjects, setSubjects]     = useState<SubjectCard[]>([]);
   const [expanded, setExpanded]     = useState<Set<number>>(new Set());
   const [subLoading, setSubLoading] = useState(false);
 
-  // ── fetch children ──────────────────────────────────────────────────────────
+  // ── set initial child ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (!user?.id) return;
-    parentService.getParentChildren(Number(user.id))
-      .then(data => {
-        setChildren(data);
-        if (data.length > 0) setSelected(data[0]);
-      })
-      .finally(() => setLoading(false));
-  }, [user?.id]);
+    if (children.length > 0 && !selected) {
+      setSelected(children[0]);
+    }
+  }, [children, selected]);
 
   // ── fetch subjects + progress for selected child ────────────────────────────
   const fetchSubjects = useCallback(async () => {

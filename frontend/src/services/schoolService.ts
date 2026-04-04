@@ -28,6 +28,7 @@ const normalizePlan = (plan: string | undefined): SubscriptionTier => {
 
 const normalizeSchool = (data: Record<string, unknown>): School => ({
   id: (data.id as string | number)?.toString() || '',
+  code: (data.code as string) || '',
   name: (data.name as string) || '',
   address: (data.address as string) || '',
   phone: (data.phone as string) || (data.contact_phone as string) || '',
@@ -36,6 +37,7 @@ const normalizeSchool = (data: Record<string, unknown>): School => ({
   logo: (data.logo as string) || '',
   plan: normalizePlan((data.plan as string) || (data.subscription_plan_name as string)),
   feeTerm: mapFeeTerms(data.feeTerm as string | undefined || (data.fee_terms as number | undefined)),
+  subscriptionStatus: (data.subscriptionStatus as string) || (data.subscription_status as string) || 'active',
   status: data.status !== undefined ? Boolean(data.status) : Boolean(data.is_active),
   createdAt: (data.createdAt as string) || (data.created_at as string) || new Date().toISOString(),
   teacherCount: Number(data.teacher_count) || 0,

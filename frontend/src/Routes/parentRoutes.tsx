@@ -5,7 +5,7 @@ import ParentSyllabus from "../Pages/Parent/Syllabus";
 import ParentFeeStatus from "../Pages/Parent/FeeStatus";
 import ParentExamResults from "@/Pages/Parent/ExamResults";
 
-const parentRoutes = (
+const ParentRoutes = () => (
   <Routes>
     <Route path="dashboard" element={<ParentDashboard />} />
     <Route path="attendance" element={<ParentAttendance />} />
@@ -15,4 +15,4 @@ const parentRoutes = (
   </Routes>
 );
 
-export default parentRoutes;
+export default ParentRoutes;

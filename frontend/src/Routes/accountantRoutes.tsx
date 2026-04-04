@@ -13,7 +13,7 @@ import AccountantExams from "../Pages/Accountant/Exams";
 import AccountantExamResults from "../Pages/Accountant/ExamResults";
 import AccountantMarksEntry from "../Pages/Accountant/MarksEntry";
 
-const accountantRoutes = (
+const AccountantRoutes = () => (
   <Routes>
     <Route path="dashboard" element={<AccountantDashboard />} />
     <Route path="fees" element={<AccountantFeeCollection />} />
@@ -31,4 +31,4 @@ const accountantRoutes = (
   </Routes>
 );
 
-export default accountantRoutes;
+export default AccountantRoutes;

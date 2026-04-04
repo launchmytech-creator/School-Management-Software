@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ParentLayout from "../../layouts/ParentLayout";
 import { useAuth } from "../../context/AuthContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
-import { parentService } from "../../services/parentService";
+import { useParentChildren } from "../../hooks/queries";
 import { examResultService } from "../../services/examResultService";
 import type { LinkedStudent } from "../../types/parent";
 import type { StudentResult } from "../../services/examResultService";
@@ -125,29 +125,27 @@ const SubjectCard: React.FC<{ result: StudentResult }> = ({ result }) => {
 
 // ── main ──────────────────────────────────────────────────────────────────────
 
+const EMPTY_CHILDREN: LinkedStudent[] = [];
+
 const ParentExamResults: React.FC = () => {
   const { user } = useAuth();
   const { selectedYear } = useAcademicYear();
   const navigate = useNavigate();
 
-  const [children, setChildren] = useState<LinkedStudent[]>([]);
+  const { data: childrenData, isLoading: childrenLoading } = useParentChildren(Number(user?.id));
+  const children = childrenData || EMPTY_CHILDREN;
+
   const [selected, setSelected] = useState<LinkedStudent | null>(null);
   const [results, setResults] = useState<StudentResult[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState("All");
   const [activeSubject, setActiveSubject] = useState("Mathematics");
 
-  // fetch children
+  // set initial child
   useEffect(() => {
-    if (!user?.id) return;
-    parentService
-      .getParentChildren(Number(user.id))
-      .then((data) => {
-        setChildren(data);
-        if (data.length > 0) setSelected(data[0]);
-      })
-      .finally(() => setLoading(false));
-  }, [user?.id]);
+    if (children.length > 0 && !selected) {
+      setSelected(children[0]);
+    }
+  }, [children, selected]);
 
   // fetch results
   const fetchResults = useCallback(async () => {
@@ -160,7 +158,7 @@ const ParentExamResults: React.FC = () => {
     } catch {
       setResults([]);
     }
-  }, [selected, selectedYear?.id]);
+  }, [selected, selectedYear]);
 
   useEffect(() => {
     fetchResults();
@@ -223,7 +221,7 @@ const ParentExamResults: React.FC = () => {
     null,
   );
 
-  if (loading) {
+  if (childrenLoading) {
     return (
       <ParentLayout title="Results & Marks">
         <div className="flex items-center justify-center min-h-[60vh]">

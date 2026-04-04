@@ -138,9 +138,12 @@ export const examService = {
     return mapExamFromBackend(response);
   },
 
-  getExams: async (classId?: number): Promise<Exam[]> => {
-    const queryString = classId ? `?classId=${classId}` : '';
-    const data = await apiRequest<BackendExam[]>(`/exams${queryString}`);
+  getExams: async (classId?: number, academicYearId?: number): Promise<Exam[]> => {
+    const params = new URLSearchParams();
+    if (classId) params.append('classId', String(classId));
+    if (academicYearId) params.append('academicYearId', String(academicYearId));
+    const queryString = params.toString();
+    const data = await apiRequest<BackendExam[]>(`/exams${queryString ? `?${queryString}` : ''}`);
     return data.map(mapExamFromBackend);
   },
 
@@ -197,11 +200,13 @@ export const examService = {
     examId?: number;
     classId?: number;
     studentId?: number;
+    academicYearId?: number;
   } = {}): Promise<ExamResult[]> => {
     const queryParams = new URLSearchParams();
     if (params.examId) queryParams.append('examId', String(params.examId));
     if (params.classId) queryParams.append('classId', String(params.classId));
     if (params.studentId) queryParams.append('studentId', String(params.studentId));
+    if (params.academicYearId) queryParams.append('academicYearId', String(params.academicYearId));
     
     const queryString = queryParams.toString();
     return apiRequest<ExamResult[]>(`/exam-results${queryString ? `?${queryString}` : ''}`);
@@ -215,8 +220,11 @@ export const examService = {
     return apiRequest<ExamResult[]>(`/exam-results/exam-subject/${examSubjectId}`);
   },
 
-  getClassPerformance: async (examId: number): Promise<ClassPerformance> => {
-    return apiRequest<ClassPerformance>(`/exam-results/exam/${examId}/performance`);
+  getClassPerformance: async (examId: number, academicYearId?: number): Promise<ClassPerformance> => {
+    const params = new URLSearchParams();
+    if (academicYearId) params.append('academicYearId', String(academicYearId));
+    const queryString = params.toString();
+    return apiRequest<ClassPerformance>(`/exam-results/exam/${examId}/performance${queryString ? `?${queryString}` : ''}`);
   },
 
   deleteResult: async (id: number): Promise<void> => {

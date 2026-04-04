@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import AccountantLayout from "../../layouts/AccountantLayout";
 import AdminStatCard from "../../components/dashboard/AdminStatCard";
-import { useNotification } from "../../context/NotificationContext";
-import { useAcademicYear } from "../../context/AcademicYearContext";
-import { feeService, type FeeTransaction } from "../../services/feeService";
-import { notificationService } from "../../services/notificationService";
-import { formatCurrency, getLocalDateString } from "../../lib/utils";
+import { useAccountantDashboard } from "../../hooks/queries";
+import { formatCurrency } from "../../lib/utils";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import {
   TrendingUp,
   DollarSign,
@@ -18,216 +16,34 @@ import {
   Send,
   Download,
 } from "lucide-react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 
-interface FeeStats {
-  todayCollection: number;
-  monthCollection: number;
-  pendingAmount: number;
-  defaulterCount: number;
-  receiptsToday: number;
-  yesterdayCollection: number;
-  lastMonthCollection: number;
-  todayPercentChange: number;
-  monthPercentChange: number;
-}
-
-interface NotificationItem {
-  id: number;
-  notificationType: string;
-  message: string;
-  status: string;
-  createdAt: string;
-}
+const FeeLineChart = lazy(() => 
+  import("../../components/charts/FeeLineChart").then(m => ({ default: m.default }))
+);
 
 const AccountantDashboard: React.FC = () => {
-  const { showNotification } = useNotification();
-  const { selectedYear } = useAcademicYear();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
   const [chartFilter, setChartFilter] = useState("6months");
-  const [stats, setStats] = useState<FeeStats>({
+  const { data, isLoading } = useAccountantDashboard();
+
+  const stats = data?.stats ?? {
     todayCollection: 0,
     monthCollection: 0,
     pendingAmount: 0,
     defaulterCount: 0,
     receiptsToday: 0,
-    yesterdayCollection: 0,
-    lastMonthCollection: 0,
-    todayPercentChange: 0,
-    monthPercentChange: 0,
-  });
-  const [recentReceipts, setRecentReceipts] = useState<FeeTransaction[]>([]);
-  const [chartData, setChartData] = useState<
-    { month: string; amount: number; height: number }[]
-  >([]);
-  const [remindersSent, setRemindersSent] = useState<NotificationItem[]>([]);
+  };
 
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      setLoading(true);
+  const recentReceipts = data?.recentReceipts ?? [];
 
-      const currentYear = new Date().getFullYear();
+  const filteredChartData = useMemo(() => {
+    const chartData = data?.monthlyChart ?? [];
+    if (chartFilter === "6months") {
       const currentMonth = new Date().getMonth();
-
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split("T")[0];
-
-      const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-      const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-
-      const academicYearId = selectedYear?.id
-        ? parseInt(selectedYear.id)
-        : undefined;
-      const [allTransactions, defaulters, notifications] = await Promise.all([
-        feeService.getFeeTransactions({ academicYearId }),
-        feeService.getFeeDefaulters(undefined),
-        notificationService.getMyNotifications({
-          type: "fee_reminder",
-          limit: 10,
-        }),
-      ]);
-
-      const paidTransactions = allTransactions.filter(
-        (t) => t.status === "paid",
-      );
-
-      const today = getLocalDateString();
-
-      const todayReceipts = paidTransactions.filter((t) =>
-        t.paymentDate?.startsWith(today),
-      );
-      const todayTotal = todayReceipts.reduce(
-        (sum, t) => sum + (t.amountPaid || 0),
-        0,
-      );
-
-      const yesterdayReceipts = paidTransactions.filter((t) =>
-        t.paymentDate?.startsWith(yesterdayStr),
-      );
-      const yesterdayTotal = yesterdayReceipts.reduce(
-        (sum, t) => sum + (t.amountPaid || 0),
-        0,
-      );
-
-      const monthReceipts = paidTransactions.filter((t) => {
-        const date = new Date(t.paymentDate || "");
-        return (
-          date.getMonth() === currentMonth && date.getFullYear() === currentYear
-        );
-      });
-      const monthTotal = monthReceipts.reduce(
-        (sum, t) => sum + (t.amountPaid || 0),
-        0,
-      );
-
-      const lastMonthReceipts = paidTransactions.filter((t) => {
-        const date = new Date(t.paymentDate || "");
-        return (
-          date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear
-        );
-      });
-      const lastMonthTotal = lastMonthReceipts.reduce(
-        (sum, t) => sum + (t.amountPaid || 0),
-        0,
-      );
-
-      const pendingTotal = allTransactions.reduce((sum, t) => {
-        const pending = (t.amountDue || 0) - (t.amountPaid || 0);
-        return sum + (pending > 0 ? pending : 0);
-      }, 0);
-
-      const calculatePercentChange = (
-        current: number,
-        previous: number,
-      ): number => {
-        if (previous === 0) return current > 0 ? 100 : 0;
-        return Math.round(((current - previous) / previous) * 100);
-      };
-
-      const todayPercentChange = calculatePercentChange(
-        todayTotal,
-        yesterdayTotal,
-      );
-      const monthPercentChange = calculatePercentChange(
-        monthTotal,
-        lastMonthTotal,
-      );
-
-      const todayReminders = notifications.filter((n) =>
-        n.createdAt.startsWith(today),
-      );
-
-      setStats({
-        todayCollection: todayTotal,
-        monthCollection: monthTotal,
-        pendingAmount: pendingTotal,
-        defaulterCount: defaulters.length,
-        receiptsToday: todayReceipts.length,
-        yesterdayCollection: yesterdayTotal,
-        lastMonthCollection: lastMonthTotal,
-        todayPercentChange,
-        monthPercentChange,
-      });
-
-      setRecentReceipts(paidTransactions.slice(0, 5));
-      setRemindersSent(todayReminders);
-
-      const monthlyMap = new Map<string, number>();
-      const monthNames = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-
-      paidTransactions.forEach((t) => {
-        if (t.paymentDate) {
-          const date = new Date(t.paymentDate);
-          if (date.getFullYear() === currentYear) {
-            const monthName = monthNames[date.getMonth()];
-            monthlyMap.set(
-              monthName,
-              (monthlyMap.get(monthName) || 0) + (t.amountPaid || 0),
-            );
-          }
-        }
-      });
-
-      const monthlyData = monthNames.map((month) => ({
-        month,
-        amount: monthlyMap.get(month) || 0,
-      }));
-
-      setChartData(monthlyData);
-    } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
-      showNotification("Failed to load dashboard data", "error");
-    } finally {
-      setLoading(false);
+      return chartData.slice(Math.max(0, currentMonth - 5), currentMonth + 1);
     }
-  }, [selectedYear, showNotification]);
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    return chartData;
+  }, [data?.monthlyChart, chartFilter]);
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "N/A";
@@ -238,15 +54,17 @@ const AccountantDashboard: React.FC = () => {
     });
   };
 
-  const filteredChartData = React.useMemo(() => {
-    if (chartFilter === "6months") {
-      const currentMonth = new Date().getMonth();
-      return chartData.slice(Math.max(0, currentMonth - 5), currentMonth + 1);
-    }
-    return chartData;
-  }, [chartData, chartFilter]);
-
-  const handlePrintReceipt = (receipt: FeeTransaction) => {
+  const handlePrintReceipt = (receipt: {
+    id: number;
+    receiptNumber?: string | null;
+    studentName?: string;
+    admissionNumber?: string;
+    className?: string;
+    amountDue?: number;
+    amountPaid?: number;
+    paymentDate?: string | null;
+    paymentMode?: string | null;
+  }) => {
     const printWindow = window.open("", "_blank", "width=800,height=600");
     if (!printWindow) return;
 
@@ -336,7 +154,7 @@ const AccountantDashboard: React.FC = () => {
       subtitle="Overview of your financial metrics"
     >
       <div className="space-y-10 pb-12">
-        {loading ? (
+        {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
               <div
@@ -378,69 +196,13 @@ const AccountantDashboard: React.FC = () => {
                   </select>
                 </div>
                 <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={filteredChartData}
-                      margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                    >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        vertical={false}
-                        stroke="#e2e8f0"
-                      />
-                      <XAxis
-                        dataKey="month"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 12, fill: "#64748b" }}
-                        dy={10}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 12, fill: "#64748b" }}
-                        tickFormatter={(value) => {
-                          if (value >= 10000) {
-                            return `₹${(value / 100).toFixed(1)}k`;
-                          }
-                          if (value >= 1000) {
-                            return `₹${(value / 100).toFixed(1)}k`;
-                          }
-                          return `₹${value}`;
-                        }}
-                        dx={-10}
-                      />
-                      <Tooltip
-                        formatter={(value: number) => [
-                          formatCurrency(value),
-                          "Collection",
-                        ]}
-                        contentStyle={{
-                          borderRadius: 8,
-                          border: "1px solid #e2e8f0",
-                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="amount"
-                        stroke="#4A9FD4"
-                        strokeWidth={2}
-                        dot={{
-                          fill: "#4A9FD4",
-                          strokeWidth: 2,
-                          stroke: "#fff",
-                          r: 4,
-                        }}
-                        activeDot={{
-                          r: 6,
-                          fill: "#4A9FD4",
-                          strokeWidth: 2,
-                          stroke: "#fff",
-                        }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <Suspense fallback={
+                    <div className="w-full h-full flex items-center justify-center">
+                      <LoadingSpinner size="md" message="Loading chart..." />
+                    </div>
+                  }>
+                    <FeeLineChart data={filteredChartData} />
+                  </Suspense>
                 </div>
               </div>
 
@@ -557,35 +319,7 @@ const AccountantDashboard: React.FC = () => {
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {remindersSent.length > 0 ? (
-                    remindersSent.slice(0, 3).map((reminder) => (
-                      <div
-                        key={reminder.id}
-                        className="flex items-center justify-between p-3 rounded-lg border-l-2 border-l-amber-500 bg-amber-50/30"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-slate-800 truncate max-w-[200px]">
-                            {reminder.message}
-                          </p>
-                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                            <Send className="w-3 h-3" />
-                            {formatDate(reminder.createdAt)}
-                          </p>
-                        </div>
-                        <span
-                          className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                            reminder.status === "sent"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : reminder.status === "pending"
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {reminder.status}
-                        </span>
-                      </div>
-                    ))
-                  ) : stats.defaulterCount > 0 ? (
+                  {stats.defaulterCount > 0 ? (
                     <div className="flex items-center justify-between p-3 rounded-lg border-l-2 border-l-amber-500 bg-amber-50/30">
                       <div>
                         <p className="text-sm font-medium text-slate-800">

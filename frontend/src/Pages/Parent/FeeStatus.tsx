@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ParentLayout from '../../layouts/ParentLayout';
 import { useAuth } from '../../context/AuthContext';
-import { parentService } from '../../services/parentService';
+import { useParentChildren } from '../../hooks/queries';
 import { feeService } from '../../services/feeService';
 import { schoolSettingsService } from '../../services/schoolSettingsService';
 import type { LinkedStudent } from '../../types/parent';
@@ -79,30 +79,33 @@ const printElement = (el: HTMLElement, title: string) => {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+const EMPTY_CHILDREN: LinkedStudent[] = [];
+
 const ParentFeeStatus: React.FC = () => {
   const { user } = useAuth();
 
-  const [children, setChildren]     = useState<LinkedStudent[]>([]);
+  const { data: childrenData, isLoading: childrenLoading } = useParentChildren(Number(user?.id));
+  const children = childrenData || EMPTY_CHILDREN;
   const [selected, setSelected]     = useState<LinkedStudent | null>(null);
   const [transactions, setTxns]     = useState<FeeTransaction[]>([]);
   const [feeSummary, setFeeSummary] = useState<StudentFeeSummary | null>(null);
   const [settings, setSettings]     = useState<SchoolSettings | null>(null);
-  const [loading, setLoading]       = useState(true);
+  const [settingsLoading, setSettingsLoading] = useState(true);
   const [txLoading, setTxLoading]   = useState(false);
 
   const statementRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!user?.id) return;
-    Promise.all([
-      parentService.getParentChildren(Number(user.id)),
-      schoolSettingsService.getSettings().catch(() => null),
-    ]).then(([kids, sch]) => {
-      setChildren(kids);
-      if (kids.length > 0) setSelected(kids[0]);
-      setSettings(sch);
-    }).finally(() => setLoading(false));
-  }, [user?.id]);
+    if (children.length > 0 && !selected) {
+      setSelected(children[0]);
+    }
+  }, [children, selected]);
+
+  useEffect(() => {
+    schoolSettingsService.getSettings().catch(() => null)
+      .then(sch => setSettings(sch))
+      .finally(() => setSettingsLoading(false));
+  }, []);
 
   const fetchTxns = useCallback(async () => {
     if (!selected) return;
@@ -168,7 +171,7 @@ const ParentFeeStatus: React.FC = () => {
     printElement(el, `Receipt – ${txLabel(tx)}`);
   };
 
-  if (loading) {
+  if (childrenLoading || settingsLoading) {
     return (
       <ParentLayout title="Fee Status">
         <div className="flex items-center justify-center min-h-[60vh]">

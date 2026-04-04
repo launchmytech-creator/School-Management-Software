@@ -61,6 +61,12 @@ const Chapters: React.FC = () => {
   }, [fetchSubjects]);
 
   useEffect(() => {
+    if (subjectId && !selectedSubject) {
+      setSelectedSubject(subjectId);
+    }
+  }, [subjectId]);
+
+  useEffect(() => {
     if (selectedSubject) {
       fetchChapters(parseInt(selectedSubject));
     } else {
@@ -76,7 +82,7 @@ const Chapters: React.FC = () => {
   const handleOpenCreate = () => {
     setEditingChapter(null);
     setFormData({
-      subjectId: parseInt(subjectId || selectedSubject),
+      subjectId: parseInt(selectedSubject || subjectId || '0'),
       name: '',
       sequenceNumber: chapters.length + 1,
     });
@@ -320,6 +326,23 @@ const Chapters: React.FC = () => {
           size="md"
         >
           <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Subject</label>
+              <select
+                value={formData.subjectId}
+                onChange={(e) => handleFieldChange('subjectId', parseInt(e.target.value))}
+                disabled={!!editingChapter}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+              >
+                <option value={0}>Select a subject</option>
+                {subjects.map(subject => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.name} ({subject.code})
+                  </option>
+                ))}
+              </select>
+              {errors.subjectId && <p className="mt-1 text-xs text-red-500">{errors.subjectId}</p>}
+            </div>
             <InputField
               label="Chapter Name"
               placeholder="Enter chapter name"

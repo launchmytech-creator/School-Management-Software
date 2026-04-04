@@ -1,5 +1,7 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import RequiresActiveYear from "../components/academicYear/RequiresActiveYear";
+import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import AdminDashboard from "../Pages/Admin/Dashboard";
 import AcademicYearsPage from "../Pages/Admin/AcademicYearsPage";
 import Classes from "../Pages/Admin/Classes";
@@ -9,7 +11,6 @@ import Students from "../Pages/Admin/Students";
 import AddStudent from "../Pages/Admin/AddStudent";
 import EditStudent from "../Pages/Admin/EditStudent";
 import StudentProfile from "../components/common/StudentProfile";
-import StudentPromotion from "../Pages/Admin/StudentPromotion";
 import TeacherList from "../Pages/Admin/TeacherList";
 import TeacherAllocation from "../Pages/Admin/TeacherAllocation";
 import TeacherProfile from "../Pages/Admin/TeacherProfile";
@@ -19,10 +20,8 @@ import EditAccountant from "../Pages/Admin/EditAccountant";
 import AccountantProfile from "../Pages/Admin/AccountantProfile";
 import FeeCollection from "../Pages/Admin/FeeCollection";
 import FeeDefaulters from "../Pages/Admin/FeeDefaulters";
-import FeeStructures from "../Pages/Admin/FeeStructures";
 import Exams from "../Pages/Admin/Exams";
 import ExamResults from "../Pages/Admin/ExamResults";
-import MarksEntry from "../Pages/Admin/MarksEntry";
 import Subjects from "../Pages/Admin/Subjects";
 import Chapters from "../Pages/Admin/Chapters";
 import ClassSubjects from "../Pages/Admin/ClassSubjects";
@@ -33,11 +32,21 @@ import Announcements from "../Pages/Admin/Announcements";
 import Timetables from "../Pages/Admin/Timetables";
 import SchoolSettingsPage from "../Pages/Admin/SchoolSettingsPage";
 
+const StudentPromotion = lazy(() => import("../Pages/Admin/StudentPromotion"));
+const FeeStructures = lazy(() => import("../Pages/Admin/FeeStructures"));
+const MarksEntry = lazy(() => import("../Pages/Admin/MarksEntry"));
+
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-64">
+    <LoadingSpinner size="lg" message="Loading..." />
+  </div>
+);
+
 const withActiveYear = (element: React.ReactElement) => (
   <RequiresActiveYear>{element}</RequiresActiveYear>
 );
 
-const adminRoutes = (
+const AdminRoutes = () => (
   <Routes>
     <Route path="dashboard" element={<AdminDashboard />} />
     <Route path="academic-years" element={<AcademicYearsPage />} />
@@ -52,11 +61,11 @@ const adminRoutes = (
     <Route path="students/:id/edit" element={withActiveYear(<EditStudent />)} />
     <Route
       path="student-promotion"
-      element={withActiveYear(<StudentPromotion />)}
+      element={withActiveYear(<Suspense fallback={<PageLoader />}><StudentPromotion /></Suspense>)}
     />
 
     {/* Teacher Management */}
-    <Route path="teachers" element={withActiveYear(<TeacherList />)} />
+    <Route path="teachers" element={ withActiveYear(<TeacherList />)} />
     <Route
       path="teacher-allocation"
       element={withActiveYear(<TeacherAllocation />)}
@@ -64,7 +73,7 @@ const adminRoutes = (
     <Route path="teachers/:id" element={withActiveYear(<TeacherProfile />)} />
 
     {/* Accountant Management */}
-    <Route path="accountants" element={withActiveYear(<AccountantList />)} />
+    <Route path="accountants" element={ withActiveYear(<AccountantList />)} />
     <Route path="add-accountant" element={withActiveYear(<AddAccountant />)} />
     <Route
       path="accountants/:id/edit"
@@ -78,12 +87,18 @@ const adminRoutes = (
     {/* Fee Management */}
     <Route path="fees" element={withActiveYear(<FeeCollection />)} />
     <Route path="fee-defaulters" element={withActiveYear(<FeeDefaulters />)} />
-    <Route path="fee-structures" element={withActiveYear(<FeeStructures />)} />
+    <Route 
+      path="fee-structures" 
+      element={withActiveYear(<Suspense fallback={<PageLoader />}><FeeStructures /></Suspense>)} 
+    />
 
     {/* Examination */}
     <Route path="exams" element={withActiveYear(<Exams />)} />
     <Route path="exam-results" element={withActiveYear(<ExamResults />)} />
-    <Route path="marks-entry" element={withActiveYear(<MarksEntry />)} />
+    <Route 
+      path="marks-entry" 
+      element={withActiveYear(<Suspense fallback={<PageLoader />}><MarksEntry /></Suspense>)} 
+    />
 
     {/* Academic Management */}
     <Route path="subjects" element={withActiveYear(<Subjects />)} />
@@ -94,7 +109,7 @@ const adminRoutes = (
     <Route path="class-subjects" element={withActiveYear(<ClassSubjects />)} />
     <Route
       path="syllabus-tracking"
-      element={withActiveYear(<SyllabusTracking />)}
+      element={ withActiveYear(<SyllabusTracking />)}
     />
     <Route path="holidays" element={withActiveYear(<Holidays />)} />
 
@@ -116,4 +131,4 @@ const adminRoutes = (
   </Routes>
 );
 
-export default adminRoutes;
+export default AdminRoutes;

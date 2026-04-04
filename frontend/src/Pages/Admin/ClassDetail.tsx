@@ -1,83 +1,45 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AdminLayout from "../../layouts/AdminLayout";
 import PageHeader from "../../components/common/PageHeader";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
-import { classService } from "../../services/classService";
-import type { Class } from "../../types/class";
-import { studentService } from "../../services/studentService";
-import type { Student, StudentFilters } from "../../types/student";
-import { useNotification } from "../../context/NotificationContext";
+import { useClassById } from "../../hooks/queries/useClasses";
+import { useStudents } from "../../hooks/queries/useStudents";
+import { useDeleteClass } from "../../hooks/mutations/useClassMutations";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { BookOpen, Users, DollarSign, Trash2 } from "lucide-react";
 
 const ClassDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
 
-  const [classData, setClassData] = useState<Class | null>(null);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: classData, isLoading: loadingClass } = useClassById(id || '');
+  const { data: students = [] } = useStudents({ classId: id, academicYear: selectedYear?.id });
+  const deleteClass = useDeleteClass();
+
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, loading: false });
-
-  const fetchClassData = useCallback(async () => {
-    if (!id) return;
-    try {
-      setLoading(true);
-      const data = await classService.getClassById(id);
-      setClassData(data);
-    } catch {
-      showNotification('Failed to fetch class details', 'error');
-      navigate('/admin/classes');
-    } finally {
-      setLoading(false);
-    }
-  }, [id, showNotification, navigate]);
-
-  const fetchStudents = useCallback(async () => {
-    if (!id || !selectedYear?.id) return;
-    try {
-      const filters: StudentFilters = {
-        classId: id,
-        academicYear: selectedYear.id,
-      };
-      const data = await studentService.getStudents(filters);
-      setStudents(data);
-    } catch {
-      setStudents([]);
-    }
-  }, [id, selectedYear]);
-
-  useEffect(() => {
-    fetchClassData();
-  }, [fetchClassData]);
-
-  useEffect(() => {
-    fetchStudents();
-  }, [fetchStudents]);
 
   const handleDelete = () => {
     if (!id) return;
     setDeleteDialog({ isOpen: true, loading: false });
   };
 
-  const confirmDeleteClass = async () => {
+  const confirmDeleteClass = () => {
     if (!id) return;
-    try {
-      setDeleteDialog({ ...deleteDialog, loading: true });
-      await classService.deleteClass(id);
-      showNotification('Class deleted successfully', 'success');
-      navigate('/admin/classes');
-    } catch {
-      showNotification('Failed to delete class', 'error');
-      setDeleteDialog({ ...deleteDialog, loading: false });
-    }
+    setDeleteDialog({ ...deleteDialog, loading: true });
+    deleteClass.mutate(id, {
+      onSuccess: () => {
+        navigate('/admin/classes');
+      },
+      onSettled: () => {
+        setDeleteDialog({ isOpen: false, loading: false });
+      },
+    });
   };
 
-  if (loading) {
+  if (loadingClass) {
     return (
       <AdminLayout title="Class Details">
         <div className="flex items-center justify-center h-64">

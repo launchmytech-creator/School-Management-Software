@@ -24,6 +24,7 @@ interface BackendFeeTransaction {
   waiver_approved_by: number | null;
   collected_by: number | null;
   fee_breakdown: FeeBreakdown | null;
+  fee_type?: string;
   // joined fields
   student_name: string;
   admission_number: string;
@@ -64,6 +65,7 @@ export interface FeeTransaction {
   parentName: string | null;
   parentPhone: string | null;
   feeBreakdown: FeeBreakdown | null;
+  feeType?: string;
 }
 
 export interface FeeDefaulter {

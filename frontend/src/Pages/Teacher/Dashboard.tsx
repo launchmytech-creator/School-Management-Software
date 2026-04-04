@@ -1,97 +1,26 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../layouts/TeacherLayout';
 import DashboardCard from '../../components/common/DashboardCard';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
-import { useNotification } from '../../context/NotificationContext';
-import { teacherService } from '../../services/teacherService';
-import { syllabusService } from '../../services/syllabusService';
-import { type TeacherAllocation } from '../../types/teacher';
+import { useTeacherDashboard } from '../../hooks/queries';
 import { School, Group, TrendingUp, BookMarked } from 'lucide-react';
 
 const TeacherDashboard: React.FC = () => {
   const { user } = useAuth();
   const { selectedYear } = useAcademicYear();
-  const { showNotification } = useNotification();
   const navigate = useNavigate();
-  
-  const [allocations, setAllocations] = useState<TeacherAllocation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [syllabusLoading, setSyllabusLoading] = useState(true);
-  const [syllabusStats, setSyllabusStats] = useState({
+
+  const teacherId = user?.id as number;
+  const { data, isLoading } = useTeacherDashboard(teacherId);
+
+  const allocations = data?.allocations ?? [];
+  const syllabusStats = data?.syllabusStats ?? {
     overallPercentage: 0,
     completedChapters: 0,
     totalChapters: 0,
-  });
-
-  const teacherId = user?.id as number;
-
-  const fetchAllocations = useCallback(async () => {
-    if (!teacherId || !selectedYear?.id) return;
-    try {
-      setLoading(true);
-      const data = await teacherService.getAllocationsByTeacher(teacherId, Number(selectedYear.id));
-      setAllocations(data);
-    } catch {
-      showNotification('Failed to fetch your classes', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [teacherId, selectedYear, showNotification]);
-
-  const fetchSyllabusProgress = useCallback(async () => {
-    if (!teacherId || !selectedYear?.id || allocations.length === 0) {
-      setSyllabusLoading(false);
-      return;
-    }
-    try {
-      setSyllabusLoading(true);
-      let totalChapters = 0;
-      let completedChapters = 0;
-
-      const progressPromises = allocations.slice(0, 5).map(async (allocation) => {
-        try {
-          const progress = await syllabusService.getClassSubjectProgress(allocation.id);
-          return { completed: progress.completedChapters, total: progress.totalChapters };
-        } catch {
-          return { completed: 0, total: 0 };
-        }
-      });
-
-      const results = await Promise.all(progressPromises);
-      results.forEach(r => {
-        totalChapters += r.total;
-        completedChapters += r.completed;
-      });
-
-      setSyllabusStats({
-        overallPercentage: totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0,
-        completedChapters,
-        totalChapters,
-      });
-    } catch {
-      setSyllabusStats({
-        overallPercentage: 0,
-        completedChapters: 0,
-        totalChapters: 0,
-      });
-    } finally {
-      setSyllabusLoading(false);
-    }
-  }, [teacherId, selectedYear, allocations]);
-
-  useEffect(() => {
-    fetchAllocations();
-  }, [fetchAllocations]);
-
-  useEffect(() => {
-    if (allocations.length > 0) {
-      fetchSyllabusProgress();
-    } else {
-      setSyllabusLoading(false);
-    }
-  }, [fetchSyllabusProgress, allocations.length]);
+  };
 
   const uniqueClasses = [...new Map(allocations.map(a => [a.classId, a])).values()];
 
@@ -101,7 +30,7 @@ const TeacherDashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <DashboardCard
             label="Classes Assigned"
-            value={loading ? '-' : uniqueClasses.length}
+            value={isLoading ? '-' : uniqueClasses.length}
             icon={School}
             iconBgColor="bg-blue-50"
             iconColor="text-blue-600"
@@ -109,7 +38,7 @@ const TeacherDashboard: React.FC = () => {
 
           <DashboardCard
             label="Subject Allocations"
-            value={loading ? '-' : allocations.length}
+            value={isLoading ? '-' : allocations.length}
             icon={Group}
             iconBgColor="bg-emerald-50"
             iconColor="text-emerald-600"
@@ -125,13 +54,13 @@ const TeacherDashboard: React.FC = () => {
 
           <DashboardCard
             label="Syllabus Progress"
-            value={syllabusLoading ? '-' : `${syllabusStats.overallPercentage}%`}
+            value={isLoading ? '-' : `${syllabusStats.overallPercentage}%`}
             icon={BookMarked}
             iconBgColor="bg-emerald-500"
             iconColor="text-white"
             onClick={() => navigate('/teacher/syllabus')}
           >
-            {!syllabusLoading && syllabusStats.totalChapters > 0 && (
+            {!isLoading && syllabusStats.totalChapters > 0 && (
               <p className="text-xs text-emerald-200 mt-1">
                 {syllabusStats.completedChapters}/{syllabusStats.totalChapters} chapters
               </p>
@@ -145,7 +74,7 @@ const TeacherDashboard: React.FC = () => {
             <p className="text-sm text-slate-500">Classes and subjects you teach</p>
           </div>
 
-          {loading ? (
+          {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
                 <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />

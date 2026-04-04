@@ -34,7 +34,7 @@ const CreateSchool: React.FC = () => {
     address: editSchool?.address || '',
     phone: editSchool?.phone || '',
     email: editSchool?.email || '',
-    code: editSchool?.id?.slice(-8).toUpperCase() || '',
+    code: editSchool?.code || '',
     academicYear: editSchool?.academicYear || getCurrentAcademicYear(),
     logo: editSchool?.logo || '',
     // Admin details (only used for creation)
@@ -43,7 +43,7 @@ const CreateSchool: React.FC = () => {
     adminPassword: '',
     adminPhone: '',
     // Subscription details
-    subscriptionStatus: editSchool ? (editSchool.status ? 'active' : 'expired') : 'trial',
+    subscriptionStatus: editSchool?.subscriptionStatus || 'active',
     subscriptionEndDate: (() => {
       const d = new Date();
       d.setFullYear(d.getFullYear() + 1);
@@ -142,7 +142,6 @@ const CreateSchool: React.FC = () => {
           contactPhone: formData.phone,
           contactEmail: formData.email,
           subscriptionPlanId: planMapping[selectedPlan],
-          feeTerms: currentFeeTermObj?.numericId || 1,
           subscriptionStatus: formData.subscriptionStatus,
           subscriptionEndDate: formData.subscriptionEndDate,
         };
@@ -153,8 +152,14 @@ const CreateSchool: React.FC = () => {
           if (formData.adminFullName !== schoolAdmin.fullName) {
             adminUpdates.fullName = formData.adminFullName;
           }
+          if (formData.adminEmail !== schoolAdmin.email) {
+            adminUpdates.email = formData.adminEmail;
+          }
           if (formData.adminPhone !== schoolAdmin.phone) {
             adminUpdates.phone = formData.adminPhone;
+          }
+          if (formData.adminPassword) {
+            adminUpdates.password = formData.adminPassword;
           }
           if (Object.keys(adminUpdates).length > 0) {
             await schoolService.updateSchoolAdmin(editSchool.id, adminUpdates);
@@ -215,7 +220,6 @@ const CreateSchool: React.FC = () => {
             handleChange={handleChange} 
             errors={errors}
             isEditMode={isEditMode}
-            adminEmail={schoolAdmin?.email}
           />
 
           <hr className="border-slate-50" />

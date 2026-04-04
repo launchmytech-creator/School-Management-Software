@@ -3,7 +3,7 @@ import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
-import { classService } from '../../services/classService';
+import { useClasses, useSubjectsByClass } from '../../hooks/queries';
 import { subjectService, type Chapter, type ClassSubject } from '../../services/subjectService';
 import { syllabusService, type ChapterWithStatus, type AllClassesProgress, type ClassProgress } from '../../services/syllabusService';
 import type { Class } from '../../types/class';
@@ -13,6 +13,9 @@ import { Button } from '../../components/ui/button';
 
 type TabType = 'class-overview' | 'subject-detail';
 
+const EMPTY_CLASSES: Class[] = [];
+const EMPTY_CLASS_SUBJECTS: ClassSubject[] = [];
+
 const SyllabusTracking: React.FC = () => {
   const { showNotification } = useNotification();
   const [activeTab, setActiveTab] = useState<TabType>('class-overview');
@@ -21,10 +24,12 @@ const SyllabusTracking: React.FC = () => {
   const [schoolOverallPercentage, setSchoolOverallPercentage] = useState(0);
   const [expandedClass, setExpandedClass] = useState<number | null>(null);
 
-  const [classes, setClasses] = useState<Class[]>([]);
+  const { data: classesData } = useClasses();
+  const classes = classesData || EMPTY_CLASSES;
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
-  const [classSubjects, setClassSubjects] = useState<ClassSubject[]>([]);
+  const { data: classSubjectsData } = useSubjectsByClass(selectedClass);
+  const classSubjects = classSubjectsData || EMPTY_CLASS_SUBJECTS;
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [chapterStatuses, setChapterStatuses] = useState<Record<number, ChapterWithStatus | null>>({});
   const [updating, setUpdating] = useState(false);
@@ -49,34 +54,7 @@ const SyllabusTracking: React.FC = () => {
     }
   }, [activeTab, fetchAllClassesProgress]);
 
-  const fetchClasses = useCallback(async () => {
-    try {
-      const data = await classService.getClasses();
-      setClasses(data);
-    } catch {
-      showNotification('Failed to fetch classes', 'error');
-    }
-  }, [showNotification]);
 
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
-
-  useEffect(() => {
-    const fetchClassSubjects = async () => {
-      if (!selectedClass) {
-        setClassSubjects([]);
-        return;
-      }
-      try {
-        const data = await subjectService.getSubjectsByClass(parseInt(selectedClass));
-        setClassSubjects(data);
-      } catch {
-        setClassSubjects([]);
-      }
-    };
-    fetchClassSubjects();
-  }, [selectedClass]);
 
   useEffect(() => {
     const fetchChapters = async () => {

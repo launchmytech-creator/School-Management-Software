@@ -1,72 +1,36 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import AccountantLayout from '../../layouts/AccountantLayout';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
-import { useAcademicYear } from '../../context/AcademicYearContext';
-import { feeService, type FeeDefaulter } from '../../services/feeService';
-import { notificationService } from '../../services/notificationService';
+import { useFeeDefaultersPage } from '../../hooks/useFeeDefaultersPage';
 import { parentService } from '../../services/parentService';
-import { classService } from '../../services/classService';
-import type { Class } from '../../types/class';
+import { notificationService } from '../../services/notificationService';
 import { AlertTriangle, Phone, AlertCircle, Send } from 'lucide-react';
 import { formatCurrency, getLocalDateString } from '../../lib/utils';
 import { SkeletonTable } from '../../components/common/Skeleton';
 import { BaseModal } from '../../components/common/BaseModal';
 import { Button } from '../../components/ui/button';
+import type { FeeDefaulter } from '../../services/feeService';
 
 const AccountantFeeDefaulters: React.FC = () => {
   const { showNotification } = useNotification();
-  const { selectedYear } = useAcademicYear();
-  const [loading, setLoading] = useState(true);
-  const [defaulters, setDefaulters] = useState<FeeDefaulter[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [selectedClass, setSelectedClass] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState('');
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [selectedDefaulter, setSelectedDefaulter] = useState<FeeDefaulter | null>(null);
   const [sendingReminder, setSendingReminder] = useState(false);
   const [parentLookupLoading, setParentLookupLoading] = useState(false);
 
-  const fetchClasses = useCallback(async () => {
-    try {
-      const data = await classService.getClasses();
-      setClasses(data);
-    } catch {
-      showNotification('Failed to fetch classes', 'error');
-    }
-  }, [showNotification]);
-
-  const fetchDefaulters = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await feeService.getFeeDefaulters({
-        classId: selectedClass ? parseInt(selectedClass) : undefined,
-        academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
-      });
-      setDefaulters(data);
-    } catch {
-      showNotification('Failed to fetch fee defaulters', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedClass, selectedYear, showNotification]);
-
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
-
-  useEffect(() => {
-    fetchDefaulters();
-  }, [fetchDefaulters]);
-
-  const totalDue = defaulters.reduce((sum, d) => sum + d.totalDue, 0);
-
-  const filteredDefaulters = defaulters.filter(d =>
-    d.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    d.admissionNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    d.parentName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const {
+    classes,
+    filteredDefaulters,
+    isLoading,
+    totalDue,
+    withContactCount,
+    selectedClass,
+    setSelectedClass,
+    searchTerm,
+    setSearchTerm,
+  } = useFeeDefaultersPage();
 
   const handleSendReminder = (defaulter: FeeDefaulter) => {
     setSelectedDefaulter(defaulter);
@@ -139,7 +103,7 @@ const AccountantFeeDefaulters: React.FC = () => {
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-3xl font-bold">{defaulters.length}</p>
+                <p className="text-3xl font-bold">{filteredDefaulters.length}</p>
                 <p className="text-rose-100">Total Defaulters</p>
               </div>
             </div>
@@ -161,9 +125,7 @@ const AccountantFeeDefaulters: React.FC = () => {
                 <Phone className="w-6 h-6 text-amber-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-900">
-                  {defaulters.filter(d => d.parentPhone).length}
-                </p>
+                <p className="text-2xl font-bold text-slate-900">{withContactCount}</p>
                 <p className="text-sm text-slate-500">With Contact Info</p>
               </div>
             </div>
@@ -190,7 +152,7 @@ const AccountantFeeDefaulters: React.FC = () => {
           </div>
         </FilterBar>
 
-        {loading ? (
+        {isLoading ? (
           <SkeletonTable columns={4} rows={6} />
         ) : filteredDefaulters.length > 0 ? (
           <div className="bg-white rounded-card border border-slate-200 shadow-sm overflow-hidden">

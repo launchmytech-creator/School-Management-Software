@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../../layouts/AdminLayout";
 import { 
   Plus, Users, DollarSign, 
   BookOpen, Calendar, Eye, Trash2
 } from "lucide-react";
-import { classService } from "../../services/classService";
 import type { Class } from "../../types/class";
-import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
+import { useClasses } from "../../hooks/queries/useClasses";
+import { useDeleteClass } from "../../hooks/mutations/useClassMutations";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import ViewToggle from "../../components/common/ViewToggle";
@@ -20,12 +20,12 @@ import { Button } from "../../components/ui/button";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 
 const Classes: React.FC = () => {
-  const { showNotification } = useNotification();
   const navigate = useNavigate();
   const { allYears, selectedYear, setSelectedYear } = useAcademicYear();
   
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: classes = [], isLoading } = useClasses(selectedYear?.id);
+  const deleteClass = useDeleteClass();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -34,23 +34,6 @@ const Classes: React.FC = () => {
     itemId: null as string | null,
     loading: false,
   });
-
-  const fetchClasses = React.useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await classService.getClasses(selectedYear?.id);
-      setClasses(data);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to fetch classes.";
-      showNotification(message, "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedYear, showNotification]);
-
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
 
   const filteredClasses = classes.filter((cls) => {
     const searchLow = searchTerm.toLowerCase();
@@ -76,16 +59,12 @@ const Classes: React.FC = () => {
 
   const confirmDeleteClass = async () => {
     if (!deleteDialog.itemId) return;
-    try {
-      setDeleteDialog({ ...deleteDialog, loading: true });
-      await classService.deleteClass(deleteDialog.itemId);
-      showNotification('Class deleted successfully', 'success');
-      setDeleteDialog({ isOpen: false, itemId: null, loading: false });
-      fetchClasses();
-    } catch {
-      showNotification('Failed to delete class', 'error');
-      setDeleteDialog({ ...deleteDialog, loading: false });
-    }
+    setDeleteDialog({ ...deleteDialog, loading: true });
+    deleteClass.mutate(deleteDialog.itemId, {
+      onSettled: () => {
+        setDeleteDialog({ isOpen: false, itemId: null, loading: false });
+      },
+    });
   };
 
   const getActionMenuItems = (id: string) => [
@@ -139,7 +118,7 @@ const Classes: React.FC = () => {
           </div>
         </FilterBar>
 
-        {loading ? (
+        {isLoading ? (
           <div className="space-y-12">
             {Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className="space-y-6">
@@ -214,8 +193,8 @@ const Classes: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
-                     <table className="w-full text-left border-collapse">
+                  <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-visible">
+                     <table className="w-full text-left border-collapse" style={{ overflow: 'visible' }}>
                         <thead>
                            <tr className="bg-slate-50/50 border-b border-slate-100 px-8">
                               <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Section</th>
@@ -247,9 +226,11 @@ const Classes: React.FC = () => {
                                  <td className="px-8 py-6 text-center text-sm font-bold text-slate-500 tracking-tight">
                                     {s.defaultFeeAmount ? `₹${s.defaultFeeAmount}` : "--"}
                                  </td>
-                                  <td className="px-10 py-6" onClick={(e) => e.stopPropagation()}>
-                                     <ActionMenu items={getActionMenuItems(s.id)} />
-                                  </td>
+                                   <td className="py-6" onClick={(e) => e.stopPropagation()}>
+                                      <div className="flex justify-center">
+                                         <ActionMenu items={getActionMenuItems(s.id)} />
+                                      </div>
+                                   </td>
                               </tr>
                             ))}
                          </tbody>
@@ -265,7 +246,7 @@ const Classes: React.FC = () => {
       <CreateClassModal 
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        onSuccess={fetchClasses}
+        onSuccess={() => {}}
       />
 
       <ConfirmDialog
