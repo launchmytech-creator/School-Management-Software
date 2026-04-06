@@ -25,6 +25,13 @@ interface StudentFormProps {
   mode: 'create' | 'edit';
 }
 
+const generateAdmissionNumber = () => {
+  const year = new Date().getFullYear();
+  const timePart = Date.now().toString().slice(-6);
+  const randomPart = Math.floor(Math.random() * 90 + 10);
+  return `ADM-${year}-${timePart}-${randomPart}`;
+};
+
 const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -70,6 +77,15 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
     };
     fetchData();
   }, [selectedYear, showNotification]);
+
+  useEffect(() => {
+    if (mode === 'create' && !formData.admissionNumber) {
+      setFormData(prev => ({
+        ...prev,
+        admissionNumber: generateAdmissionNumber()
+      }));
+    }
+  }, [mode]);
 
   useEffect(() => {
     if (mode === 'edit' && id) {
@@ -124,7 +140,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
         
         await studentService.createStudent(studentPayload);
 
-        if (isAdmin && formData.currentClassId && selectedYear?.id) {
+        if (formData.currentClassId && selectedYear?.id) {
           try {
             const result = await feeService.generateFeeTransactions({
               classId: parseInt(formData.currentClassId),
@@ -220,11 +236,16 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
                   name="admissionNumber" 
                   required 
                   value={formData.admissionNumber} 
-                  onChange={handleChange}
+                  readOnly
                   disabled={mode === 'edit'}
-                  placeholder="e.g. STU2024001"
-                  className="w-full bg-slate-50/50 border border-slate-100 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-300 disabled:opacity-50" 
+                  placeholder="Auto-generated on load"
+                  className="w-full bg-slate-50/50 border border-slate-100 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 outline-none transition-all placeholder:text-slate-300 disabled:opacity-50" 
                 />
+                {mode === 'create' && (
+                  <p className="text-[10px] text-slate-400">
+                    Unique admission number auto-generated for this enrollment
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Full Name</label>

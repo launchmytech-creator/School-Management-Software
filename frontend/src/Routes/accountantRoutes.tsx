@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+import RequiresActiveYear from "../components/academicYear/RequiresActiveYear";
 import AccountantDashboard from "../Pages/Accountant/Dashboard";
 import AccountantFeeCollection from "../Pages/Accountant/FeeCollection";
 import AccountantFeeDefaulters from "../Pages/Accountant/FeeDefaulters";
@@ -12,6 +13,10 @@ import AccountantEditStudent from "../Pages/Accountant/EditStudent";
 import AccountantExams from "../Pages/Accountant/Exams";
 import AccountantExamResults from "../Pages/Accountant/ExamResults";
 import AccountantMarksEntry from "../Pages/Accountant/MarksEntry";
+
+const withActiveYear = (element: React.ReactElement) => (
+  <RequiresActiveYear>{element}</RequiresActiveYear>
+);
 
 const AccountantRoutes = () => (
   <Routes>

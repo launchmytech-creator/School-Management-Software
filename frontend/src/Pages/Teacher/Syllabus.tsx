@@ -30,7 +30,16 @@ interface ClassSubjectCache {
   };
 }
 
-const TeacherSyllabus: React.FC = () => {
+interface TeacherSyllabusProps {
+  customTitle?: string;
+  isEditable?: boolean;
+}
+
+const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({ 
+  customTitle, 
+  isEditable = false 
+}) => {
+  const pageTitle = customTitle || "My Syllabus Progress";
   const { showNotification } = useNotification();
   const { user } = useAuth();
   const { selectedYear } = useAcademicYear();
@@ -43,6 +52,7 @@ const TeacherSyllabus: React.FC = () => {
   const [cacheLoading, setCacheLoading] = useState<Set<number>>(new Set());
   const [expandedClass, setExpandedClass] = useState<number | null>(null);
   const [expandedSubject, setExpandedSubject] = useState<number | null>(null);
+  const [updatingChapter, setUpdatingChapter] = useState<number | null>(null);
 
   const fetchAllocations = useCallback(async () => {
     if (!user?.id || !selectedYear?.id) return;
@@ -158,6 +168,75 @@ const TeacherSyllabus: React.FC = () => {
     }
   };
 
+  const updateChapterStatus = async (
+    subjectId: number,
+    chapterId: number,
+    status: 'pending' | 'in-progress' | 'completed',
+    classId: number,
+  ) => {
+    setUpdatingChapter(chapterId);
+    try {
+      await syllabusService.markCompletionDirect(
+        classId,
+        subjectId,
+        chapterId,
+        status,
+        Number(selectedYear!.id),
+      );
+
+      setChapterProgress(prev => {
+        const chapters = prev[subjectId] || [];
+        const updated = chapters.map(c =>
+          c.chapterId === chapterId ? { ...c, status } : c
+        );
+        return { ...prev, [subjectId]: updated };
+      });
+
+      showNotification(`Chapter marked as ${status}`, 'success');
+    } catch {
+      showNotification('Failed to update chapter status', 'error');
+    } finally {
+      setUpdatingChapter(null);
+    }
+  };
+
+  const markAllComplete = async (subjectId: number, classId: number) => {
+    const chapters = chapterProgress[subjectId] || [];
+    const pendingChapters = chapters.filter(c => c.status !== 'completed');
+
+    if (pendingChapters.length === 0) {
+      showNotification('All chapters already completed', 'info');
+      return;
+    }
+
+    setUpdatingChapter(-1);
+    try {
+      for (const chapter of pendingChapters) {
+        await syllabusService.markCompletionDirect(
+          classId,
+          subjectId,
+          chapter.chapterId,
+          'completed',
+          Number(selectedYear!.id),
+        );
+      }
+
+      setChapterProgress(prev => {
+        const updated = (prev[subjectId] || []).map(c => ({
+          ...c,
+          status: 'completed' as const,
+        }));
+        return { ...prev, [subjectId]: updated };
+      });
+
+      showNotification(`${pendingChapters.length} chapters marked as completed`, 'success');
+    } catch {
+      showNotification('Failed to mark all chapters complete', 'error');
+    } finally {
+      setUpdatingChapter(null);
+    }
+  };
+
   useEffect(() => {
     fetchAllocations();
   }, [fetchAllocations]);
@@ -216,6 +295,17 @@ const TeacherSyllabus: React.FC = () => {
     }
   };
 
+  const getStatusColor = (status: string | null | undefined) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-emerald-100 text-emerald-700';
+      case 'in-progress':
+        return 'bg-amber-100 text-amber-700';
+      default:
+        return 'bg-slate-100 text-slate-600';
+    }
+  };
+
   const overallStats = {
     totalSubjects: subjectProgress.length,
     totalChapters: subjectProgress.reduce((sum, p) => sum + p.totalChapters, 0),
@@ -250,7 +340,7 @@ const TeacherSyllabus: React.FC = () => {
 
   if (loading) {
     return (
-      <TeacherLayout title="Syllabus Progress">
+      <TeacherLayout title={pageTitle}>
         <div className="flex items-center justify-center h-96">
           <div className="animate-pulse text-slate-400">Loading syllabus data...</div>
         </div>
@@ -259,15 +349,18 @@ const TeacherSyllabus: React.FC = () => {
   }
 
   return (
-    <TeacherLayout title="Syllabus Progress">
+    <TeacherLayout title={pageTitle}>
       <div className="space-y-6 pb-12">
         <PageHeader 
-          title="My Syllabus Progress"
-          subtitle="Track syllabus completion for your assigned classes and subjects"
+          title={pageTitle}
+          subtitle={isEditable 
+            ? "Update syllabus completion status for your assigned classes and subjects" 
+            : "Track syllabus completion for your assigned classes and subjects"
+          }
           breadcrumb={{
             links: [
               { label: "Dashboard", href: "/teacher/dashboard" },
-              { label: "Syllabus", active: true }
+              { label: pageTitle, active: true }
             ]
           }}
         />
@@ -437,7 +530,18 @@ const TeacherSyllabus: React.FC = () => {
 
                               {isSubjectExpanded && (
                                 <div className="border-t border-slate-200 p-4 bg-white">
-                                  <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Chapters</h5>
+                                  <div className="flex items-center justify-between mb-3">
+                                    <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Chapters</h5>
+                                    {isEditable && chapters.length > 0 && (
+                                      <button
+                                        onClick={() => markAllComplete(allocation.subjectId, allocation.classId)}
+                                        disabled={updatingChapter !== null}
+                                        className="px-3 py-1.5 bg-emerald-500 text-white text-xs font-bold rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50"
+                                      >
+                                        Mark All Complete
+                                      </button>
+                                    )}
+                                  </div>
                                   <div className="space-y-2 max-h-64 overflow-y-auto">
                                     {chapters.length === 0 ? (
                                       <p className="text-sm text-slate-500 text-center py-4">
@@ -457,7 +561,29 @@ const TeacherSyllabus: React.FC = () => {
                                               </p>
                                             </div>
                                           </div>
-                                          {getStatusBadge(chapter.status)}
+                                          {isEditable ? (
+                                            <select
+                                              value={chapter.status || 'pending'}
+                                              onChange={(e) => {
+                                                if (updatingChapter === null) {
+                                                  updateChapterStatus(
+                                                    allocation.subjectId,
+                                                    chapter.chapterId,
+                                                    e.target.value as 'pending' | 'in-progress' | 'completed',
+                                                    allocation.classId,
+                                                  );
+                                                }
+                                              }}
+                                              disabled={updatingChapter !== null}
+                                              className={`px-3 py-1.5 text-xs font-bold rounded-lg border-0 cursor-pointer transition-colors ${getStatusColor(chapter.status)} disabled:opacity-50`}
+                                            >
+                                              <option value="pending">Pending</option>
+                                              <option value="in-progress">In Progress</option>
+                                              <option value="completed">Completed</option>
+                                            </select>
+                                          ) : (
+                                            getStatusBadge(chapter.status)
+                                          )}
                                         </div>
                                       ))
                                     )}
