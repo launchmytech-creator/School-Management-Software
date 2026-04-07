@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
+
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
@@ -554,8 +554,7 @@ const SyllabusTracking: React.FC = () => {
   );
 
   return (
-    <AdminLayout title="Syllabus Tracking">
-      <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
         <PageHeader 
           title="Syllabus Tracking"
           subtitle="Track and manage syllabus completion progress"
@@ -594,7 +593,6 @@ const SyllabusTracking: React.FC = () => {
 
         {activeTab === 'class-overview' ? renderClassOverview() : renderSubjectDetail()}
       </div>
-    </AdminLayout>
   );
 };
 

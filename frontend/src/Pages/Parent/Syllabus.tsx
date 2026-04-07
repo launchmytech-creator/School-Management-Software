@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import ParentLayout from '../../layouts/ParentLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { useParentChildren } from '../../hooks/queries';
@@ -273,17 +272,14 @@ const ParentSyllabus: React.FC = () => {
   // ── loading state ───────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <ParentLayout title="Syllabus">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="w-10 h-10 border-4 border-[#4A9FD4] border-t-transparent rounded-full animate-spin" />
         </div>
-      </ParentLayout>
     );
   }
 
   if (children.length === 0) {
     return (
-      <ParentLayout title="Syllabus">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <span className="material-symbols-outlined text-6xl text-slate-200 block mb-4">menu_book</span>
@@ -291,12 +287,10 @@ const ParentSyllabus: React.FC = () => {
             <p className="text-sm text-slate-400">Contact school administration to link your children.</p>
           </div>
         </div>
-      </ParentLayout>
     );
   }
 
   return (
-    <ParentLayout title="Syllabus">
       <div className="p-8 max-w-6xl mx-auto space-y-6">
 
         {/* Child tabs */}
@@ -366,7 +360,6 @@ const ParentSyllabus: React.FC = () => {
           </>
         )}
       </div>
-    </ParentLayout>
   );
 };
 

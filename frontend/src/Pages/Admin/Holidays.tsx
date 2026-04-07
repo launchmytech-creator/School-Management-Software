@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
+
 import { useNotification } from '../../context/NotificationContext';
 import { holidayService, type Holiday } from '../../services/holidayService';
 import { academicYearService } from '../../services/academicYearService';
@@ -188,8 +188,7 @@ const Holidays: React.FC = () => {
   };
 
   return (
-    <AdminLayout title="Holidays">
-      <div className="p-8 max-w-[1200px] mx-auto">
+    <div className="p-8 max-w-[1200px] mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-extrabold text-slate-900">Holiday Management</h1>
           <div className="flex gap-2">
@@ -463,7 +462,6 @@ const Holidays: React.FC = () => {
           </div>
         </BaseModal>
       </div>
-    </AdminLayout>
   );
 };
 

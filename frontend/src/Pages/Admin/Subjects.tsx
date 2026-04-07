@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminLayout from '../../layouts/AdminLayout';
+
 import PageHeader from '../../components/common/PageHeader';
 import { useNotification } from '../../context/NotificationContext';
 import { subjectService, type Subject, type Chapter } from '../../services/subjectService';
@@ -159,8 +159,7 @@ const Subjects: React.FC = () => {
   };
 
   return (
-    <AdminLayout title="Subjects">
-      <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-12">
         <PageHeader 
           title="Subjects"
           subtitle="Manage subjects and chapters"
@@ -356,7 +355,6 @@ const Subjects: React.FC = () => {
           loading={deleteDialog.loading}
         />
       </div>
-    </AdminLayout>
   );
 };
 

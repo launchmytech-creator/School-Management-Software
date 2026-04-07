@@ -1,18 +1,29 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import ParentSidebar from '../components/layout/ParentSidebar';
 import { useAuth } from '../context/AuthContext';
+
+const ROUTE_TITLES: Record<string, string> = {
+  "/parent/dashboard": "Dashboard",
+  "/parent/attendance": "Attendance",
+  "/parent/syllabus": "Syllabus",
+  "/parent/fees": "Fee Status",
+  "/parent/exam-results": "Exam Results",
+};
 
 interface ParentLayoutProps {
   children: React.ReactNode;
   title?: string;
 }
 
-const ParentLayout: React.FC<ParentLayoutProps> = ({ children, title = 'Parent Portal' }) => {
+const ParentLayout: React.FC<ParentLayoutProps> = ({ children, title }) => {
   const { user } = useAuth();
+  const location = useLocation();
 
-  React.useEffect(() => {
-    document.title = `${title} | EduManage`;
-  }, [title]);
+  useEffect(() => {
+    const pageTitle = title || ROUTE_TITLES[location.pathname] || 'Parent Portal';
+    document.title = `${pageTitle} | EduManage`;
+  }, [location.pathname, title]);
 
   const displayName = user?.fullName || 'Parent';
   const avatarSeed = String(user?.id || 'parent');

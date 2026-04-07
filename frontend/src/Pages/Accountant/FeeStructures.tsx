@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from "react";
-import AccountantLayout from "../../layouts/AccountantLayout";
 import FilterBar from "../../components/common/FilterBar";
 import { FeeStructureStats } from "../../components/fee/FeeStructureStats";
 import { FeeStructureGroupsTable } from "../../components/fee/FeeStructureGroupsTable";
@@ -12,15 +11,14 @@ const EMPTY_STRUCTURES: FeeStructureGroup[] = [];
 const AccountantFeeStructures: React.FC = () => {
   const { data: classesData } = useClasses();
   const classes = classesData || [];
-  const { allYears: academicYears } = useAcademicYear();
+  const { selectedYear } = useAcademicYear();
   const [selectedClass, setSelectedClass] = useState<string>("");
-  const [selectedYear, setSelectedYear] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const { data: groupedStructuresData, isLoading: loading } = useFeeStructuresGrouped({
     classId: selectedClass ? parseInt(selectedClass) : undefined,
-    academicYearId: selectedYear ? parseInt(selectedYear) : undefined,
+    academicYearId: selectedYear?.id ? Number(selectedYear.id) : undefined,
   });
   const groupedStructures = groupedStructuresData || EMPTY_STRUCTURES;
 
@@ -65,7 +63,6 @@ const AccountantFeeStructures: React.FC = () => {
   };
 
   return (
-    <AccountantLayout title="Fee Structures" subtitle="View fee structures for different classes">
       <div className="space-y-6 pb-12">
         <FeeStructureStats {...stats} />
 
@@ -75,9 +72,8 @@ const AccountantFeeStructures: React.FC = () => {
           onReset={() => {
             setSearchTerm("");
             setSelectedClass("");
-            setSelectedYear("");
           }}
-          searchPlaceholder="Search by class or academic year..."
+          searchPlaceholder="Search by class..."
         >
           <select
             value={selectedClass}
@@ -91,18 +87,6 @@ const AccountantFeeStructures: React.FC = () => {
               </option>
             ))}
           </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 min-w-40"
-          >
-            <option value="">All Years</option>
-            {academicYears.map((year) => (
-              <option key={year.id} value={year.id}>
-                {year.name}
-              </option>
-            ))}
-          </select>
         </FilterBar>
 
         <FeeStructureGroupsTable
@@ -113,7 +97,6 @@ const AccountantFeeStructures: React.FC = () => {
           searchPlaceholder="Try adjusting your filters"
         />
       </div>
-    </AccountantLayout>
   );
 };
 

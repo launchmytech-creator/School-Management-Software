@@ -1,6 +1,7 @@
 import React from 'react';
 import InputField from '../../ui/InputField';
 import { getAcademicYearOptions } from '../../../lib/utils';
+import type { SubscriptionTier } from '../../../types/school';
 
 const academicYearOptions = getAcademicYearOptions(5);
 
@@ -12,9 +13,25 @@ interface SubscriptionSettingsFormProps {
   };
   handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   errors: Record<string, string>;
+  selectedPlan?: SubscriptionTier;
+  onPlanChange?: (plan: SubscriptionTier) => void;
+  isEditMode?: boolean;
 }
 
-const SubscriptionSettingsForm: React.FC<SubscriptionSettingsFormProps> = ({ formData, handleChange, errors }) => {
+const PLAN_OPTIONS: { value: SubscriptionTier; label: string; description: string }[] = [
+  { value: 'BASIC', label: 'Basic', description: 'Fee & Marks Management' },
+  { value: 'PREMIUM', label: 'Premium', description: 'Basic + Attendance & Syllabus' },
+  { value: 'BUSINESS', label: 'Business', description: 'All Features' },
+];
+
+const SubscriptionSettingsForm: React.FC<SubscriptionSettingsFormProps> = ({ 
+  formData, 
+  handleChange, 
+  errors, 
+  selectedPlan, 
+  onPlanChange,
+  isEditMode = false 
+}) => {
   return (
     <div className="space-y-16">
       {/* Subscription Settings */}
@@ -56,6 +73,48 @@ const SubscriptionSettingsForm: React.FC<SubscriptionSettingsFormProps> = ({ for
           />
         </div>
       </section>
+
+      {isEditMode && onPlanChange && (
+        <>
+          <hr className="border-slate-50" />
+          
+          {/* Plan Selection */}
+          <section className="space-y-8">
+            <div className="flex items-center gap-4 text-[#1E3A5F]">
+              <span className="material-symbols-outlined text-2xl">workspace_premium</span>
+              <h3 className="text-xl font-display font-bold">Subscription Plan</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {PLAN_OPTIONS.map((plan) => (
+                <button
+                  key={plan.value}
+                  type="button"
+                  onClick={() => onPlanChange(plan.value)}
+                  className={`p-4 rounded-xl border-2 transition-all text-left ${
+                    selectedPlan === plan.value
+                      ? plan.value === 'BUSINESS'
+                        ? 'border-[#1E3A5F] bg-[#1E3A5F]/5'
+                        : plan.value === 'PREMIUM'
+                          ? 'border-[#4A9FD4] bg-[#4A9FD4]/5'
+                          : 'border-slate-400 bg-slate-50'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`w-3 h-3 rounded-full ${
+                      plan.value === 'BUSINESS' ? 'bg-[#1E3A5F]' :
+                      plan.value === 'PREMIUM' ? 'bg-[#4A9FD4]' : 'bg-slate-400'
+                    }`} />
+                    <span className="font-bold text-slate-900">{plan.label}</span>
+                  </div>
+                  <p className="text-xs text-slate-500">{plan.description}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
 
       <hr className="border-slate-50" />
 

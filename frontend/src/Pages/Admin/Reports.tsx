@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
+
 import PageHeader from '../../components/common/PageHeader';
 import { useNotification } from '../../context/NotificationContext';
 import { reportService, type AttendanceReport, type FeesReport, type SummaryReport } from '../../services/reportService';
@@ -15,9 +15,8 @@ const Reports: React.FC = () => {
   const [_loading, setLoading] = useState(true);
   const [reportType, setReportType] = useState<ReportType>('summary');
   const { data: classes = [] } = useClasses();
-  const { allYears: academicYears } = useAcademicYear();
+  const { selectedYear } = useAcademicYear();
   const [selectedClass, setSelectedClass] = useState<string>('');
-  const [selectedYear, setSelectedYear] = useState<string>('');
   const [summary, setSummary] = useState<SummaryReport | null>(null);
   const [attendanceData, setAttendanceData] = useState<AttendanceReport[]>([]);
   const [feesData, setFeesData] = useState<FeesReport[]>([]);
@@ -29,7 +28,7 @@ const Reports: React.FC = () => {
       setLoading(true);
       const filters = {
         classId: selectedClass ? parseInt(selectedClass) : undefined,
-        academicYearId: selectedYear ? parseInt(selectedYear) : undefined,
+        academicYearId: selectedYear?.id ? Number(selectedYear.id) : undefined,
       };
 
       switch (reportType) {
@@ -54,7 +53,7 @@ const Reports: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [reportType, selectedClass, selectedYear, showNotification]);
+  }, [reportType, selectedClass, selectedYear?.id, showNotification]);
 
 
 
@@ -63,8 +62,7 @@ const Reports: React.FC = () => {
   }, [fetchReports]);
 
   return (
-    <AdminLayout title="Reports">
-      <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
         <PageHeader 
           title="Reports Dashboard"
           subtitle="View comprehensive reports and analytics"
@@ -118,19 +116,6 @@ const Reports: React.FC = () => {
               <option value="">All Classes</option>
               {classes.map(cls => (
                 <option key={cls.id} value={cls.id}>{cls.name} - Section {cls.section || 'A'}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Academic Year</label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Current Year</option>
-              {academicYears.map(year => (
-                <option key={year.id} value={year.id}>{year.name}</option>
               ))}
             </select>
           </div>
@@ -269,7 +254,6 @@ const Reports: React.FC = () => {
           </div>
         )}
       </div>
-    </AdminLayout>
   );
 };
 

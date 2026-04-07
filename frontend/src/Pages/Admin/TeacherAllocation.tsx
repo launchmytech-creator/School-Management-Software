@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import AdminLayout from "../../layouts/AdminLayout";
 import {
   Plus,
   BookOpen,
@@ -66,7 +65,7 @@ const TeacherAllocation: React.FC = () => {
   };
 
   return (
-    <AdminLayout title="Teacher Allocation">
+    <>
       <div className="space-y-10 pb-10">
         {/* Simple Header */}
         <div className="flex items-center justify-between">
@@ -305,7 +304,7 @@ const TeacherAllocation: React.FC = () => {
         confirmText="Remove"
         variant="danger"
       />
-    </AdminLayout>
+    </>
   );
 };
 

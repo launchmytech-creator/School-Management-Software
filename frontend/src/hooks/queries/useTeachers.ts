@@ -2,12 +2,19 @@ import { useQuery } from '@tanstack/react-query';
 import { teacherService } from '../../services/teacherService';
 import type { Teacher, TeacherAllocation } from '../../types/teacher';
 import { queryKeys } from '../../lib/queryKeys';
+import { QUERY_STALE_TIME } from '../../lib/constants';
 
-export const useTeachers = () => {
+export interface TeacherFilters {
+  search?: string;
+  status?: string;
+}
+
+export const useTeachers = (enabled = true) => {
   return useQuery<Teacher[]>({
     queryKey: queryKeys.teachers.all,
     queryFn: () => teacherService.getTeachers(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: QUERY_STALE_TIME.LISTS,
+    enabled,
   });
 };
 
@@ -15,7 +22,7 @@ export const useTeacherById = (id: number) => {
   return useQuery<Teacher>({
     queryKey: queryKeys.teachers.byId(String(id)),
     queryFn: () => teacherService.getTeacherById(id),
-    staleTime: 5 * 60 * 1000,
+    staleTime: QUERY_STALE_TIME.LISTS,
     enabled: !!id,
   });
 };
@@ -24,7 +31,7 @@ export const useTeacherAllocations = (teacherId: number, academicYearId?: number
   return useQuery<TeacherAllocation[]>({
     queryKey: queryKeys.teachers.allocations(teacherId, academicYearId || 0),
     queryFn: () => teacherService.getAllocationsByTeacher(teacherId, academicYearId),
-    staleTime: 5 * 60 * 1000,
+    staleTime: QUERY_STALE_TIME.LISTS,
     enabled: !!teacherId,
   });
 };
@@ -33,6 +40,6 @@ export const useAllAllocations = () => {
   return useQuery<TeacherAllocation[]>({
     queryKey: ['teacher-allocations', 'all'],
     queryFn: () => teacherService.getAllocations(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: QUERY_STALE_TIME.LISTS,
   });
 };

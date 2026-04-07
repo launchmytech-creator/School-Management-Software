@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import TeacherLayout from '../../layouts/TeacherLayout';
 import DashboardCard from '../../components/common/DashboardCard';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
@@ -25,7 +24,6 @@ const TeacherDashboard: React.FC = () => {
   const uniqueClasses = [...new Map(allocations.map(a => [a.classId, a])).values()];
 
   return (
-    <TeacherLayout title="Teacher Hub">
       <div className="space-y-6 pb-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <DashboardCard
@@ -113,7 +111,6 @@ const TeacherDashboard: React.FC = () => {
           )}
         </div>
       </div>
-    </TeacherLayout>
   );
 };
 

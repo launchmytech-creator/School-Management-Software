@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
@@ -144,8 +143,7 @@ const Assignments: React.FC = () => {
   };
 
   return (
-    <AdminLayout title="Assignments">
-      <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
         <PageHeader 
           title="Assignments"
           subtitle="Create and manage student assignments"
@@ -388,8 +386,7 @@ const Assignments: React.FC = () => {
             </div>
           </div>
         </BaseModal>
-      </div>
-    </AdminLayout>
+    </div>
   );
 };
 

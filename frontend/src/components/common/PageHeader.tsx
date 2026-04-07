@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronRight } from 'lucide-react';
@@ -35,6 +35,10 @@ const PageHeader: React.FC<PageHeaderProps> = ({
   actions,
   children 
 }) => {
+  useEffect(() => {
+    document.title = `${title} | EduManage`;
+  }, [title]);
+
   return (
     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
       <div className="space-y-1">

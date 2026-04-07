@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminLayout from '../../layouts/AdminLayout';
-import AccountantLayout from '../../layouts/AccountantLayout';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import { useNotification } from '../../context/NotificationContext';
@@ -601,11 +599,7 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
     </>
   );
 
-  if (isAdmin) {
-    return <AdminLayout title="Examinations"><div className="space-y-8 pb-12">{renderContent()}</div></AdminLayout>;
-  }
-
-  return <AccountantLayout title="Examinations"><div className="space-y-6 pb-12">{renderContent()}</div></AccountantLayout>;
+  return <div className="space-y-6">{renderContent()}</div>;
 };
 
 export default ExamsList;

@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import AdminLayout from "../../layouts/AdminLayout";
 import { 
   Plus, Users, DollarSign, 
   BookOpen, Calendar, Eye, Trash2
@@ -73,7 +72,7 @@ const Classes: React.FC = () => {
   ];
 
   return (
-    <AdminLayout title="Classes">
+    <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <PageHeader 
@@ -259,7 +258,7 @@ const Classes: React.FC = () => {
         variant="danger"
         loading={deleteDialog.loading}
       />
-    </AdminLayout>
+    </>
   );
 };
 

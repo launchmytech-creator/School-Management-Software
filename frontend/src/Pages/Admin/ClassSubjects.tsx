@@ -1,18 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
-import PageHeader from '../../components/common/PageHeader';
-import FilterBar from '../../components/common/FilterBar';
-import EmptyState from '../../components/common/EmptyState';
-import { useNotification } from '../../context/NotificationContext';
-import { subjectService, type ClassSubject, type AssignSubjectToClassDto, type Subject } from '../../services/subjectService';
-import { classService } from '../../services/classService';
-import { academicYearService } from '../../services/academicYearService';
-import type { Class } from '../../types/class';
-import type { AcademicYear } from '../../types/academicYear';
-import { BookMarked, Plus, Trash2, Link, Unlink } from 'lucide-react';
-import { BaseModal } from '../../components/common/BaseModal';
-import { Button } from '../../components/ui/button';
-import { SkeletonTable } from '../../components/common/Skeleton';
+import React, { useState, useEffect, useCallback } from "react";
+import PageHeader from "../../components/common/PageHeader";
+import FilterBar from "../../components/common/FilterBar";
+import EmptyState from "../../components/common/EmptyState";
+import { useNotification } from "../../context/NotificationContext";
+import {
+  subjectService,
+  type ClassSubject,
+  type AssignSubjectToClassDto,
+  type Subject,
+} from "../../services/subjectService";
+import { classService } from "../../services/classService";
+import { academicYearService } from "../../services/academicYearService";
+import type { Class } from "../../types/class";
+import type { AcademicYear } from "../../types/academicYear";
+import { BookMarked, Plus, Trash2, Link, Unlink } from "lucide-react";
+import { BaseModal } from "../../components/common/BaseModal";
+import { Button } from "../../components/ui/button";
+import { SkeletonTable } from "../../components/common/Skeleton";
 
 const ClassSubjects: React.FC = () => {
   const { showNotification } = useNotification();
@@ -20,10 +24,10 @@ const ClassSubjects: React.FC = () => {
   const [classes, setClasses] = useState<Class[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [selectedClass, setSelectedClass] = useState<string>('');
-  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState<string>("");
   const [classSubjects, setClassSubjects] = useState<ClassSubject[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
@@ -39,7 +43,7 @@ const ClassSubjects: React.FC = () => {
       const data = await classService.getClasses();
       setClasses(data);
     } catch {
-      showNotification('Failed to fetch classes', 'error');
+      showNotification("Failed to fetch classes", "error");
     }
   }, [showNotification]);
 
@@ -48,7 +52,7 @@ const ClassSubjects: React.FC = () => {
       const data = await subjectService.getSubjects();
       setSubjects(data);
     } catch {
-      showNotification('Failed to fetch subjects', 'error');
+      showNotification("Failed to fetch subjects", "error");
     }
   }, [showNotification]);
 
@@ -57,28 +61,33 @@ const ClassSubjects: React.FC = () => {
       const data = await academicYearService.getAllYears();
       setAcademicYears(data);
     } catch {
-      showNotification('Failed to fetch academic years', 'error');
+      showNotification("Failed to fetch academic years", "error");
     }
   }, [showNotification]);
 
-  const fetchClassSubjects = useCallback(async (classId: number, yearId?: number) => {
-    try {
-      setLoading(true);
-      const data = await subjectService.getSubjectsByClass(classId);
-      
-      if (yearId) {
-        const filteredData = data.filter(cs => cs.academicYearId === yearId);
-        setClassSubjects(filteredData);
-      } else {
-        setClassSubjects(data);
+  const fetchClassSubjects = useCallback(
+    async (classId: number, yearId?: number) => {
+      try {
+        setLoading(true);
+        const data = await subjectService.getSubjectsByClass(classId);
+
+        if (yearId) {
+          const filteredData = data.filter(
+            (cs) => cs.academicYearId === yearId,
+          );
+          setClassSubjects(filteredData);
+        } else {
+          setClassSubjects(data);
+        }
+      } catch {
+        showNotification("Failed to fetch class subjects", "error");
+        setClassSubjects([]);
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      showNotification('Failed to fetch class subjects', 'error');
-      setClassSubjects([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [showNotification]);
+    },
+    [showNotification],
+  );
 
   useEffect(() => {
     fetchClasses();
@@ -97,22 +106,29 @@ const ClassSubjects: React.FC = () => {
   }, [selectedClass, selectedYear, fetchClassSubjects]);
 
   const getSubjectCode = (subjectId: number): string => {
-    const subject = subjects.find(s => s.id === subjectId);
-    return subject?.code || '';
+    const subject = subjects.find((s) => s.id === subjectId);
+    return subject?.code || "";
   };
 
-  const filteredSubjects = classSubjects.filter(cs =>
-    cs.subjectName?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
-    getSubjectCode(cs.subjectId).toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredSubjects = classSubjects.filter(
+    (cs) =>
+      cs.subjectName?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
+      getSubjectCode(cs.subjectId)
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()),
   );
 
-  const assignedSubjectIds = classSubjects.map(cs => cs.subjectId);
+  const assignedSubjectIds = classSubjects.map((cs) => cs.subjectId);
 
   const handleOpenCreate = () => {
-    const defaultClassId = selectedClass ? parseInt(selectedClass) : (classes[0]?.id || 0);
-    const currentYear = academicYears.find(y => y.isCurrent);
-    const defaultYearId = selectedYear ? parseInt(selectedYear) : (currentYear?.id || academicYears[0]?.id || 0);
-    
+    const defaultClassId = selectedClass
+      ? parseInt(selectedClass)
+      : classes[0]?.id || 0;
+    const currentYear = academicYears.find((y) => y.isCurrent);
+    const defaultYearId = selectedYear
+      ? parseInt(selectedYear)
+      : currentYear?.id || academicYears[0]?.id || 0;
+
     setFormData({
       classId: Number(defaultClassId),
       subjectId: 0,
@@ -124,17 +140,18 @@ const ClassSubjects: React.FC = () => {
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!formData.classId) newErrors.classId = 'Class is required';
-    if (!formData.subjectId) newErrors.subjectId = 'Subject is required';
-    if (!formData.academicYearId) newErrors.academicYearId = 'Academic year is required';
+    if (!formData.classId) newErrors.classId = "Class is required";
+    if (!formData.subjectId) newErrors.subjectId = "Subject is required";
+    if (!formData.academicYearId)
+      newErrors.academicYearId = "Academic year is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleFieldChange = (field: string, value: number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[field];
         return newErrors;
@@ -148,7 +165,7 @@ const ClassSubjects: React.FC = () => {
     try {
       setSaving(true);
       await subjectService.assignSubjectToClass(formData);
-      showNotification('Subject assigned to class successfully', 'success');
+      showNotification("Subject assigned to class successfully", "success");
       setShowModal(false);
       if (selectedClass) {
         const yearId = selectedYear ? parseInt(selectedYear) : undefined;
@@ -156,45 +173,49 @@ const ClassSubjects: React.FC = () => {
       }
       fetchSubjects();
     } catch {
-      showNotification('Failed to assign subject', 'error');
+      showNotification("Failed to assign subject", "error");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to remove this subject from the class?')) return;
-    
+    if (
+      !confirm("Are you sure you want to remove this subject from the class?")
+    )
+      return;
+
     try {
       setDeleting(id);
       await subjectService.removeSubjectFromClass(id);
-      showNotification('Subject removed from class successfully', 'success');
+      showNotification("Subject removed from class successfully", "success");
       if (selectedClass) {
         const yearId = selectedYear ? parseInt(selectedYear) : undefined;
         fetchClassSubjects(parseInt(selectedClass), yearId);
       }
       fetchSubjects();
     } catch {
-      showNotification('Failed to remove subject', 'error');
+      showNotification("Failed to remove subject", "error");
     } finally {
       setDeleting(null);
     }
   };
 
-  const selectedClassName = classes.find(c => c.id === selectedClass)?.name || '';
-  const currentYearName = academicYears.find(y => y.id === selectedYear)?.name || '';
+  const selectedClassName =
+    classes.find((c) => c.id === selectedClass)?.name || "";
+  const currentYearName =
+    academicYears.find((y) => y.id === selectedYear)?.name || "";
 
   return (
-    <AdminLayout title="Class Subjects">
-      <div className="space-y-6 pb-12">
-        <PageHeader 
+    <div className="space-y-6 pb-12">
+        <PageHeader
           title="Class Subjects"
           subtitle="Assign subjects to classes for each academic year"
           breadcrumb={{
             links: [
               { label: "Dashboard", href: "/admin/dashboard" },
-              { label: "Class Subjects", active: true }
-            ]
+              { label: "Class Subjects", active: true },
+            ],
           }}
         />
 
@@ -202,7 +223,9 @@ const ClassSubjects: React.FC = () => {
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-slate-900">{classes.length}</p>
+                <p className="text-2xl font-bold text-slate-900">
+                  {classes.length}
+                </p>
                 <p className="text-sm text-slate-500">Total Classes</p>
               </div>
               <div className="p-3 bg-blue-50 rounded-xl">
@@ -214,7 +237,9 @@ const ClassSubjects: React.FC = () => {
           <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-emerald-700">{subjects.length}</p>
+                <p className="text-2xl font-bold text-emerald-700">
+                  {subjects.length}
+                </p>
                 <p className="text-sm text-emerald-600">Total Subjects</p>
               </div>
               <div className="p-3 bg-emerald-100 rounded-xl">
@@ -226,7 +251,9 @@ const ClassSubjects: React.FC = () => {
           <div className="bg-purple-50 rounded-xl border border-purple-200 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-purple-700">{assignedSubjectIds.length}</p>
+                <p className="text-2xl font-bold text-purple-700">
+                  {assignedSubjectIds.length}
+                </p>
                 <p className="text-sm text-purple-600">Assigned</p>
               </div>
               <div className="p-3 bg-purple-100 rounded-xl">
@@ -238,7 +265,9 @@ const ClassSubjects: React.FC = () => {
           <div className="bg-amber-50 rounded-xl border border-amber-200 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-amber-700">{subjects.length - assignedSubjectIds.length}</p>
+                <p className="text-2xl font-bold text-amber-700">
+                  {subjects.length - assignedSubjectIds.length}
+                </p>
                 <p className="text-sm text-amber-600">Unassigned</p>
               </div>
               <div className="p-3 bg-amber-100 rounded-xl">
@@ -250,40 +279,46 @@ const ClassSubjects: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Select Class</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Select Class
+            </label>
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select a class</option>
-              {classes.map(cls => (
+              {classes.map((cls) => (
                 <option key={cls.id} value={cls.id}>
-                  {cls.name} - Section {cls.section || 'A'}
+                  {cls.name} - Section {cls.section || "A"}
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Academic Year</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Academic Year
+            </label>
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
               className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Years</option>
-              {academicYears.map(year => (
-                <option key={year.id} value={year.id}>{year.name}</option>
+              {academicYears.map((year) => (
+                <option key={year.id} value={year.id}>
+                  {year.name}
+                </option>
               ))}
             </select>
           </div>
         </div>
 
         {selectedClass && (
-          <FilterBar 
+          <FilterBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
-            onReset={() => setSearchTerm('')}
+            onReset={() => setSearchTerm("")}
             searchPlaceholder="Search subjects..."
           >
             <Button onClick={handleOpenCreate} size="sm" className="gap-1.5">
@@ -306,34 +341,49 @@ const ClassSubjects: React.FC = () => {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Subject</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Code</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Academic Year</th>
-                  <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Subject
+                  </th>
+                  <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Code
+                  </th>
+                  <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Academic Year
+                  </th>
+                  <th className="px-6 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredSubjects.map((cs) => (
-                  <tr key={cs.id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr
+                    key={cs.id}
+                    className="hover:bg-slate-50/50 transition-colors"
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
                           <BookMarked className="w-5 h-5 text-emerald-600" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-900">{cs.subjectName}</p>
-                          <p className="text-xs text-slate-500">{selectedClassName}</p>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {cs.subjectName}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {selectedClassName}
+                          </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-full">
-                        {getSubjectCode(cs.subjectId) || '-'}
+                        {getSubjectCode(cs.subjectId) || "-"}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="px-3 py-1 bg-blue-100 text-blue-600 text-xs font-medium rounded-full">
-                        {cs.academicYearName || currentYearName || 'N/A'}
+                        {cs.academicYearName || currentYearName || "N/A"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -358,7 +408,7 @@ const ClassSubjects: React.FC = () => {
             action={{
               label: "Assign Subject",
               icon: Plus,
-              onClick: handleOpenCreate
+              onClick: handleOpenCreate,
             }}
           />
         )}
@@ -371,64 +421,97 @@ const ClassSubjects: React.FC = () => {
         >
           <div className="p-6 space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Class</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Class
+              </label>
               <div className="flex flex-col">
                 <select
-                  value={formData.classId || ''}
-                  onChange={(e) => handleFieldChange('classId', Number(e.target.value))}
-                  className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.classId ? 'border-red-500' : 'border-slate-200'}`}
+                  value={formData.classId || ""}
+                  onChange={(e) =>
+                    handleFieldChange("classId", Number(e.target.value))
+                  }
+                  className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.classId ? "border-red-500" : "border-slate-200"}`}
                 >
                   <option value="">Select Class</option>
-                  {classes.map(cls => (
+                  {classes.map((cls) => (
                     <option key={cls.id} value={cls.id}>
-                      {cls.name} - Section {cls.section || 'A'}
+                      {cls.name} - Section {cls.section || "A"}
                     </option>
                   ))}
                 </select>
-                {errors.classId && <span className="text-red-500 text-xs mt-1">{errors.classId}</span>}
+                {errors.classId && (
+                  <span className="text-red-500 text-xs mt-1">
+                    {errors.classId}
+                  </span>
+                )}
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Academic Year</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Academic Year
+              </label>
               <div className="flex flex-col">
                 <select
-                  value={formData.academicYearId || ''}
-                  onChange={(e) => handleFieldChange('academicYearId', Number(e.target.value))}
-                  className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.academicYearId ? 'border-red-500' : 'border-slate-200'}`}
+                  value={formData.academicYearId || ""}
+                  onChange={(e) =>
+                    handleFieldChange("academicYearId", Number(e.target.value))
+                  }
+                  className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.academicYearId ? "border-red-500" : "border-slate-200"}`}
                 >
                   <option value="">Select Year</option>
-                  {academicYears.map(year => (
-                    <option key={year.id} value={year.id}>{year.name}</option>
+                  {academicYears.map((year) => (
+                    <option key={year.id} value={year.id}>
+                      {year.name}
+                    </option>
                   ))}
                 </select>
-                {errors.academicYearId && <span className="text-red-500 text-xs mt-1">{errors.academicYearId}</span>}
+                {errors.academicYearId && (
+                  <span className="text-red-500 text-xs mt-1">
+                    {errors.academicYearId}
+                  </span>
+                )}
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Subject</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Subject
+              </label>
               <div className="flex flex-col">
                 <select
-                  value={formData.subjectId || ''}
-                  onChange={(e) => handleFieldChange('subjectId', Number(e.target.value))}
-                  className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.subjectId ? 'border-red-500' : 'border-slate-200'}`}
+                  value={formData.subjectId || ""}
+                  onChange={(e) =>
+                    handleFieldChange("subjectId", Number(e.target.value))
+                  }
+                  className={`w-full px-4 py-2.5 bg-white border rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.subjectId ? "border-red-500" : "border-slate-200"}`}
                 >
                   <option value="">Select Subject</option>
                   {subjects
-                    .filter(s => !assignedSubjectIds.includes(s.id))
-                    .map(subject => (
+                    .filter((s) => !assignedSubjectIds.includes(s.id))
+                    .map((subject) => (
                       <option key={subject.id} value={subject.id}>
                         {subject.name} ({subject.code})
                       </option>
                     ))}
                 </select>
-                {errors.subjectId && <span className="text-red-500 text-xs mt-1">{errors.subjectId}</span>}
-                {assignedSubjectIds.length === subjects.length && subjects.length > 0 && (
-                  <p className="text-xs text-amber-600 mt-1">All subjects have been assigned to this class</p>
+                {errors.subjectId && (
+                  <span className="text-red-500 text-xs mt-1">
+                    {errors.subjectId}
+                  </span>
                 )}
+                {assignedSubjectIds.length === subjects.length &&
+                  subjects.length > 0 && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      All subjects have been assigned to this class
+                    </p>
+                  )}
               </div>
             </div>
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowModal(false)} className="flex-1">
+              <Button
+                variant="outline"
+                onClick={() => setShowModal(false)}
+                className="flex-1"
+              >
                 Cancel
               </Button>
               <Button onClick={handleSave} loading={saving} className="flex-1">
@@ -437,8 +520,7 @@ const ClassSubjects: React.FC = () => {
             </div>
           </div>
         </BaseModal>
-      </div>
-    </AdminLayout>
+    </div>
   );
 };
 

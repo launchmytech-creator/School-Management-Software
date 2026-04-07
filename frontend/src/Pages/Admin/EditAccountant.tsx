@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import AdminLayout from '../../layouts/AdminLayout';
 import { 
   X,
   Phone,
@@ -89,17 +88,14 @@ const EditAccountant: React.FC = () => {
 
   if (fetching) {
     return (
-      <AdminLayout title="Edit Accountant">
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="size-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="size-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+      </div>
     );
   }
 
   return (
-    <AdminLayout title="Edit Accountant">
-      <div className="max-w-4xl mx-auto pb-20">
+    <div className="max-w-4xl mx-auto pb-20">
         {/* Header */}
         <div className="mb-10">
           <div className="flex items-center gap-2 mb-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
@@ -231,9 +227,8 @@ const EditAccountant: React.FC = () => {
               {loading ? 'Saving...' : 'Update Accountant'}
             </button>
           </div>
-        </form>
-      </div>
-    </AdminLayout>
+      </form>
+    </div>
   );
 };
 

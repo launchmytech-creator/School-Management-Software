@@ -1,5 +1,4 @@
 import React from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import { useNotification } from '../../context/NotificationContext';
@@ -23,7 +22,7 @@ const FeeDefaulters: React.FC = () => {
   } = useFeeDefaultersPage();
 
   return (
-    <AdminLayout title="Fee Defaulters">
+    <>
       <div className="space-y-8 pb-12">
         <PageHeader 
           title="Fee Defaulters"
@@ -160,7 +159,7 @@ const FeeDefaulters: React.FC = () => {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </>
   );
 };
 

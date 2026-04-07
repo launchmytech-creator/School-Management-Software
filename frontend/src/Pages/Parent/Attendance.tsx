@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ParentLayout from '../../layouts/ParentLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useParentChildren } from '../../hooks/queries';
 import { attendanceService } from '../../services/attendanceService';
@@ -175,16 +174,13 @@ const ParentAttendance: React.FC = () => {
 
   if (childrenLoading) {
     return (
-      <ParentLayout title="Attendance Tracker">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="w-10 h-10 border-4 border-[#4A9FD4] border-t-transparent rounded-full animate-spin" />
         </div>
-      </ParentLayout>
     );
   }
 
   return (
-    <ParentLayout title="Attendance Tracker">
       <div className="p-6 max-w-5xl mx-auto space-y-5 pb-24">
 
         {/* Back + title */}
@@ -362,37 +358,36 @@ const ParentAttendance: React.FC = () => {
             </span>
           ))}
         </div>
-      </div>
 
-      {/* Month summary sticky footer */}
-      <div className="fixed bottom-0 left-56 right-0 z-30">
-        <div className="mx-6 mb-4 bg-[#1E3A5F] rounded-2xl px-6 py-3.5 flex items-center justify-between shadow-xl">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#4A9FD4] text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              info
+        {/* Month summary sticky footer */}
+        <div className="fixed bottom-0 left-56 right-0 z-30">
+          <div className="mx-6 mb-4 bg-[#1E3A5F] rounded-2xl px-6 py-3.5 flex items-center justify-between shadow-xl">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#4A9FD4] text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                info
+              </span>
+              <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Month Summary</span>
+            </div>
+            <div className="flex items-center gap-6 text-xs font-bold">
+              <span className="flex items-center gap-1.5 text-white">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                Present: {monthPresent}
+              </span>
+              <span className="flex items-center gap-1.5 text-white">
+                <span className="w-2 h-2 rounded-full bg-rose-400" />
+                Absent: {monthAbsent}
+              </span>
+              <span className="flex items-center gap-1.5 text-white">
+                <span className="w-2 h-2 rounded-full bg-slate-400" />
+                School Open: {monthOpenDays}
+              </span>
+            </div>
+            <span className={`text-[11px] font-black text-white px-3 py-1 rounded-full ${statusColor}`}>
+              STATUS: {statusLabel}
             </span>
-            <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Month Summary</span>
           </div>
-          <div className="flex items-center gap-6 text-xs font-bold">
-            <span className="flex items-center gap-1.5 text-white">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              Present: {monthPresent}
-            </span>
-            <span className="flex items-center gap-1.5 text-white">
-              <span className="w-2 h-2 rounded-full bg-rose-400" />
-              Absent: {monthAbsent}
-            </span>
-            <span className="flex items-center gap-1.5 text-white">
-              <span className="w-2 h-2 rounded-full bg-slate-400" />
-              School Open: {monthOpenDays}
-            </span>
-          </div>
-          <span className={`text-[11px] font-black text-white px-3 py-1 rounded-full ${statusColor}`}>
-            STATUS: {statusLabel}
-          </span>
         </div>
       </div>
-    </ParentLayout>
   );
 };
 

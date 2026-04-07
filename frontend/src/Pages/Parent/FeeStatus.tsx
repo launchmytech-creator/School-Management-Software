@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import ParentLayout from '../../layouts/ParentLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useParentChildren } from '../../hooks/queries';
 import { feeService } from '../../services/feeService';
@@ -173,16 +172,13 @@ const ParentFeeStatus: React.FC = () => {
 
   if (childrenLoading || settingsLoading) {
     return (
-      <ParentLayout title="Fee Status">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="w-10 h-10 border-4 border-[#4A9FD4] border-t-transparent rounded-full animate-spin" />
         </div>
-      </ParentLayout>
     );
   }
 
   return (
-    <ParentLayout title="Fee Status">
       <div className="p-8 max-w-5xl mx-auto space-y-6 pb-10">
 
         {/* School header */}
@@ -378,7 +374,6 @@ const ParentFeeStatus: React.FC = () => {
           © {new Date().getFullYear()} EduManage School Management System. All rights reserved.
         </p>
       </div>
-    </ParentLayout>
   );
 };
 

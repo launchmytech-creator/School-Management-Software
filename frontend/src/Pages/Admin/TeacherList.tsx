@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import AdminLayout from "../../layouts/AdminLayout";
 import { 
   Search, 
   Trash2, 
@@ -10,9 +9,8 @@ import {
   Phone,
   BookOpen
 } from "lucide-react";
-import { teacherService } from "../../services/teacherService";
+import { useTeachers } from "../../hooks/queries/useTeachers";
 import { useNotification } from "../../context/NotificationContext";
-import type { Teacher } from "../../types/teacher";
 import CreateTeacherModal from "../../components/teacher/CreateTeacherModal";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
@@ -24,31 +22,12 @@ const TeacherList: React.FC = () => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   
-  // State
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   
-  // Modals
+  const { data: teachers = [], isLoading, refetch } = useTeachers();
+
   const [isCreateTeacherOpen, setIsCreateTeacherOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, teacherId: null as number | null });
-
-  // Fetch Data
-  const fetchTeachers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await teacherService.getTeachers();
-      setTeachers(data);
-    } catch {
-      showNotification("Failed to fetch teachers", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [showNotification]);
-
-  useEffect(() => {
-    fetchTeachers();
-  }, [fetchTeachers]);
 
   const handleDeleteTeacher = (id: number) => {
     setDeleteDialog({ isOpen: true, teacherId: id });
@@ -61,7 +40,7 @@ const TeacherList: React.FC = () => {
 
   const handleReset = () => {
     setSearchTerm("");
-    fetchTeachers();
+    refetch();
   };
 
   const filteredTeachers = teachers.filter(t => 
@@ -70,7 +49,7 @@ const TeacherList: React.FC = () => {
   );
 
   return (
-    <AdminLayout title="Teachers">
+    <>
       <div className="space-y-8 pb-10">
         <PageHeader 
           title="Teacher Records"
@@ -103,7 +82,7 @@ const TeacherList: React.FC = () => {
           searchPlaceholder="Search by name or email..."
         />
 
-        {loading ? (
+        {isLoading ? (
           <div className="bg-white rounded-[2rem] h-96 flex items-center justify-center border border-slate-100 shadow-sm text-center">
             <div className="flex flex-col items-center gap-4">
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500/20 border-t-blue-500"></div>
@@ -195,7 +174,7 @@ const TeacherList: React.FC = () => {
       <CreateTeacherModal 
         isOpen={isCreateTeacherOpen} 
         onClose={() => setIsCreateTeacherOpen(false)} 
-        onSuccess={fetchTeachers}
+        onSuccess={() => refetch()}
       />
 
       <ConfirmDialog
@@ -207,7 +186,7 @@ const TeacherList: React.FC = () => {
         confirmText="Delete"
         variant="danger"
       />
-    </AdminLayout>
+    </>
   );
 };
 

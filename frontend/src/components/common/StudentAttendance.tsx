@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import TeacherLayout from '../../layouts/TeacherLayout';
-import AccountantLayout from '../../layouts/AccountantLayout';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import AttendanceStatsGrid from '../../components/common/AttendanceStatsGrid';
@@ -284,6 +282,27 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
         />
       )}
 
+      {!isTeacher && (
+        <PageHeader 
+          title="Student Attendance"
+          subtitle="View and mark attendance for classes"
+          breadcrumb={{
+            links: [
+              { label: "Dashboard", href: `${basePath}/dashboard` },
+              { label: "Attendance", active: true }
+            ]
+          }}
+          actions={[
+            {
+              label: "Mark All Present",
+              icon: CheckCircle,
+              onClick: handleMarkAllPresent,
+              disabled: students.length === 0 || !hasChanges
+            }
+          ]}
+        />
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <label className="block text-sm font-bold text-slate-700 mb-2">
@@ -504,11 +523,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
     </div>
   );
 
-  if (isTeacher) {
-    return <TeacherLayout title="Mark Attendance">{renderContent()}</TeacherLayout>;
-  }
-
-  return <AccountantLayout title="Mark Attendance">{renderContent()}</AccountantLayout>;
+  return renderContent();
 };
 
 export default StudentAttendance;

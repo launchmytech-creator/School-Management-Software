@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import AdminLayout from "../../layouts/AdminLayout";
-import AccountantLayout from "../../layouts/AccountantLayout";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import EmptyState from "../../components/common/EmptyState";
@@ -570,11 +568,7 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
     </div>
   );
 
-  if (layout === "accountant") {
-    return <AccountantLayout title={layoutTitle}>{content}</AccountantLayout>;
-  }
-
-  return <AdminLayout title="Exam Results">{content}</AdminLayout>;
+  return content;
 };
 
 export default ExamResults;

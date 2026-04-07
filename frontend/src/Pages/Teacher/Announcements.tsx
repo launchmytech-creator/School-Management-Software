@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import TeacherLayout from "../../layouts/TeacherLayout";
 import {
   announcementService,
   type Announcement,
@@ -63,7 +62,6 @@ const TeacherAnnouncements: React.FC = () => {
   };
 
   return (
-    <TeacherLayout title="Announcements">
       <div className="space-y-6 pb-12">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -179,7 +177,6 @@ const TeacherAnnouncements: React.FC = () => {
           </div>
         )}
       </div>
-    </TeacherLayout>
   );
 };
 

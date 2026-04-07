@@ -1,22 +1,61 @@
+import React from "react";
 import { Routes, Route } from "react-router-dom";
 import RequiresActiveYear from "../components/academicYear/RequiresActiveYear";
+import UpgradePrompt from "../components/common/UpgradePrompt";
+import { useAuth } from "../context/AuthContext";
 import TeacherDashboard from "../Pages/Teacher/Dashboard";
-import StudentAttendance from "../Pages/Teacher/StudentAttendance";
 import TeacherSyllabus from "../Pages/Teacher/Syllabus";
 import TeacherAnnouncements from "../Pages/Teacher/Announcements";
+import TeacherLayout from "../layouts/TeacherLayout";
+import StudentAttendance from "../components/common/StudentAttendance";
+import RequiresActiveYear from "../components/academicYear/RequiresActiveYear";
 
-const withActiveYear = (element: React.ReactElement) => (
-  <RequiresActiveYear>{element}</RequiresActiveYear>
-);
+const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({
+  feature,
+  children,
+}) => {
+  const { hasFeature } = useAuth();
+  if (!hasFeature(feature)) {
+    return <UpgradePrompt feature={feature} />;
+  }
+  return <>{children}</>;
+};
 
 const TeacherRoutes = () => (
-  <Routes>
-    <Route path="dashboard" element={<TeacherDashboard />} />
-    <Route path="my-classes" element={withActiveYear(<TeacherSyllabus customTitle="My Classes" isEditable={true} />)} />
-    <Route path="attendance" element={withActiveYear(<StudentAttendance />)} />
-    <Route path="syllabus" element={withActiveYear(<TeacherSyllabus />)} />
-    <Route path="announcements" element={<TeacherAnnouncements />} />
-  </Routes>
+  <TeacherLayout>
+    <Routes>
+      <Route path="dashboard" element={<TeacherDashboard />} />
+      <Route
+        path="my-classes"
+        element={
+          <RequiresActiveYear>
+            <TeacherSyllabus customTitle="My Classes" isEditable={true} />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="attendance"
+        element={
+          <PlanGuard feature="attendance">
+            <RequiresActiveYear>
+              <StudentAttendance layout="teacher" />
+            </RequiresActiveYear>
+          </PlanGuard>
+        }
+      />
+      <Route
+        path="syllabus"
+        element={
+          <PlanGuard feature="syllabus_tracking">
+            <RequiresActiveYear>
+              <TeacherSyllabus />
+            </RequiresActiveYear>
+          </PlanGuard>
+        }
+      />
+      <Route path="announcements" element={<TeacherAnnouncements />} />
+    </Routes>
+  </TeacherLayout>
 );
 
 export default TeacherRoutes;

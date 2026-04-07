@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import AdminLayout from "../../layouts/AdminLayout";
 import { 
   Search, Eye, Edit2, Trash2, 
   UserPlus, Loader2, GraduationCap, 
@@ -73,7 +72,7 @@ const ParentList: React.FC = () => {
   });
 
   return (
-    <AdminLayout title="Parents">
+    <>
       <div className="space-y-8 pb-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <PageHeader 
@@ -150,7 +149,7 @@ const ParentList: React.FC = () => {
                    </div>
                 </div>
               </div>
-            ))}
+              ))}
           </div>
         ) : (
           <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
@@ -240,7 +239,7 @@ const ParentList: React.FC = () => {
         confirmText="Deactivate"
         variant="warning"
       />
-    </AdminLayout>
+    </>
   );
 };
 

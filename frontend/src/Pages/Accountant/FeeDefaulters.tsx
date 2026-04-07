@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import AccountantLayout from '../../layouts/AccountantLayout';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
@@ -94,7 +93,6 @@ const AccountantFeeDefaulters: React.FC = () => {
   };
 
   return (
-    <AccountantLayout title="Fee Defaulters" subtitle="View and manage students with pending fees">
       <div className="space-y-6 pb-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-gradient-to-r from-rose-500 to-rose-600 rounded-xl p-6 text-white">
@@ -284,7 +282,6 @@ const AccountantFeeDefaulters: React.FC = () => {
           )}
         </BaseModal>
       </div>
-    </AccountantLayout>
   );
 };
 

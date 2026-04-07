@@ -7,8 +7,6 @@ import { FeeWaiverModal } from './FeeWaiverModal';
 import { FeeTransactionEditModal } from './FeeTransactionEditModal';
 import { FeeStatsCards } from './FeeStatsCards';
 import PageHeader from '../common/PageHeader';
-import AdminLayout from '../../layouts/AdminLayout';
-import AccountantLayout from '../../layouts/AccountantLayout';
 
 interface FeeCollectionPageProps {
   layout: 'admin' | 'accountant';
@@ -29,10 +27,8 @@ const FeeCollectionPage: React.FC<FeeCollectionPageProps> = ({
     handlers,
   } = useFeeCollectionPage();
 
-  const Layout = layout === 'admin' ? AdminLayout : AccountantLayout;
-
   return (
-    <Layout title="Fee Collection">
+    <>
       <div className="space-y-6 pb-12">
         <PageHeader
           title="Fee Collection"
@@ -155,7 +151,7 @@ const FeeCollectionPage: React.FC<FeeCollectionPageProps> = ({
           />
         )}
       </div>
-    </Layout>
+    </>
   );
 };
 

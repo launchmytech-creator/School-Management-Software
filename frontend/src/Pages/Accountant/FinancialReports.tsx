@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AccountantLayout from '../../layouts/AccountantLayout';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
@@ -115,7 +114,6 @@ const FinancialReports: React.FC = () => {
   };
 
   return (
-    <AccountantLayout title="Financial Reports" subtitle="Generate and view financial reports">
       <div className="space-y-6 pb-12">
         {summary && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -315,7 +313,6 @@ const FinancialReports: React.FC = () => {
           />
         )}
       </div>
-    </AccountantLayout>
   );
 };
 

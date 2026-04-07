@@ -6,14 +6,16 @@ import AppHeader from "../components/common/AppHeader";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
-  title: string;
+  title?: string;
 }
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
   const location = useLocation();
 
   React.useEffect(() => {
-    document.title = `${title} | EduManage`;
+    if (title) {
+      document.title = `${title} | EduManage`;
+    }
   }, [title]);
 
   return (

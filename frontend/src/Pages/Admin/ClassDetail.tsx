@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import AdminLayout from "../../layouts/AdminLayout";
+
 import PageHeader from "../../components/common/PageHeader";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
@@ -41,26 +41,21 @@ const ClassDetail: React.FC = () => {
 
   if (loadingClass) {
     return (
-      <AdminLayout title="Class Details">
-        <div className="flex items-center justify-center h-64">
-          <LoadingSpinner size="lg" message="Loading class details..." />
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center h-64">
+        <LoadingSpinner size="lg" message="Loading class details..." />
+      </div>
     );
   }
 
   if (!classData) {
     return (
-      <AdminLayout title="Class Details">
-        <div className="text-center py-12">
-          <p className="text-slate-500">Class not found</p>
-        </div>
-      </AdminLayout>
+      <div className="text-center py-12">
+        <p className="text-slate-500">Class not found</p>
+      </div>
     );
   }
 
   return (
-    <AdminLayout title="Class Details">
       <div className="space-y-6 pb-12">
         <PageHeader
           title={`${classData.name} - Section ${classData.section || 'N/A'}`}
@@ -153,7 +148,6 @@ const ClassDetail: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
 
       <ConfirmDialog
         isOpen={deleteDialog.isOpen}
@@ -165,7 +159,7 @@ const ClassDetail: React.FC = () => {
         variant="danger"
         loading={deleteDialog.loading}
       />
-    </AdminLayout>
+    </div>
   );
 };
 

@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import ParentLayout from '../../layouts/ParentLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { useParentDashboard } from '../../hooks/queries';
@@ -100,20 +99,17 @@ const ParentDashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <ParentLayout title="Parent Dashboard">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="flex flex-col items-center gap-3">
             <div className="w-10 h-10 border-4 border-[#4A9FD4] border-t-transparent rounded-full animate-spin" />
             <p className="text-sm text-slate-400 font-medium">Loading dashboard…</p>
           </div>
         </div>
-      </ParentLayout>
     );
   }
 
   if (children.length === 0) {
     return (
-      <ParentLayout title="Parent Dashboard">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <span className="material-symbols-outlined text-6xl text-slate-200 block mb-4">family_restroom</span>
@@ -121,12 +117,10 @@ const ParentDashboard: React.FC = () => {
             <p className="text-sm text-slate-400">Contact school administration to link your children.</p>
           </div>
         </div>
-      </ParentLayout>
     );
   }
 
   return (
-    <ParentLayout title="Parent Dashboard">
       <div className="p-8 space-y-6 max-w-6xl mx-auto">
         <div className="flex items-center gap-1 border-b border-slate-200">
           {children.map((child) => (
@@ -309,7 +303,6 @@ const ParentDashboard: React.FC = () => {
           </>
         )}
       </div>
-    </ParentLayout>
   );
 };
 

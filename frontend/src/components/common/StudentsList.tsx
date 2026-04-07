@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import AdminLayout from "../../layouts/AdminLayout";
-import AccountantLayout from "../../layouts/AccountantLayout";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import EmptyState from "../../components/common/EmptyState";
@@ -785,18 +783,7 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
     </div>
   );
 
-  if (isAdmin) {
-    return <AdminLayout title="Students">{renderContent()}</AdminLayout>;
-  }
-
-  return (
-    <AccountantLayout
-      title="Students"
-      subtitle="View student information and fee details"
-    >
-      {renderContent()}
-    </AccountantLayout>
-  );
+  return renderContent();
 };
 
 export default StudentsList;

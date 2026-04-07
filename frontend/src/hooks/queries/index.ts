@@ -8,3 +8,5 @@ export { useFeeStructuresGrouped, useFeeStructures } from './useFeeStructures';
 export { useAttendance, useClassAttendance } from './useAttendance';
 export { useAdminDashboard, useAccountantDashboard, useTeacherDashboard, useParentDashboard } from './useDashboard';
 export { useParentChildren } from './useParentChildren';
+export { useAssignments, useAssignmentById, useCreateAssignment, useUpdateAssignment, useDeleteAssignment, useAssignmentSubmissions, useGradeSubmission } from './useAssignments';
+export { useSchools, useSchoolById, useSchoolStats, useRecentSchools, useCreateSchool, useUpdateSchool, useToggleSchoolStatus } from './useSchools';

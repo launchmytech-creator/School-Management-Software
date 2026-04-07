@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import TeacherLayout from '../../layouts/TeacherLayout';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
@@ -340,16 +339,13 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
 
   if (loading) {
     return (
-      <TeacherLayout title={pageTitle}>
         <div className="flex items-center justify-center h-96">
           <div className="animate-pulse text-slate-400">Loading syllabus data...</div>
         </div>
-      </TeacherLayout>
     );
   }
 
   return (
-    <TeacherLayout title={pageTitle}>
       <div className="space-y-6 pb-12">
         <PageHeader 
           title={pageTitle}
@@ -602,7 +598,6 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
           </div>
         )}
       </div>
-    </TeacherLayout>
   );
 };
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import AdminLayout from "../../layouts/AdminLayout";
 import { 
   User, Mail, Phone, Calendar, 
   ChevronLeft, Loader2, Clock,
@@ -58,20 +57,17 @@ const AccountantProfile: React.FC = () => {
 
   if (loading) {
     return (
-      <AdminLayout title="Accountant Profile">
-        <div className="h-[60vh] flex flex-col items-center justify-center gap-4 text-slate-400">
-          <Loader2 className="size-12 animate-spin text-blue-500 opacity-50" />
-          <p className="font-display font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">Loading Profile...</p>
-        </div>
-      </AdminLayout>
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-4 text-slate-400">
+        <Loader2 className="size-12 animate-spin text-blue-500 opacity-50" />
+        <p className="font-display font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">Loading Profile...</p>
+      </div>
     );
   }
 
   if (!accountant) return null;
 
   return (
-    <AdminLayout title={`Profile: ${accountant.fullName}`}>
-      <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-20">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -202,10 +198,9 @@ const AccountantProfile: React.FC = () => {
                 <p className="text-xs font-medium mt-1">Staff attendance tracking coming soon</p>
               </div>
             </div>
-          </div>
         </div>
       </div>
-    </AdminLayout>
+    </div>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
+
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
@@ -167,8 +167,7 @@ const Announcements: React.FC = () => {
   };
 
   return (
-    <AdminLayout title="Announcements">
-      <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
         <PageHeader 
           title="Announcements"
           subtitle="Create and manage school-wide announcements"
@@ -316,8 +315,7 @@ const Announcements: React.FC = () => {
           </div>
         </BaseModal>
       </div>
-    </AdminLayout>
-  );
-};
+    );
+  };
 
 export default Announcements;

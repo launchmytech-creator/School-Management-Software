@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
+import PageHeader from '../../components/common/PageHeader';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { academicYearService } from '../../services/academicYearService';
 import { useNotification } from '../../context/NotificationContext';
@@ -99,26 +99,25 @@ const AcademicYearsPage: React.FC = () => {
   };
 
   return (
-    <AdminLayout title="Academic Years">
+    <>
       <div className="space-y-8 pb-12">
-        {/* Header Section */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-              <span>Settings</span>
-              <span className="text-slate-300">/</span>
-              <span className="text-blue-500">Academic Years</span>
-            </div>
-            <h1 className="text-4xl font-display font-black text-slate-900 tracking-tight">Academic Years</h1>
-          </div>
-          <Button 
-            onClick={handleOpenCreateModal}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-6 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 active:scale-95"
-          >
-            <Plus className="size-5" />
-            Add New Year
-          </Button>
-        </div>
+      <PageHeader
+        title="Academic Years"
+        subtitle="Manage and set the active academic year for the school"
+        breadcrumb={{
+          links: [
+            { label: "Settings", href: "/admin/school-settings" },
+            { label: "Academic Years", active: true }
+          ]
+        }}
+        actions={[
+          {
+            label: "Add New Year",
+            icon: Plus,
+            onClick: handleOpenCreateModal
+          }
+        ]}
+      />
 
         {/* Table Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -337,7 +336,7 @@ const AcademicYearsPage: React.FC = () => {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 };
 

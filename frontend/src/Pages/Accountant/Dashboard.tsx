@@ -1,6 +1,5 @@
 import React, { useState, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import AccountantLayout from "../../layouts/AccountantLayout";
 import AdminStatCard from "../../components/dashboard/AdminStatCard";
 import { useAccountantDashboard } from "../../hooks/queries";
 import { formatCurrency } from "../../lib/utils";
@@ -149,10 +148,6 @@ const AccountantDashboard: React.FC = () => {
   ];
 
   return (
-    <AccountantLayout
-      title="Dashboard"
-      subtitle="Overview of your financial metrics"
-    >
       <div className="space-y-10 pb-12">
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -370,7 +365,6 @@ const AccountantDashboard: React.FC = () => {
           </>
         )}
       </div>
-    </AccountantLayout>
   );
 };
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { authService } from '../services/authService';
 import type { AuthUser, LoginCredentials } from '../types/auth';
 
@@ -8,6 +8,7 @@ export interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<AuthUser>;
   logout: () => void;
   isAuthenticated: boolean;
+  hasFeature: (feature: string) => boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,25 +43,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, []);
 
-  const login = async (credentials: LoginCredentials): Promise<AuthUser> => {
+  const login = useCallback(async (credentials: LoginCredentials): Promise<AuthUser> => {
     const response = await authService.login(credentials);
     setUser(response.user);
     setLoading(false);
     return response.user;
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     authService.logout();
     setUser(null);
-  };
+  }, []);
 
-  const value = {
+  const hasFeature = useCallback((feature: string): boolean => {
+    if (!user?.subscriptionFeatures) return false;
+    return user.subscriptionFeatures[feature] === true;
+  }, [user?.subscriptionFeatures]);
+
+  const value = useMemo(() => ({
     user,
     loading,
     login,
     logout,
     isAuthenticated: !!user,
-  };
+    hasFeature,
+  }), [user, loading, hasFeature]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

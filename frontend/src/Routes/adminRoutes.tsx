@@ -1,16 +1,18 @@
-import { lazy, Suspense } from "react";
+import React from "react";
 import { Routes, Route } from "react-router-dom";
 import RequiresActiveYear from "../components/academicYear/RequiresActiveYear";
-import { LoadingSpinner } from "../components/common/LoadingSpinner";
+import UpgradePrompt from "../components/common/UpgradePrompt";
+import { useAuth } from "../context/AuthContext";
+import AdminLayout from "../layouts/AdminLayout";
 import AdminDashboard from "../Pages/Admin/Dashboard";
 import AcademicYearsPage from "../Pages/Admin/AcademicYearsPage";
 import Classes from "../Pages/Admin/Classes";
 import ClassDetail from "../Pages/Admin/ClassDetail";
 import ParentList from "../Pages/Admin/ParentList";
-import Students from "../Pages/Admin/Students";
 import AddStudent from "../Pages/Admin/AddStudent";
 import EditStudent from "../Pages/Admin/EditStudent";
 import StudentProfile from "../components/common/StudentProfile";
+import StudentsList from "../components/common/StudentsList";
 import TeacherList from "../Pages/Admin/TeacherList";
 import TeacherAllocation from "../Pages/Admin/TeacherAllocation";
 import TeacherProfile from "../Pages/Admin/TeacherProfile";
@@ -20,8 +22,8 @@ import EditAccountant from "../Pages/Admin/EditAccountant";
 import AccountantProfile from "../Pages/Admin/AccountantProfile";
 import FeeCollection from "../Pages/Admin/FeeCollection";
 import FeeDefaulters from "../Pages/Admin/FeeDefaulters";
-import Exams from "../Pages/Admin/Exams";
-import ExamResults from "../Pages/Admin/ExamResults";
+import ExamsList from "../components/common/ExamsList";
+import ExamResults from "../components/common/ExamResults";
 import Subjects from "../Pages/Admin/Subjects";
 import Chapters from "../Pages/Admin/Chapters";
 import ClassSubjects from "../Pages/Admin/ClassSubjects";
@@ -31,104 +33,272 @@ import TeacherAttendancePage from "../Pages/Admin/TeacherAttendancePage";
 import Announcements from "../Pages/Admin/Announcements";
 import Timetables from "../Pages/Admin/Timetables";
 import SchoolSettingsPage from "../Pages/Admin/SchoolSettingsPage";
+import StudentPromotion from "../Pages/Admin/StudentPromotion";
+import FeeStructures from "../Pages/Admin/FeeStructures";
+import MarksEntry from "../components/common/MarksEntry";
+import Reports from "@/Pages/Admin/Reports";
 
-const StudentPromotion = lazy(() => import("../Pages/Admin/StudentPromotion"));
-const FeeStructures = lazy(() => import("../Pages/Admin/FeeStructures"));
-const MarksEntry = lazy(() => import("../Pages/Admin/MarksEntry"));
-
-const PageLoader = () => (
-  <div className="flex items-center justify-center h-64">
-    <LoadingSpinner size="lg" message="Loading..." />
-  </div>
-);
-
-const withActiveYear = (element: React.ReactElement) => (
-  <RequiresActiveYear>{element}</RequiresActiveYear>
-);
+const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({
+  feature,
+  children,
+}) => {
+  const { hasFeature } = useAuth();
+  if (!hasFeature(feature)) {
+    return <UpgradePrompt feature={feature} />;
+  }
+  return <>{children}</>;
+};
 
 const AdminRoutes = () => (
-  <Routes>
-    <Route path="dashboard" element={<AdminDashboard />} />
-    <Route path="academic-years" element={<AcademicYearsPage />} />
-    <Route path="classes" element={<Classes />} />
-    <Route path="classes/:id" element={withActiveYear(<ClassDetail />)} />
-    <Route path="parents" element={<ParentList />} />
+  <AdminLayout>
+    <Routes>
+      <Route path="dashboard" element={<AdminDashboard />} />
+      <Route path="academic-years" element={<AcademicYearsPage />} />
+      <Route path="classes" element={<Classes />} />
+      <Route
+        path="classes/:id"
+        element={
+          <RequiresActiveYear>
+            <ClassDetail />
+          </RequiresActiveYear>
+        }
+      />
+      <Route path="parents" element={<ParentList />} />
 
-    {/* Student Management */}
-    <Route path="students" element={withActiveYear(<Students />)} />
-    <Route path="add-student" element={withActiveYear(<AddStudent />)} />
-    <Route path="students/:id" element={withActiveYear(<StudentProfile layout="admin" />)} />
-    <Route path="students/:id/edit" element={withActiveYear(<EditStudent />)} />
-    <Route
-      path="student-promotion"
-      element={withActiveYear(<Suspense fallback={<PageLoader />}><StudentPromotion /></Suspense>)}
-    />
+      {/* Student Management */}
+      <Route
+        path="students"
+        element={
+          <RequiresActiveYear>
+            <StudentsList layout="admin" />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="add-student"
+        element={
+          <RequiresActiveYear>
+            <AddStudent />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="students/:id"
+        element={
+          <RequiresActiveYear>
+            <StudentProfile layout="admin" />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="students/:id/edit"
+        element={
+          <RequiresActiveYear>
+            <EditStudent />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="student-promotion"
+        element={
+          <RequiresActiveYear>
+            <StudentPromotion />
+          </RequiresActiveYear>
+        }
+      />
 
-    {/* Teacher Management */}
-    <Route path="teachers" element={ withActiveYear(<TeacherList />)} />
-    <Route
-      path="teacher-allocation"
-      element={withActiveYear(<TeacherAllocation />)}
-    />
-    <Route path="teachers/:id" element={withActiveYear(<TeacherProfile />)} />
+      {/* Teacher Management */}
+      <Route
+        path="teachers"
+        element={
+          <RequiresActiveYear>
+            <TeacherList />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="teacher-allocation"
+        element={
+          <RequiresActiveYear>
+            <PlanGuard feature="teacher_allocation">
+              <TeacherAllocation />
+            </PlanGuard>
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="teachers/:id"
+        element={
+          <RequiresActiveYear>
+            <TeacherProfile />
+          </RequiresActiveYear>
+        }
+      />
 
-    {/* Accountant Management */}
-    <Route path="accountants" element={ withActiveYear(<AccountantList />)} />
-    <Route path="add-accountant" element={withActiveYear(<AddAccountant />)} />
-    <Route
-      path="accountants/:id/edit"
-      element={withActiveYear(<EditAccountant />)}
-    />
-    <Route
-      path="accountants/:id"
-      element={withActiveYear(<AccountantProfile />)}
-    />
+      {/* Accountant Management */}
+      <Route
+        path="accountants"
+        element={
+          <RequiresActiveYear>
+            <AccountantList />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="add-accountant"
+        element={
+          <RequiresActiveYear>
+            <AddAccountant />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="accountants/:id/edit"
+        element={
+          <RequiresActiveYear>
+            <EditAccountant />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="accountants/:id"
+        element={
+          <RequiresActiveYear>
+            <AccountantProfile />
+          </RequiresActiveYear>
+        }
+      />
 
-    {/* Fee Management */}
-    <Route path="fees" element={withActiveYear(<FeeCollection />)} />
-    <Route path="fee-defaulters" element={withActiveYear(<FeeDefaulters />)} />
-    <Route 
-      path="fee-structures" 
-      element={withActiveYear(<Suspense fallback={<PageLoader />}><FeeStructures /></Suspense>)} 
-    />
+      {/* Fee Management */}
+      <Route
+        path="fees"
+        element={
+          <RequiresActiveYear>
+            <FeeCollection />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="fee-defaulters"
+        element={
+          <RequiresActiveYear>
+            <FeeDefaulters />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="fee-structures"
+        element={
+          <RequiresActiveYear>
+            <FeeStructures />
+          </RequiresActiveYear>
+        }
+      />
 
-    {/* Examination */}
-    <Route path="exams" element={withActiveYear(<Exams />)} />
-    <Route path="exam-results" element={withActiveYear(<ExamResults />)} />
-    <Route 
-      path="marks-entry" 
-      element={withActiveYear(<Suspense fallback={<PageLoader />}><MarksEntry /></Suspense>)} 
-    />
+      {/* Examination */}
+      <Route
+        path="exams"
+        element={
+          <RequiresActiveYear>
+            <ExamsList layout="admin" />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="exam-results"
+        element={
+          <RequiresActiveYear>
+            <ExamResults layout="admin" />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="marks-entry"
+        element={
+          <RequiresActiveYear>
+            <MarksEntry />
+          </RequiresActiveYear>
+        }
+      />
 
-    {/* Academic Management */}
-    <Route path="subjects" element={withActiveYear(<Subjects />)} />
-    <Route
-      path="subjects/:subjectId/chapters"
-      element={withActiveYear(<Chapters />)}
-    />
-    <Route path="class-subjects" element={withActiveYear(<ClassSubjects />)} />
-    <Route
-      path="syllabus-tracking"
-      element={ withActiveYear(<SyllabusTracking />)}
-    />
-    <Route path="holidays" element={withActiveYear(<Holidays />)} />
+      {/* Academic Management */}
+      <Route
+        path="subjects"
+        element={
+          <RequiresActiveYear>
+            <Subjects />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="subjects/:subjectId/chapters"
+        element={
+          <RequiresActiveYear>
+            <Chapters />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="class-subjects"
+        element={
+          <RequiresActiveYear>
+            <ClassSubjects />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="syllabus-tracking"
+        element={
+          <RequiresActiveYear>
+            <PlanGuard feature="syllabus_tracking">
+              <SyllabusTracking />
+            </PlanGuard>
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="holidays"
+        element={
+          <RequiresActiveYear>
+            <Holidays />
+          </RequiresActiveYear>
+        }
+      />
 
-    {/* Teacher Attendance */}
-    <Route
-      path="teacher-attendance"
-      element={withActiveYear(<TeacherAttendancePage />)}
-    />
+      {/* Teacher Attendance */}
+      <Route
+        path="teacher-attendance"
+        element={
+          <RequiresActiveYear>
+            <PlanGuard feature="attendance">
+              <TeacherAttendancePage />
+            </PlanGuard>
+          </RequiresActiveYear>
+        }
+      />
 
-    {/* Announcements & Timetables */}
-    <Route path="announcements" element={withActiveYear(<Announcements />)} />
-    <Route path="timetables" element={withActiveYear(<Timetables />)} />
+      {/* Announcements & Timetables */}
+      <Route
+        path="announcements"
+        element={
+          <RequiresActiveYear>
+            <Announcements />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="timetables"
+        element={
+          <RequiresActiveYear>
+            <Timetables />
+          </RequiresActiveYear>
+        }
+      />
 
-    {/* Settings */}
-    <Route
-      path="school-settings"
-      element={withActiveYear(<SchoolSettingsPage />)}
-    />
-  </Routes>
+      {/* Settings */}
+      <Route path="school-settings" element={<SchoolSettingsPage />} />
+    </Routes>
+  </AdminLayout>
 );
 
 export default AdminRoutes;

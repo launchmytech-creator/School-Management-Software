@@ -1,6 +1,5 @@
 import React, { lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import AdminLayout from "../../layouts/AdminLayout";
 import AdminStatCard from "../../components/dashboard/AdminStatCard";
 import PageHeader from "../../components/common/PageHeader";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
@@ -47,11 +46,9 @@ const AdminDashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <AdminLayout title="Dashboard">
-        <div className="flex items-center justify-center h-96">
-          <LoadingSpinner size="lg" message="Loading dashboard..." />
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center h-96">
+        <LoadingSpinner size="lg" message="Loading dashboard..." />
+      </div>
     );
   }
 
@@ -103,94 +100,92 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <AdminLayout title="Dashboard">
-      <div className="space-y-10 pb-12">
-        <PageHeader
-          title="Overview"
-          subtitle={`Welcome back, Admin. Today is ${today}`}
-          breadcrumb={{
-            links: [
-              { label: "Admin", href: "/admin/dashboard" },
-              { label: "Dashboard", active: true },
-            ],
-          }}
-        />
+    <div className="space-y-10 pb-12">
+      <PageHeader
+        title="Overview"
+        subtitle={`Welcome back, Admin. Today is ${today}`}
+        breadcrumb={{
+          links: [
+            { label: "Admin", href: "/admin/dashboard" },
+            { label: "Dashboard", active: true },
+          ],
+        }}
+      />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {statCards.map((stat, index) => (
-            <AdminStatCard key={index} {...stat} />
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Suspense fallback={
-            <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm h-64 flex items-center justify-center">
-              <LoadingSpinner size="md" message="Loading chart..." />
-            </div>
-          }>
-            <AttendanceChart
-              present={attendanceOverview?.present || 0}
-              total={attendanceOverview?.total || 0}
-              onViewDetails={() => navigate("/admin/attendance")}
-            />
-          </Suspense>
-          <Suspense fallback={
-            <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm h-64 flex items-center justify-center">
-              <LoadingSpinner size="md" message="Loading chart..." />
-            </div>
-          }>
-            <FeeStatusChart
-              paid={feeOverview?.collected || 0}
-              pending={feeOverview?.pending || 0}
-              partial={feeOverview?.waived || 0}
-            />
-          </Suspense>
-        </div>
-
-        <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
-          <h3 className="text-lg font-display font-bold text-slate-800 tracking-tight mb-8">
-            Syllabus Completion
-          </h3>
-
-          {syllabusProgress.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-slate-500">No syllabus data available</p>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {syllabusProgress.slice(0, 5).map((item) => {
-                const color = getProgressColor(item.overallPercentage);
-                const displayName = item.classSection
-                  ? `${item.className} - Section ${item.classSection}`
-                  : item.className;
-
-                return (
-                  <div key={item.classId} className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-800 font-bold text-sm tracking-tight">
-                        {displayName}
-                      </span>
-                      <span className="text-accent font-black text-sm">
-                        {item.overallPercentage}%
-                      </span>
-                    </div>
-                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-1000 ease-out"
-                        style={{
-                          width: `${item.overallPercentage}%`,
-                          backgroundColor: color,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((stat, index) => (
+          <AdminStatCard key={index} {...stat} />
+        ))}
       </div>
-    </AdminLayout>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Suspense fallback={
+          <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm h-64 flex items-center justify-center">
+            <LoadingSpinner size="md" message="Loading chart..." />
+          </div>
+        }>
+          <AttendanceChart
+            present={attendanceOverview?.present || 0}
+            total={attendanceOverview?.total || 0}
+            onViewDetails={() => navigate("/admin/attendance")}
+          />
+        </Suspense>
+        <Suspense fallback={
+          <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm h-64 flex items-center justify-center">
+            <LoadingSpinner size="md" message="Loading chart..." />
+          </div>
+        }>
+          <FeeStatusChart
+            paid={feeOverview?.collected || 0}
+            pending={feeOverview?.pending || 0}
+            partial={feeOverview?.waived || 0}
+          />
+        </Suspense>
+      </div>
+
+      <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+        <h3 className="text-lg font-display font-bold text-slate-800 tracking-tight mb-8">
+          Syllabus Completion
+        </h3>
+
+        {syllabusProgress.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-slate-500">No syllabus data available</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {syllabusProgress.slice(0, 5).map((item) => {
+              const color = getProgressColor(item.overallPercentage);
+              const displayName = item.classSection
+                ? `${item.className} - Section ${item.classSection}`
+                : item.className;
+
+              return (
+                <div key={item.classId} className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">
+                      {displayName}
+                    </span>
+                    <span className="text-accent font-black text-sm">
+                      {item.overallPercentage}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-1000 ease-out"
+                      style={{
+                        width: `${item.overallPercentage}%`,
+                        backgroundColor: color,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

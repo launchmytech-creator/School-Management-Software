@@ -28,6 +28,9 @@ export const authService = {
       role: response.role,
       schoolId: response.school_id,
       schoolName: response.school_name,
+      subscriptionPlanId: response.subscription_plan_id || null,
+      subscriptionPlan: response.subscription_plan_name || null,
+      subscriptionFeatures: response.subscription_features || null,
     };
     localStorage.setItem(USER_KEY, JSON.stringify(mappedUser));
     return mappedUser;

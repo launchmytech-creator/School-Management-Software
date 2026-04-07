@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import type { School, SubscriptionTier } from "../../types/school";
+import type { School } from "../../types/school";
+import { PLAN_FEATURE_COMPARISON } from "../../lib/permissions";
 
 interface SchoolDetailDrawerProps {
   isOpen: boolean;
@@ -8,20 +9,13 @@ interface SchoolDetailDrawerProps {
   school: School | null;
 }
 
-const PLAN_FEATURES: Record<SubscriptionTier, string[]> = {
-  BASIC: ["Standard Student Records", "Basic Fee Tracking", "Email Support"],
-  PREMIUM: [
-    "Advanced Student Records",
-    "Online Fee Payments",
-    "Custom Reports",
-    "Priority Email Support",
-  ],
-  BUSINESS: [
-    "Unlimited Student Records",
-    "Advanced Fee Management",
-    "Custom Domain & Email",
-    "Premium Support 24/7",
-  ],
+const FEATURE_DISPLAY_NAMES: Record<string, string> = {
+  fee_management: 'Fee Management',
+  marks_management: 'Marks Management',
+  attendance: 'Attendance Tracking',
+  syllabus_tracking: 'Syllabus Tracking',
+  teacher_allocation: 'Teacher Allocation',
+  analytics: 'Academic Analytics',
 };
 
 const SchoolDetailDrawer: React.FC<SchoolDetailDrawerProps> = ({
@@ -46,8 +40,6 @@ const SchoolDetailDrawer: React.FC<SchoolDetailDrawerProps> = ({
   }, [isOpen]);
 
   if (!shouldRender && !isOpen) return null;
-
-  const features = school ? PLAN_FEATURES[school.plan] : [];
 
   return (
     <div
@@ -187,16 +179,24 @@ const SchoolDetailDrawer: React.FC<SchoolDetailDrawerProps> = ({
                     Subscription Features
                   </p>
                 </div>
-                <div className="space-y-4">
-                  {features.map((feature, idx) => (
-                    <div key={idx} className="flex items-center gap-4 group">
-                      <div className="w-6 h-6 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0 transition-colors group-hover:bg-emerald-100/50">
-                        <span className="material-symbols-outlined text-emerald-500 text-sm font-bold">
-                          check
+                <div className="space-y-3">
+                  {Object.entries(PLAN_FEATURE_COMPARISON[school.plan] || {}).map(([feature, enabled]) => (
+                    <div key={feature} className="flex items-center gap-3 group">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
+                        enabled 
+                          ? 'bg-emerald-50 border border-emerald-100' 
+                          : 'bg-slate-50 border border-slate-100'
+                      }`}>
+                        <span className={`material-symbols-outlined text-sm font-bold ${
+                          enabled ? 'text-emerald-500' : 'text-slate-300'
+                        }`}>
+                          {enabled ? 'check' : 'close'}
                         </span>
                       </div>
-                      <span className="text-sm font-medium text-slate-600 tracking-tight">
-                        {feature}
+                      <span className={`text-sm font-medium tracking-tight ${
+                        enabled ? 'text-slate-600' : 'text-slate-400'
+                      }`}>
+                        {FEATURE_DISPLAY_NAMES[feature] || feature}
                       </span>
                     </div>
                   ))}

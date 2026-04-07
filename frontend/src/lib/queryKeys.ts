@@ -21,6 +21,7 @@ export const queryKeys = {
   teachers: {
     all: ['teachers'] as const,
     byId: (id: string) => ['teachers', id] as const,
+    filtered: (filters: Filters) => ['teachers', 'filtered', filters] as const,
     allocations: (teacherId: number, yearId: number) =>
       ['teachers', teacherId, 'allocations', yearId] as const,
   },
@@ -30,6 +31,21 @@ export const queryKeys = {
     all: ['students'] as const,
     byClass: (classId: string) => ['students', { classId }] as const,
     byId: (id: number) => ['students', id] as const,
+    filtered: (filters: Filters) => ['students', 'filtered', filters] as const,
+  },
+
+  // ── Assignments ─────────────────────────────────
+  assignments: {
+    all: ['assignments'] as const,
+    byId: (id: number) => ['assignments', id] as const,
+    byFilters: (filters: Filters) => ['assignments', 'filtered', filters] as const,
+  },
+
+  // ── Schools (Super Admin) ────────────────────────
+  schools: {
+    all: ['schools'] as const,
+    byId: (id: string) => ['schools', id] as const,
+    filtered: (filters: Filters) => ['schools', 'filtered', filters] as const,
   },
 
   feeTransactions: {

@@ -87,6 +87,13 @@ export const STORAGE_KEYS = {
   SIDEBAR_COLLAPSED: 'sidebar_collapsed',
 } as const;
 
+export const QUERY_STALE_TIME = {
+  REFERENCE: 5 * 60 * 1000,
+  LISTS: 2 * 60 * 1000,
+  DASHBOARD: 30 * 1000,
+  OPERATIONAL: 1 * 60 * 1000,
+} as const;
+
 export const NOTIFICATION_MESSAGES = {
   SUCCESS: {
     CREATE: 'Created successfully',

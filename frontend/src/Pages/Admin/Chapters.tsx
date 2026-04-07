@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import AdminLayout from '../../layouts/AdminLayout';
+
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
@@ -168,8 +168,7 @@ const Chapters: React.FC = () => {
     : subjects.find(s => s.id === parseInt(selectedSubject))?.name || '';
 
   return (
-    <AdminLayout title="Chapters">
-      <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
         <PageHeader
           title="Chapters"
           subtitle={subjectId ? `Managing chapters for: ${selectedSubjectName}` : "Manage chapter content for each subject"}
@@ -379,7 +378,6 @@ const Chapters: React.FC = () => {
           variant="danger"
         />
       </div>
-    </AdminLayout>
   );
 };
 

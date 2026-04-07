@@ -4,14 +4,15 @@ import AdminLayout from "../../layouts/AdminLayout";
 import AdminStatCard from "../../components/dashboard/AdminStatCard";
 import type { School } from "../../types/school";
 import SchoolDetailDrawer from "../../components/superAdmin/SchoolDetailDrawer";
-import { useSchool } from "../../context/SchoolContext";
+import { useSchoolStats, useToggleSchoolStatus } from "../../hooks/queries/useSchools";
 import { usePagination } from "../../hooks/usePagination";
 import { Building2, CheckCircle, XCircle } from "lucide-react";
 
 const Schools: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { schools, stats, loading, toggleSchoolStatus } = useSchool();
+  const { data: schools = [], stats, isLoading: loading } = useSchoolStats();
+  const toggleMutation = useToggleSchoolStatus();
 
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [plan, setPlan] = useState(searchParams.get("plan") || "");
@@ -84,7 +85,7 @@ const Schools: React.FC = () => {
   ];
 
   const handleToggleStatus = async (id: string, currentStatus: boolean) => {
-    await toggleSchoolStatus(id, !currentStatus);
+    await toggleMutation.mutateAsync({ id, status: !currentStatus });
   };
 
   return (

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import AdminLayout from '../../layouts/AdminLayout';
-import AccountantLayout from '../../layouts/AccountantLayout';
+
 import { 
   UserPlus, 
   GraduationCap, 
@@ -434,11 +433,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
     </div>
   );
 
-  if (isAdmin) {
-    return <AdminLayout title={mode === 'create' ? 'Add New Student' : 'Edit Student'}>{renderContent()}</AdminLayout>;
-  }
-
-  return <AccountantLayout title={mode === 'create' ? 'Add New Student' : 'Edit Student'}>{renderContent()}</AccountantLayout>;
+  return renderContent();
 };
 
 export default StudentForm;

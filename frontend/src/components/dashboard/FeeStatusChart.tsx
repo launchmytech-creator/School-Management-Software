@@ -31,10 +31,10 @@ const FeeStatusChart: React.FC<FeeStatusChartProps> = ({ paid, pending, partial 
                 cy="50%"
                 innerRadius={55}
                 outerRadius={75}
-                paddingAngle={5}
+                paddingAngle={1}
                 dataKey="value"
                 stroke="none"
-                cornerRadius={10}
+                cornerRadius={0}
               >
                 {data.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />

@@ -5,12 +5,13 @@ import AdminStatCard from '../../components/dashboard/AdminStatCard';
 import { SubscriptionPieChart } from '../../components/dashboard/DashboardCharts';
 import type { School } from '../../types/school';
 import SchoolDetailDrawer from '../../components/superAdmin/SchoolDetailDrawer';
-import { useSchool } from '../../context/SchoolContext';
+import { useSchoolStats, useRecentSchools } from '../../hooks/queries/useSchools';
 import { Building2, BadgeCheck, CreditCard, Crown, Gem } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { stats, recentSchools, schools, loading } = useSchool();
+  const { data: schools = [], stats, isLoading: loading } = useSchoolStats();
+  const { data: recentSchools = [] } = useRecentSchools(5);
   
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [viewingSchool, setViewingSchool] = useState<School | null>(null);

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '../../services/api';
 import { queryKeys } from '../../lib/queryKeys';
+import { QUERY_STALE_TIME } from '../../lib/constants';
 
 // ── Response Types ──────────────────────────────────────────────────
 
@@ -131,7 +132,7 @@ export const useAdminDashboard = () => {
   return useQuery<AdminDashboardData>({
     queryKey: queryKeys.dashboard.admin,
     queryFn: () => apiRequest<AdminDashboardData>('/dashboard/admin'),
-    staleTime: 30 * 1000, // 30 seconds — dashboards should be fairly fresh
+    staleTime: QUERY_STALE_TIME.DASHBOARD,
   });
 };
 
@@ -139,7 +140,7 @@ export const useAccountantDashboard = () => {
   return useQuery<AccountantDashboardData>({
     queryKey: queryKeys.dashboard.accountant,
     queryFn: () => apiRequest<AccountantDashboardData>('/dashboard/accountant'),
-    staleTime: 30 * 1000,
+    staleTime: QUERY_STALE_TIME.DASHBOARD,
   });
 };
 
@@ -147,7 +148,7 @@ export const useTeacherDashboard = (teacherId: number) => {
   return useQuery<TeacherDashboardData>({
     queryKey: queryKeys.dashboard.teacher(teacherId),
     queryFn: () => apiRequest<TeacherDashboardData>('/dashboard/teacher'),
-    staleTime: 30 * 1000,
+    staleTime: QUERY_STALE_TIME.DASHBOARD,
     enabled: !!teacherId,
   });
 };
@@ -156,7 +157,7 @@ export const useParentDashboard = (parentId: string | number) => {
   return useQuery<ParentDashboardData>({
     queryKey: queryKeys.dashboard.parent(Number(parentId)),
     queryFn: () => apiRequest<ParentDashboardData>('/parent/dashboard'),
-    staleTime: 30 * 1000,
+    staleTime: QUERY_STALE_TIME.DASHBOARD,
     enabled: !!parentId,
   });
 };

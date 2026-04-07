@@ -2,21 +2,23 @@ import { useQuery } from '@tanstack/react-query';
 import { studentService } from '../../services/studentService';
 import type { Student, StudentFilters } from '../../types/student';
 import { queryKeys } from '../../lib/queryKeys';
+import { QUERY_STALE_TIME } from '../../lib/constants';
 
 export const useStudents = (filters: StudentFilters = {}, enabled = true) => {
   return useQuery<Student[]>({
-    queryKey: queryKeys.students.byClass(filters.classId || 'all'),
+    queryKey: queryKeys.students.filtered(filters),
     queryFn: () => studentService.getStudents(filters),
-    staleTime: 1 * 60 * 1000, // 1 minute — students can change more frequently
+    staleTime: QUERY_STALE_TIME.OPERATIONAL,
     enabled: enabled && !!filters.classId,
   });
 };
 
-export const useAllStudents = (filters: StudentFilters = {}) => {
+export const useAllStudents = (filters: StudentFilters = {}, enabled = true) => {
   return useQuery<Student[]>({
-    queryKey: ['students', 'filtered', filters],
+    queryKey: queryKeys.students.filtered(filters),
     queryFn: () => studentService.getStudents(filters),
-    staleTime: 1 * 60 * 1000,
+    staleTime: QUERY_STALE_TIME.OPERATIONAL,
+    enabled,
   });
 };
 

@@ -1,9 +1,9 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { CreateSchoolRequest, SchoolCreateData, SubscriptionTier, School, FeeTerm, SchoolUpdateData, SchoolAdmin, UpdateSchoolAdminData } from '../../types/school';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../layouts/AdminLayout';
 import { useNotification } from '../../context/NotificationContext';
-import { useSchool } from '../../context/SchoolContext';
+import { useCreateSchool, useUpdateSchool } from '../../hooks/queries/useSchools';
 import { getCurrentAcademicYear, getLocalDateString } from '../../lib/utils';
 import { schoolService } from '../../services/schoolService';
 
@@ -24,11 +24,11 @@ const CreateSchool: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { showNotification } = useNotification();
-  const { createSchool: createSchoolContext, updateSchool: updateSchoolContext } = useSchool();
+  const createMutation = useCreateSchool();
+  const updateMutation = useUpdateSchool();
   const editSchool = location.state?.school as School | undefined;
   const isEditMode = !!editSchool;
 
-  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: editSchool?.name || '',
     address: editSchool?.address || '',
@@ -131,8 +131,6 @@ const CreateSchool: React.FC = () => {
       return;
     }
     try {
-      setLoading(true);
-      
       const currentFeeTermObj = feeTermsNumeric.find(t => t.id === feeTerm);
       
       if (isEditMode && editSchool) {
@@ -145,7 +143,7 @@ const CreateSchool: React.FC = () => {
           subscriptionStatus: formData.subscriptionStatus,
           subscriptionEndDate: formData.subscriptionEndDate,
         };
-        await updateSchoolContext(editSchool.id, payload);
+        await updateMutation.mutateAsync({ id: editSchool.id, data: payload });
 
         if (schoolAdmin) {
           const adminUpdates: UpdateSchoolAdminData = {};
@@ -185,15 +183,13 @@ const CreateSchool: React.FC = () => {
             phone: formData.adminPhone,
           }
         };
-        await createSchoolContext(payload);
+        await createMutation.mutateAsync(payload);
       }
       showNotification(`School ${isEditMode ? 'updated' : 'registered'} successfully!`, 'success');
       navigate('/super-admin/schools');
     } catch (error) {
       const message = error instanceof Error ? error.message : `Failed to ${isEditMode ? 'update' : 'register'} school.`;
       showNotification(message, 'error');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -223,7 +219,14 @@ const CreateSchool: React.FC = () => {
           />
 
           <hr className="border-slate-50" />
-          <SubscriptionSettingsForm formData={formData} handleChange={handleChange} errors={errors} />
+          <SubscriptionSettingsForm 
+            formData={formData} 
+            handleChange={handleChange} 
+            errors={errors}
+            selectedPlan={selectedPlan}
+            onPlanChange={setSelectedPlan}
+            isEditMode={isEditMode}
+          />
 
           <hr className="border-slate-50" />
           <PlanSelection selectedPlan={selectedPlan} setSelectedPlan={setSelectedPlan} />
@@ -240,14 +243,14 @@ const CreateSchool: React.FC = () => {
                >
                  Cancel
                </button>
-               <button 
-                 type="submit"
-                 disabled={loading}
-                 className="h-14 px-12 rounded-xl bg-[#4A9FD4] text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200/50 hover:bg-[#4A9FD4]/95 transition-all flex items-center gap-3 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-               >
-                 <span className="material-symbols-outlined">{loading ? 'sync' : isEditMode ? 'save' : 'add_business'}</span>
-                 {loading ? (isEditMode ? 'Updating...' : 'Creating...') : isEditMode ? 'Update School' : 'Create School'}
-               </button>
+                <button 
+                  type="submit"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="h-14 px-12 rounded-xl bg-[#4A9FD4] text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200/50 hover:bg-[#4A9FD4]/95 transition-all flex items-center gap-3 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                >
+                  <span className="material-symbols-outlined">{createMutation.isPending || updateMutation.isPending ? 'sync' : isEditMode ? 'save' : 'add_business'}</span>
+                  {createMutation.isPending || updateMutation.isPending ? (isEditMode ? 'Updating...' : 'Creating...') : isEditMode ? 'Update School' : 'Create School'}
+                </button>
           </div>
         </form>
 

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminLayout from '../../layouts/AdminLayout';
 import { 
   UserPlus, 
   Mail, 
@@ -59,8 +58,7 @@ const AddAccountant: React.FC = () => {
   };
 
   return (
-    <AdminLayout title="Add New Accountant">
-      <div className="max-w-4xl mx-auto pb-20">
+    <div className="max-w-4xl mx-auto pb-20">
         {/* Header */}
         <div className="mb-10">
           <div className="flex items-center gap-2 mb-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
@@ -204,9 +202,8 @@ const AddAccountant: React.FC = () => {
               {loading ? 'Creating...' : 'Create Accountant'}
             </button>
           </div>
-        </form>
-      </div>
-    </AdminLayout>
+      </form>
+    </div>
   );
 };
 

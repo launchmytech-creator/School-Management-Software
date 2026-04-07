@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import AdminLayout from "../../layouts/AdminLayout";
 import { 
   Search, Eye, Edit2, Trash2, 
   UserPlus, Loader2
@@ -101,8 +100,7 @@ const AccountantList: React.FC = () => {
   });
 
   return (
-    <AdminLayout title="Accountants">
-      <div className="space-y-8 pb-10">
+    <div className="space-y-8 pb-10">
         <PageHeader 
           title="Accountant Records"
           subtitle="Manage administrative staff and system accountants"
@@ -237,10 +235,9 @@ const AccountantList: React.FC = () => {
                  </tbody>
               </table>
             )}
-         </div>
-      </div>
+          </div>
 
-      <AccountantDetailsModal 
+      <AccountantDetailsModal
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         accountant={selectedAccountant ? {
@@ -265,7 +262,7 @@ const AccountantList: React.FC = () => {
         confirmText="Deactivate"
         variant="warning"
       />
-    </AdminLayout>
+    </div>
   );
 };
 

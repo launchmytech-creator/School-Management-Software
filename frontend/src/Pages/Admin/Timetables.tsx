@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
@@ -99,8 +98,7 @@ const Timetables: React.FC = () => {
   }, {} as Record<number, TimetableEntry[]>);
 
   return (
-    <AdminLayout title="Timetables">
-      <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
         <PageHeader 
           title="Timetables"
           subtitle="Manage class schedules and periods"
@@ -302,8 +300,7 @@ const Timetables: React.FC = () => {
             </div>
           </div>
         </BaseModal>
-      </div>
-    </AdminLayout>
+    </div>
   );
 };
 

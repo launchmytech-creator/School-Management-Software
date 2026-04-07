@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
@@ -57,8 +56,7 @@ const Attendance: React.FC = () => {
   };
 
   return (
-    <AdminLayout title="Attendance">
-      <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
         <PageHeader 
           title="Student Attendance"
           subtitle="Track and manage daily student attendance"
@@ -253,7 +251,7 @@ const Attendance: React.FC = () => {
           </div>
         </BaseModal>
       </div>
-    </AdminLayout>
+    
   );
 };
 

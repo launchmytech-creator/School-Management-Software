@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import ParentLayout from "../../layouts/ParentLayout";
 import { useAuth } from "../../context/AuthContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useParentChildren } from "../../hooks/queries";
@@ -223,16 +222,13 @@ const ParentExamResults: React.FC = () => {
 
   if (childrenLoading) {
     return (
-      <ParentLayout title="Results & Marks">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="w-10 h-10 border-4 border-[#4A9FD4] border-t-transparent rounded-full animate-spin" />
         </div>
-      </ParentLayout>
     );
   }
 
   return (
-    <ParentLayout title="Results & Marks">
       <div className="p-6 max-w-5xl mx-auto space-y-5 pb-10">
         {/* Back */}
         <button
@@ -479,7 +475,6 @@ const ParentExamResults: React.FC = () => {
           </div>
         )}
       </div>
-    </ParentLayout>
   );
 };
 

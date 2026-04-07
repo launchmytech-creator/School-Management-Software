@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import AdminLayout from "../../layouts/AdminLayout";
-import AccountantLayout from "../../layouts/AccountantLayout";
 import {
   Mail,
   Phone,
@@ -16,6 +14,14 @@ import {
   Clock,
 } from "lucide-react";
 import { ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
 import { studentService } from "../../services/studentService";
 import {
   attendanceService,
@@ -47,10 +53,111 @@ interface CalendarDay {
   holiday?: Holiday;
 }
 
+const SUBJECT_COLORS: Record<string, string> = {
+  Mathematics: "#4A9FD4",
+  Science: "#22c55e",
+  English: "#f97316",
+  History: "#ef4444",
+  Geography: "#a855f7",
+  default: "#64748b",
+};
+
+const subjectColor = (name: string) =>
+  SUBJECT_COLORS[name] || SUBJECT_COLORS.default;
+
+const EXAM_TYPES = ["All", "Class Test", "Unit Test", "Half Yearly", "Final"];
+
+const gradeColor = (grade: string) => {
+  if (["A+", "A"].includes(grade)) return "text-emerald-600 bg-emerald-50";
+  if (["B+", "B"].includes(grade)) return "text-blue-600 bg-blue-50";
+  if (["C+", "C"].includes(grade)) return "text-amber-600 bg-amber-50";
+  return "text-rose-600 bg-rose-50";
+};
+
+const progressColor = (pct: number) => {
+  if (pct >= 85) return { bar: "bg-emerald-500", label: "EXCELLENT" };
+  if (pct >= 70) return { bar: "bg-blue-500", label: "ABOVE AVERAGE" };
+  if (pct >= 50) return { bar: "bg-amber-500", label: "GOOD" };
+  return { bar: "bg-rose-500", label: "NEEDS ATTENTION" };
+};
+
+const subjectIcon = (name: string) => {
+  const n = name.toLowerCase();
+  if (n.includes("math"))
+    return { icon: "calculate", bg: "bg-blue-100", text: "text-blue-600" };
+  if (n.includes("science"))
+    return { icon: "science", bg: "bg-green-100", text: "text-green-600" };
+  if (n.includes("english"))
+    return { icon: "menu_book", bg: "bg-orange-100", text: "text-orange-600" };
+  if (n.includes("history"))
+    return { icon: "history_edu", bg: "bg-red-100", text: "text-red-600" };
+  return { icon: "school", bg: "bg-purple-100", text: "text-purple-600" };
+};
+
+const SubjectCard: React.FC<{ result: StudentResult }> = ({ result }) => {
+  const pct = Math.round((result.marksObtained / result.maxMarks) * 100);
+  const { bar, label } = progressColor(pct);
+  const { icon, bg, text } = subjectIcon(result.subjectName);
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}
+          >
+            <span
+              className={`material-symbols-outlined text-[20px] ${text}`}
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              {icon}
+            </span>
+          </div>
+          <div>
+            <h4 className="font-bold text-slate-900 text-sm">
+              {result.subjectName}
+            </h4>
+            <p className="text-[11px] text-slate-400">
+              Exam: {result.examName}
+            </p>
+          </div>
+        </div>
+        <span
+          className={`text-xs font-black px-2 py-0.5 rounded-lg ${gradeColor(result.grade)}`}
+        >
+          {result.grade}
+        </span>
+      </div>
+      <div className="mb-3">
+        <span className="text-3xl font-black text-slate-900">
+          {result.marksObtained}
+        </span>
+        <span className="text-sm text-slate-400 font-semibold">
+          {" "}
+          / {result.maxMarks}
+        </span>
+      </div>
+      <div className="space-y-1">
+        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${bar}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+          <span>Progress</span>
+          <span className={bar.replace("bg-", "text-")}>{label}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Attendance");
+  const [activeSubject, setActiveSubject] = useState("Mathematics");
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -67,6 +174,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   const [loadingMarks, setLoadingMarks] = useState(false);
   const [feeData, setFeeData] = useState<FeeTransaction[]>([]);
   const [loadingFee, setLoadingFee] = useState(false);
+  const [activeType, setActiveType] = useState("All");
 
   const isAdmin = layout === "admin";
   const basePath = isAdmin ? "/admin" : "/accountant";
@@ -179,7 +287,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   }, [fetchAttendance]);
 
   useEffect(() => {
-    if (activeTab === "Marks") {
+    if (activeTab === "Marks" || activeTab === "Performance") {
       fetchMarks();
     } else if (activeTab === "Fee Status") {
       fetchFeeStatus();
@@ -311,6 +419,38 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
     navigate(`${basePath}/students/${id}/edit`);
   };
 
+  const filteredMarks = marksData.filter(
+    (r) => activeType === "All" || r.examType === activeType,
+  );
+
+  const latestBySubject = filteredMarks.reduce<Record<string, StudentResult>>(
+    (acc, r) => {
+      if (
+        !acc[r.subjectName] ||
+        new Date(r.examDate) > new Date(acc[r.subjectName].examDate)
+      ) {
+        acc[r.subjectName] = r;
+      }
+      return acc;
+    },
+    {},
+  );
+  const subjectCards = Object.values(latestBySubject);
+
+  const allSubjects = [...new Set(marksData.map((r) => r.subjectName))];
+
+  const trendData = (() => {
+    const byExam: Record<string, Record<string, number | string>> = {};
+    marksData.forEach((r) => {
+      const key = r.examName;
+      if (!byExam[key]) byExam[key] = { name: key };
+      byExam[key][r.subjectName] = Math.round(
+        (r.marksObtained / r.maxMarks) * 100,
+      );
+    });
+    return Object.values(byExam);
+  })();
+
   const renderContent = () => (
     <div className="space-y-6 pb-12">
       <div className="flex items-center justify-between">
@@ -409,7 +549,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
 
         <div className="lg:col-span-9 space-y-8">
           <div className="bg-white p-2 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center gap-2">
-            {["Attendance", "Marks", "Fee Status"].map((tab) => (
+            {["Attendance", "Marks", "Performance", "Fee Status"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -625,52 +765,37 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
             <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100">
               {activeTab === "Marks" && (
                 <div>
-                  <div className="flex items-center gap-4 mb-8">
+                  <div className="flex items-center gap-4 mb-6">
                     <Award size={24} className="text-blue-500" />
                     <h3 className="text-xl font-black text-slate-900 tracking-tight">
                       Academic Performance
                     </h3>
                   </div>
 
+                  <div className="flex items-center gap-2 flex-wrap mb-6">
+                    {EXAM_TYPES.map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setActiveType(t)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                          activeType === t
+                            ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
+                            : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+
                   {loadingMarks ? (
                     <div className="flex items-center justify-center h-48">
                       <LoadingSpinner size="md" message="Loading marks..." />
                     </div>
-                  ) : marksData.length > 0 ? (
-                    <div className="space-y-4">
-                      {marksData.map((result, index) => (
-                        <div
-                          key={index}
-                          className="p-6 bg-slate-50 rounded-2xl border border-slate-100"
-                        >
-                          <div className="flex items-center justify-between mb-4">
-                            <div>
-                              <h4 className="text-lg font-black text-slate-900">
-                                {result.subjectName}
-                              </h4>
-                              <p className="text-sm text-slate-500">
-                                {result.examName} • {result.examType} •{" "}
-                                {new Date(result.examDate).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-2xl font-black text-blue-600">
-                                {result.marksObtained}/{result.maxMarks}
-                              </p>
-                              <p className="text-sm font-bold text-slate-500">
-                                Grade: {result.grade}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="w-full bg-slate-200 rounded-full h-3">
-                            <div
-                              className="bg-blue-500 h-3 rounded-full transition-all"
-                              style={{
-                                width: `${(result.marksObtained / result.maxMarks) * 100}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
+                  ) : subjectCards.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {subjectCards.map((r) => (
+                        <SubjectCard key={r.id} result={r} />
                       ))}
                     </div>
                   ) : (
@@ -680,6 +805,96 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                         className="mx-auto text-slate-300 mb-4"
                       />
                       <p className="text-slate-500">No exam results found</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === "Performance" && (
+                <div className="space-y-6">
+                  {loadingMarks ? (
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 flex items-center justify-center">
+                      <LoadingSpinner size="md" message="Loading performance data..." />
+                    </div>
+                  ) : trendData.length > 0 ? (
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                      <h3 className="font-bold text-slate-900 mb-1">
+                        Performance Trend
+                      </h3>
+                      <p className="text-xs text-slate-400 mb-4">
+                        Academic progress over recent examinations
+                      </p>
+
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={trendData}
+                            margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#f1f5f9"
+                            />
+                            <XAxis
+                              dataKey="name"
+                              tick={{ fontSize: 10, fill: "#94a3b8" }}
+                            />
+                            <YAxis
+                              domain={[0, 100]}
+                              tick={{ fontSize: 10, fill: "#94a3b8" }}
+                            />
+                            <Tooltip formatter={(val: number) => [`${val}%`]} />
+                            {allSubjects.map((sub) => (
+                              <Line
+                                key={sub}
+                                type="monotone"
+                                dataKey={sub}
+                                stroke={subjectColor(sub)}
+                                strokeWidth={activeSubject === sub ? 3 : 1.5}
+                                dot={{ r: activeSubject === sub ? 5 : 3 }}
+                              />
+                            ))}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      <div className="flex items-center gap-4 mt-4 flex-wrap">
+                        {allSubjects.map((sub) => (
+                          <button
+                            key={sub}
+                            onClick={() => setActiveSubject(sub)}
+                            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all ${
+                              activeSubject === sub
+                                ? "text-white"
+                                : "text-slate-500 bg-slate-100"
+                            }`}
+                            style={
+                              activeSubject === sub
+                                ? { backgroundColor: subjectColor(sub) }
+                                : {}
+                            }
+                          >
+                            <span
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: subjectColor(sub) }}
+                            />
+                            {sub}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center">
+                      <Award
+                        size={48}
+                        className="mx-auto text-slate-300 mb-4"
+                      />
+                      <p className="text-slate-500 font-semibold">
+                        No exam results found
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Results will appear here once exams are graded.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -918,25 +1133,14 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   );
 
   if (loading) {
-    const Layout = isAdmin ? AdminLayout : AccountantLayout;
     return (
-      <Layout title="Student Profile">
-        <div className="h-96 flex items-center justify-center">
-          <LoadingSpinner size="lg" message="Loading student profile..." />
-        </div>
-      </Layout>
+      <div className="h-96 flex items-center justify-center">
+        <LoadingSpinner size="lg" message="Loading student profile..." />
+      </div>
     );
   }
 
-  if (isAdmin) {
-    return <AdminLayout title="Student Profile">{renderContent()}</AdminLayout>;
-  }
-
-  return (
-    <AccountantLayout title="Student Profile">
-      {renderContent()}
-    </AccountantLayout>
-  );
+  return renderContent();
 };
 
 export default StudentProfile;

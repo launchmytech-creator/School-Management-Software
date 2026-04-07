@@ -1,5 +1,5 @@
 import React from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
+
 import { useStudentPromotionPage } from '../../hooks/useStudentPromotionPage';
 import { PromotionForm, PromotionHistory, StudentSelectionModal } from '../../components/promotion';
 import { Minimize2 } from 'lucide-react';
@@ -42,8 +42,7 @@ const StudentPromotion: React.FC = () => {
   } = useStudentPromotionPage();
 
   return (
-    <AdminLayout title="Student Promotion">
-      <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
         <div className="bg-white rounded-[2rem] border border-slate-100 p-10 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
             <div>
@@ -153,7 +152,6 @@ const StudentPromotion: React.FC = () => {
           toClass={toClass}
         />
       </div>
-    </AdminLayout>
   );
 };
 

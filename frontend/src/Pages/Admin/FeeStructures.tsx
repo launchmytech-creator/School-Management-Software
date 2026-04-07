@@ -1,5 +1,4 @@
 import React from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import { SkeletonTable } from '../../components/common/Skeleton';
@@ -57,8 +56,7 @@ const FeeStructures: React.FC = () => {
   } = useFeeStructuresPage();
 
   return (
-    <AdminLayout title="Fee Structures">
-      <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
         <PageHeader
           title="Fee Structures"
           subtitle="Manage fee structures for different classes"
@@ -199,8 +197,7 @@ const FeeStructures: React.FC = () => {
           variant="danger"
           loading={deleteGroupDialog.loading}
         />
-      </div>
-    </AdminLayout>
+    </div>
   );
 };
 

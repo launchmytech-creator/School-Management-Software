@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
+
 import PageHeader from '../../components/common/PageHeader';
 import { useNotification } from '../../context/NotificationContext';
 import { schoolSettingsService, type SchoolSettings, type UpdateSettingsDto } from '../../services/schoolSettingsService';
@@ -51,21 +51,19 @@ const SchoolSettingsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <AdminLayout title="School Settings">
-        <div className="space-y-6 pb-12">
-          <PageHeader title="School Settings" subtitle="Configure your school preferences" />
-          <div className="bg-white rounded-xl border border-slate-200 p-12 flex items-center justify-center">
-            <div className="animate-pulse text-slate-400">Loading settings...</div>
-          </div>
+      <div className="space-y-6 pb-12">
+        <PageHeader title="School Settings" subtitle="Configure your school preferences" />
+        <div className="bg-white rounded-xl border border-slate-200 p-12 flex items-center justify-center">
+          <div className="animate-pulse text-slate-400">Loading settings...</div>
         </div>
-      </AdminLayout>
+      </div>
     );
   }
 
-  return (
-    <AdminLayout title="School Settings">
+return (
+    <>
       <div className="space-y-6 pb-12">
-        <PageHeader 
+        <PageHeader
           title="School Settings"
           subtitle="Configure your school preferences and policies"
           actions={[
@@ -232,7 +230,7 @@ const SchoolSettingsPage: React.FC = () => {
           </Button>
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 };
 
