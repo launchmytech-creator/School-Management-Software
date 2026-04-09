@@ -42,8 +42,6 @@ const navGroups: NavGroup[] = [
     items: [
       { name: 'Classes', icon: 'school', path: '/admin/classes' },
       { name: 'Subjects', icon: 'menu_book', path: '/admin/subjects' },
-      { name: 'Class Subjects', icon: 'link', path: '/admin/class-subjects' },
-      { name: 'Chapters', icon: 'format_list_numbered', path: '/admin/subjects/1/chapters' },
       { name: 'Syllabus Tracking', icon: 'playlist_add_check', path: '/admin/syllabus-tracking' },
     ],
   },

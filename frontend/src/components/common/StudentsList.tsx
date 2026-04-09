@@ -55,20 +55,14 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
   const isAdmin = layout === "admin";
 
   const [classes, setClasses] = useState<Class[]>([]);
-  const [classStudents, setClassStudents] = useState<
-    Record<string, EnrichedStudent[]>
-  >({});
-  const [loadingClasses, setLoadingClasses] = useState<Set<string>>(new Set());
-  const [errorClasses, setErrorClasses] = useState<Set<string>>(new Set());
-  const [initialLoading, setInitialLoading] = useState(true);
-
+  const [allStudents, setAllStudents] = useState<EnrichedStudent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(
     new Set(),
   );
   const [filters, setFilters] = useState({
     classId: "",
-    section: "",
     academicYear: "",
     status: "",
   });
@@ -81,149 +75,126 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
   const fetchClasses = useCallback(async () => {
     try {
       const data = await classService.getClasses();
+      console.log(data)
       setClasses(data);
     } catch {
       showNotification("Failed to fetch classes", "error");
-    } finally {
-      setInitialLoading(false);
     }
   }, [showNotification]);
+
+  const fetchAllStudents = useCallback(async () => {
+    if (!selectedYear?.id) {
+      setAllStudents([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const studentsData = await studentService.getStudents({
+        academicYear: selectedYear.id,
+      });
+
+      if (isAdmin) {
+        const feeStatusMap: Record<number, FeeStatus> = {};
+        try {
+          const transactions = await feeService.getFeeTransactions({
+            academicYearId: parseInt(selectedYear.id),
+          });
+          const byStudent = new Map<
+            number,
+            { total: number; paid: number; partial: number }
+          >();
+          for (const t of transactions) {
+            const existing = byStudent.get(t.studentId) || {
+              total: 0,
+              paid: 0,
+              partial: 0,
+            };
+            existing.total += 1;
+            if (t.status === "paid") existing.paid += 1;
+            else if (t.status === "partial") existing.partial += 1;
+            byStudent.set(t.studentId, existing);
+          }
+          for (const [studentId, counts] of byStudent) {
+            if (counts.paid === counts.total) {
+              feeStatusMap[studentId] = "Paid";
+            } else if (counts.paid > 0 || counts.partial > 0) {
+              feeStatusMap[studentId] = "Partial";
+            } else {
+              feeStatusMap[studentId] = "Pending";
+            }
+          }
+        } catch {
+          // Fee data unavailable
+        }
+
+        const enrichedData: EnrichedStudent[] = studentsData.map((s) => ({
+          ...s,
+          parentName: s.parentName || "—",
+          feeStatus: feeStatusMap[s.id] || ("N/A" as FeeStatus),
+        }));
+
+        setAllStudents(enrichedData);
+      } else {
+        const enrichedData: EnrichedStudent[] = await Promise.all(
+          studentsData.map(async (s) => {
+            try {
+              const transactions = await feeService.getStudentFeeTransactions(s.id);
+              const totalDue = transactions.reduce(
+                (sum, t) => sum + (t.amountDue || 0),
+                0,
+              );
+              const totalPaid = transactions.reduce(
+                (sum, t) => sum + (t.amountPaid || 0),
+                0,
+              );
+              const balance = totalDue - totalPaid;
+
+              let feeStatusLocal: "paid" | "pending" | "partial" = "pending";
+              if (balance <= 0) feeStatusLocal = "paid";
+              else if (totalPaid > 0) feeStatusLocal = "partial";
+
+              return {
+                ...s,
+                parentName: s.parentName || "—",
+                parentPhone: s.parentPhone || "",
+                totalDue,
+                totalPaid,
+                balance,
+                feeStatusLocal,
+              };
+            } catch {
+              return {
+                ...s,
+                parentName: s.parentName || "—",
+                totalDue: 0,
+                totalPaid: 0,
+                balance: 0,
+                feeStatusLocal: "pending" as const,
+              };
+            }
+          }),
+        );
+
+        setAllStudents(enrichedData);
+      }
+    } catch {
+      showNotification("Failed to fetch students", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedYear, isAdmin, showNotification]);
 
   useEffect(() => {
     fetchClasses();
   }, [fetchClasses]);
 
-  const fetchStudentsForClass = useCallback(
-    async (classObj: Class) => {
-      const classIdStr = String(classObj.id);
-
-      if (classStudents[classIdStr] || loadingClasses.has(classIdStr)) {
-        return;
-      }
-
-      setLoadingClasses((prev) => new Set(prev).add(classIdStr));
-      setErrorClasses((prev) => {
-        const next = new Set(prev);
-        next.delete(classIdStr);
-        return next;
-      });
-
-      try {
-        const data = await studentService.getStudents({ classId: classObj.id });
-
-        if (isAdmin) {
-          const feeStatusMap: Record<number, FeeStatus> = {};
-          try {
-            const transactions = await feeService.getFeeTransactions({
-              academicYearId: selectedYear?.id
-                ? parseInt(selectedYear.id)
-                : undefined,
-            });
-            const byStudent = new Map<
-              number,
-              { total: number; paid: number; partial: number }
-            >();
-            for (const t of transactions) {
-              const existing = byStudent.get(t.studentId) || {
-                total: 0,
-                paid: 0,
-                partial: 0,
-              };
-              existing.total += 1;
-              if (t.status === "paid") existing.paid += 1;
-              else if (t.status === "partial") existing.partial += 1;
-              byStudent.set(t.studentId, existing);
-            }
-            for (const [studentId, counts] of byStudent) {
-              if (counts.paid === counts.total) {
-                feeStatusMap[studentId] = "Paid";
-              } else if (counts.paid > 0 || counts.partial > 0) {
-                feeStatusMap[studentId] = "Partial";
-              } else {
-                feeStatusMap[studentId] = "Pending";
-              }
-            }
-          } catch {
-            // Fee data unavailable
-          }
-
-          const enrichedData: EnrichedStudent[] = data.map((s) => ({
-            ...s,
-            className: s.className || classObj.name || "Unassigned",
-            classSection: s.classSection || classObj.section || "A",
-            parentName: s.parentName || "—",
-            feeStatus: feeStatusMap[s.id] || ("N/A" as FeeStatus),
-          }));
-
-          setClassStudents((prev) => ({ ...prev, [classIdStr]: enrichedData }));
-        } else {
-          const enrichedData: EnrichedStudent[] = await Promise.all(
-            data.map(async (s) => {
-              const studentId = String(s.id);
-
-              try {
-                const transactions = await feeService.getStudentFeeTransactions(
-                  parseInt(studentId),
-                );
-
-                const totalDue = transactions.reduce(
-                  (sum, t) => sum + (t.amountDue || 0),
-                  0,
-                );
-                const totalPaid = transactions.reduce(
-                  (sum, t) => sum + (t.amountPaid || 0),
-                  0,
-                );
-                const balance = totalDue - totalPaid;
-
-                let feeStatusLocal: "paid" | "pending" | "partial" = "pending";
-                if (balance <= 0) feeStatusLocal = "paid";
-                else if (totalPaid > 0) feeStatusLocal = "partial";
-
-                return {
-                  ...s,
-                  className: s.className || classObj.name || "N/A",
-                  classSection: s.classSection || classObj.section || "A",
-                  parentName: s.parentName || "—",
-                  parentPhone: s.parentPhone || "",
-                  totalDue,
-                  totalPaid,
-                  balance,
-                  feeStatusLocal,
-                };
-              } catch {
-                return {
-                  ...s,
-                  className: s.className || classObj.name || "N/A",
-                  classSection: s.classSection || classObj.section || "A",
-                  parentName: s.parentName || "—",
-                  totalDue: 0,
-                  totalPaid: 0,
-                  balance: 0,
-                  feeStatusLocal: "pending" as const,
-                };
-              }
-            }),
-          );
-
-          setClassStudents((prev) => ({ ...prev, [classIdStr]: enrichedData }));
-        }
-      } catch {
-        setErrorClasses((prev) => new Set(prev).add(classIdStr));
-        showNotification(
-          `Failed to load students for ${classObj.name}`,
-          "error",
-        );
-      } finally {
-        setLoadingClasses((prev) => {
-          const next = new Set(prev);
-          next.delete(classIdStr);
-          return next;
-        });
-      }
-    },
-    [classStudents, loadingClasses, selectedYear, isAdmin, showNotification],
-  );
+  useEffect(() => {
+    if (selectedYear?.id) {
+      fetchAllStudents();
+    }
+  }, [selectedYear, fetchAllStudents]);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -235,17 +206,11 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
 
   const handleReset = () => {
     setSearchTerm("");
-    setFilters({ classId: "", section: "", academicYear: "", status: "" });
+    setFilters({ classId: "", academicYear: "", status: "" });
     setExpandedClasses(new Set());
   };
 
   const expandAll = () => {
-    classes.forEach((c) => {
-      const classIdStr = String(c.id);
-      if (!expandedClasses.has(classIdStr) && !loadingClasses.has(classIdStr)) {
-        fetchStudentsForClass(c);
-      }
-    });
     const allKeys = classes.map((c) => c.id.toString());
     setExpandedClasses(new Set(allKeys));
   };
@@ -277,12 +242,6 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
 
   const handleExpandClass = (classObj: Class) => {
     const classIdStr = String(classObj.id);
-    const isCurrentlyExpanded = expandedClasses.has(classIdStr);
-
-    if (!isCurrentlyExpanded) {
-      fetchStudentsForClass(classObj);
-    }
-
     setExpandedClasses((prev) => {
       const next = new Set(prev);
       if (next.has(classIdStr)) {
@@ -295,11 +254,10 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
   };
 
   const getFilteredStudents = (classId: string): EnrichedStudent[] => {
-    const students = classStudents[classId] || [];
+    const students = allStudents.filter((s) => s.currentClassId?.toString() === classId);
 
     return students
       .filter((s) => {
-        if (filters.section && s.classSection !== filters.section) return false;
         if (filters.status && s.status !== filters.status) return false;
         if (searchTerm) {
           const search = searchTerm.toLowerCase();
@@ -318,7 +276,6 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
   };
 
   const stats = useMemo(() => {
-    const allStudents = Object.values(classStudents).flat();
     return {
       totalClasses: classGroups.length,
       totalLoadedStudents: allStudents.length,
@@ -332,7 +289,30 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
         ? allStudents.filter((s) => s.feeStatus === "Pending").length
         : allStudents.filter((s) => s.feeStatusLocal === "pending").length,
     };
-  }, [classStudents, classGroups, isAdmin]);
+  }, [allStudents, classGroups, isAdmin]);
+
+  const matchingClassIds = useMemo(() => {
+    if (!searchTerm.trim()) return [];
+    
+    const search = searchTerm.toLowerCase();
+    return classGroups
+      .map(group => group.classId)
+      .filter(classId => {
+        const students = allStudents.filter(s => 
+          s.currentClassId?.toString() === classId &&
+          (s.fullName?.toLowerCase().includes(search) ||
+           s.parentName?.toLowerCase().includes(search) ||
+           s.admissionNumber?.toLowerCase().includes(search))
+        );
+        return students.length > 0;
+      });
+  }, [searchTerm, allStudents, classGroups]);
+
+  useEffect(() => {
+    if (matchingClassIds.length > 0) {
+      setExpandedClasses(new Set(matchingClassIds));
+    }
+  }, [matchingClassIds]);
 
   const getFeeStatusVariant = (status: string) => {
     switch (status) {
@@ -669,7 +649,7 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
         )}
       </FilterBar>
 
-      {initialLoading ? (
+      {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div
@@ -693,8 +673,6 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
               (c) => c.id.toString() === group.classId,
             );
             const isExpanded = expandedClasses.has(group.classId);
-            const isLoading = loadingClasses.has(group.classId);
-            const hasError = errorClasses.has(group.classId);
             const students = getFilteredStudents(group.classId);
 
             return (
@@ -704,8 +682,8 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
                 classSection={group.classSection}
                 students={students}
                 isExpanded={isExpanded}
-                isLoading={isLoading}
-                hasError={hasError}
+                isLoading={false}
+                hasError={false}
                 onToggle={() => classObj && handleExpandClass(classObj)}
               >
                 {students.length > 0 ? (
@@ -752,9 +730,9 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
                       {students.map(renderStudentRow)}
                     </tbody>
                   </table>
-                ) : (
+                  ) : (
                   <div className="py-8 text-center text-slate-500 text-sm">
-                    {searchTerm || filters.section || filters.status
+                    {searchTerm || filters.status
                       ? "No students match your filters in this class"
                       : "No students in this class"}
                   </div>

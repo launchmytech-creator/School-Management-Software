@@ -31,10 +31,12 @@ export const FEATURE_LABELS: Record<string, string> = {
 };
 
 export const FEATURE_DESCRIPTIONS: Record<string, string> = {
+  fee_management: 'Manage fee structures and collections',
+  marks_management: 'Enter and manage student marks and exam results',
   attendance: 'Track student and teacher attendance records',
-  syllabus_tracking: 'Monitor syllabus completion进度',
+  syllabus_tracking: 'Monitor syllabus completion progress',
   teacher_allocation: 'Allocate teachers to classes and subjects',
-  analytics: 'View academic performance and analytics',
+  analytics: 'View academic performance analytics and reports',
 };
 
 export const PLAN_LABELS: Record<SubscriptionTier, string> = {
@@ -44,9 +46,15 @@ export const PLAN_LABELS: Record<SubscriptionTier, string> = {
 };
 
 export const PLAN_DESCRIPTIONS: Record<SubscriptionTier, string> = {
-  BASIC: 'Fee management and marks tracking',
+  BASIC: 'Fee management and marks management',
   PREMIUM: 'Basic features + Attendance and Syllabus Tracking',
   BUSINESS: 'All features including Analytics and Teacher Allocation',
+};
+
+export const PLAN_SUITABILITY: Record<SubscriptionTier, string> = {
+  BASIC: 'Suitable for schools that only need financial and academic performance tracking',
+  PREMIUM: 'Allows schools to monitor academic progress and student presence',
+  BUSINESS: 'Designed for schools that want complete digital management',
 };
 
 export const hasFeature = (
@@ -94,8 +102,9 @@ export const PLAN_FEATURE_COMPARISON = {
 };
 
 export const ROUTE_FEATURE_MAP: Record<string, string> = {
-  'teacher-attendance': 'attendance',
   'student-attendance': 'attendance',
+  'teacher-attendance': 'attendance',
   'syllabus-tracking': 'syllabus_tracking',
   'teacher-allocation': 'teacher_allocation',
+  'analytics': 'analytics',
 };

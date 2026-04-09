@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { authService } from '../services/authService';
 import type { AuthUser, LoginCredentials } from '../types/auth';
+import { clearQueryCache } from '../lib/queryClient';
 
 export interface AuthContextType {
   user: AuthUser | null;
@@ -44,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = useCallback(async (credentials: LoginCredentials): Promise<AuthUser> => {
+    clearQueryCache();
     const response = await authService.login(credentials);
     setUser(response.user);
     setLoading(false);
@@ -51,6 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
+    clearQueryCache();
     authService.logout();
     setUser(null);
   }, []);

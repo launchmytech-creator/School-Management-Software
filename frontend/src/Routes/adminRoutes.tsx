@@ -25,8 +25,6 @@ import FeeDefaulters from "../Pages/Admin/FeeDefaulters";
 import ExamsList from "../components/common/ExamsList";
 import ExamResults from "../components/common/ExamResults";
 import Subjects from "../Pages/Admin/Subjects";
-import Chapters from "../Pages/Admin/Chapters";
-import ClassSubjects from "../Pages/Admin/ClassSubjects";
 import SyllabusTracking from "../Pages/Admin/SyllabusTracking";
 import Holidays from "../Pages/Admin/Holidays";
 import TeacherAttendancePage from "../Pages/Admin/TeacherAttendancePage";
@@ -231,22 +229,6 @@ const AdminRoutes = () => (
         }
       />
       <Route
-        path="subjects/:subjectId/chapters"
-        element={
-          <RequiresActiveYear>
-            <Chapters />
-          </RequiresActiveYear>
-        }
-      />
-      <Route
-        path="class-subjects"
-        element={
-          <RequiresActiveYear>
-            <ClassSubjects />
-          </RequiresActiveYear>
-        }
-      />
-      <Route
         path="syllabus-tracking"
         element={
           <RequiresActiveYear>
@@ -291,6 +273,18 @@ const AdminRoutes = () => (
         element={
           <RequiresActiveYear>
             <Timetables />
+          </RequiresActiveYear>
+        }
+      />
+
+      {/* Reports */}
+      <Route
+        path="reports"
+        element={
+          <RequiresActiveYear>
+            <PlanGuard feature="analytics">
+              <Reports />
+            </PlanGuard>
           </RequiresActiveYear>
         }
       />

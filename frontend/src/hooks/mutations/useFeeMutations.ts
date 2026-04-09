@@ -5,7 +5,6 @@ import {
   type ApplyWaiverDto,
   type GenerateFeeTransactionsDto,
 } from '../../services/feeService';
-import { queryKeys } from '../../lib/queryKeys';
 import { useNotification } from '../../context/NotificationContext';
 
 export const useRecordPayment = () => {
@@ -16,10 +15,9 @@ export const useRecordPayment = () => {
     mutationFn: ({ transactionId, data }: { transactionId: number; data: RecordPaymentDto }) =>
       feeService.recordPayment(transactionId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.feeTransactions.all });
-      qc.invalidateQueries({ queryKey: queryKeys.feeDefaulters.all });
-      qc.invalidateQueries({ queryKey: queryKeys.dashboard.admin });
-      qc.invalidateQueries({ queryKey: queryKeys.dashboard.accountant });
+      qc.invalidateQueries({ queryKey: ['fee-transactions'] });
+      qc.invalidateQueries({ queryKey: ['fee-defaulters'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
       showNotification('Payment recorded successfully', 'success');
     },
     onError: (err: Error) => {
@@ -36,9 +34,9 @@ export const useApplyWaiver = () => {
     mutationFn: ({ transactionId, data }: { transactionId: number; data: ApplyWaiverDto }) =>
       feeService.applyWaiver(transactionId, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.feeTransactions.all });
-      qc.invalidateQueries({ queryKey: queryKeys.feeDefaulters.all });
-      qc.invalidateQueries({ queryKey: queryKeys.dashboard.admin });
+      qc.invalidateQueries({ queryKey: ['fee-transactions'] });
+      qc.invalidateQueries({ queryKey: ['fee-defaulters'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
       showNotification('Waiver applied successfully', 'success');
     },
     onError: (err: Error) => {
@@ -55,8 +53,8 @@ export const useGenerateFeeTransactions = () => {
     mutationFn: (data: GenerateFeeTransactionsDto) =>
       feeService.generateFeeTransactions(data),
     onSuccess: (result) => {
-      qc.invalidateQueries({ queryKey: queryKeys.feeTransactions.all });
-      qc.invalidateQueries({ queryKey: queryKeys.feeStructures.all });
+      qc.invalidateQueries({ queryKey: ['fee-transactions'] });
+      qc.invalidateQueries({ queryKey: ['fee-structures'] });
       showNotification(
         `Generated ${result.generated} fee transactions successfully`,
         'success',

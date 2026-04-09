@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '../../services/api';
 import { queryKeys } from '../../lib/queryKeys';
 import { QUERY_STALE_TIME } from '../../lib/constants';
+import { useAuth } from '../../context/AuthContext';
 
 // ── Response Types ──────────────────────────────────────────────────
 
@@ -129,24 +130,30 @@ interface ParentDashboardData {
 // ── Hooks ───────────────────────────────────────────────────────────
 
 export const useAdminDashboard = () => {
+  const { user } = useAuth();
+  
   return useQuery<AdminDashboardData>({
-    queryKey: queryKeys.dashboard.admin,
+    queryKey: queryKeys.dashboard.admin(user?.schoolId ?? null),
     queryFn: () => apiRequest<AdminDashboardData>('/dashboard/admin'),
     staleTime: QUERY_STALE_TIME.DASHBOARD,
   });
 };
 
 export const useAccountantDashboard = () => {
+  const { user } = useAuth();
+  
   return useQuery<AccountantDashboardData>({
-    queryKey: queryKeys.dashboard.accountant,
+    queryKey: queryKeys.dashboard.accountant(user?.schoolId ?? null),
     queryFn: () => apiRequest<AccountantDashboardData>('/dashboard/accountant'),
     staleTime: QUERY_STALE_TIME.DASHBOARD,
   });
 };
 
 export const useTeacherDashboard = (teacherId: number) => {
+  const { user } = useAuth();
+  
   return useQuery<TeacherDashboardData>({
-    queryKey: queryKeys.dashboard.teacher(teacherId),
+    queryKey: queryKeys.dashboard.teacher(user?.schoolId ?? null, teacherId),
     queryFn: () => apiRequest<TeacherDashboardData>('/dashboard/teacher'),
     staleTime: QUERY_STALE_TIME.DASHBOARD,
     enabled: !!teacherId,
@@ -154,8 +161,10 @@ export const useTeacherDashboard = (teacherId: number) => {
 };
 
 export const useParentDashboard = (parentId: string | number) => {
+  const { user } = useAuth();
+  
   return useQuery<ParentDashboardData>({
-    queryKey: queryKeys.dashboard.parent(Number(parentId)),
+    queryKey: queryKeys.dashboard.parent(user?.schoolId ?? null, Number(parentId)),
     queryFn: () => apiRequest<ParentDashboardData>('/parent/dashboard'),
     staleTime: QUERY_STALE_TIME.DASHBOARD,
     enabled: !!parentId,

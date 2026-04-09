@@ -116,24 +116,39 @@ export const subjectService = {
     return {
       id: raw.id,
       classId: raw.class_id,
-      className: raw.class_name ?? "",
+      className: raw.class_name ?? raw.className ?? "",
       subjectId: raw.subject_id,
-      subjectName: raw.subject_name ?? "",
+      subjectName: raw.subject_name ?? raw.subjectName ?? "",
       academicYearId: raw.academic_year_id,
-      academicYearName: raw.academic_year_name ?? "",
+      academicYearName: raw.year_name ?? raw.academicYearName ?? "",
     };
   },
 
   getSubjectsByClass: async (classId: number): Promise<ClassSubject[]> => {
     const raw = await apiRequest<any[]>(`/class-subjects/class/${classId}`);
+    console.log('API Response for getSubjectsByClass:', raw);
     return raw.map((r) => ({
       id: r.id,
       classId: r.class_id,
-      className: r.class_name ?? "",
+      className: r.class_name ?? r.className ?? "",
       subjectId: r.subject_id,
-      subjectName: r.subject_name ?? "",
+      subjectName: r.subject_name ?? r.subjectName ?? "",
       academicYearId: r.academic_year_id,
-      academicYearName: r.academic_year_name ?? "",
+      academicYearName: r.year_name ?? r.academicYearName ?? "",
+    }));
+  },
+
+  getAllClassSubjects: async (academicYearId: number): Promise<ClassSubject[]> => {
+    const raw = await apiRequest<any[]>(`/class-subjects?academicYearId=${academicYearId}`);
+    console.log('API Response for getAllClassSubjects:', raw);
+    return raw.map((r) => ({
+      id: r.id,
+      classId: r.class_id,
+      className: r.class?.name ?? r.class_name ?? r.className ?? "",
+      subjectId: r.subject_id,
+      subjectName: r.subject?.name ?? r.subject_name ?? r.subjectName ?? "",
+      academicYearId: r.academic_year_id,
+      academicYearName: r.academic_year?.year_name ?? r.year_name ?? r.yearName ?? "",
     }));
   },
 
@@ -142,11 +157,11 @@ export const subjectService = {
     return raw.map((r) => ({
       id: r.id,
       classId: r.class_id,
-      className: r.class_name ?? "",
+      className: r.class_name ?? r.className ?? "",
       subjectId: r.subject_id,
-      subjectName: r.subject_name ?? "",
+      subjectName: r.subject_name ?? r.subjectName ?? "",
       academicYearId: r.academic_year_id,
-      academicYearName: r.academic_year_name ?? "",
+      academicYearName: r.year_name ?? r.academicYearName ?? "",
     }));
   },
 
@@ -154,6 +169,15 @@ export const subjectService = {
     await apiRequest<void>(`/class-subjects/${id}`, {
       method: "DELETE",
     });
+  },
+
+  getSubjectCode: async (subjectId: number): Promise<string> => {
+    try {
+      const subject = await apiRequest<Subject>(`/subjects/${subjectId}`);
+      return subject.code;
+    } catch {
+      return '';
+    }
   },
 };
 

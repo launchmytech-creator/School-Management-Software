@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
@@ -13,7 +13,7 @@ import {
   examResultService,
   type ExamSubjectResult,
 } from "../../services/examResultService";
-import { studentService } from "../../services/studentService";
+import { useAllStudents } from "../../hooks/queries/useStudents";
 import type { Class } from "../../types/class";
 import { Save, CheckCircle, XCircle, GraduationCap } from "lucide-react";
 import { BaseModal } from "../../components/common/BaseModal";
@@ -51,6 +51,12 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [loadingFromUrl, setLoadingFromUrl] = useState(false);
 
+  const { data: allStudents = [] } = useAllStudents();
+
+  const classStudents = useMemo(() => {
+    return allStudents.filter(s => s.currentClassId?.toString() === selectedClass);
+  }, [allStudents, selectedClass]);
+
   const fetchClasses = useCallback(async () => {
     try {
       const data = await classService.getClasses();
@@ -72,26 +78,21 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
     [showNotification],
   );
 
-  const fetchStudents = useCallback(
-    async (classId: string) => {
-      try {
-        const data = await studentService.getStudents({ classId });
-
-        const marksData: StudentMarks[] = data.map((s) => ({
-          studentId: s.id,
-          studentName: s.fullName,
-          admissionNumber: s.admissionNumber,
-          rollNumber: s.rollNumber ?? null,
-          marksObtained: "",
-          isAbsent: false,
-        }));
-        setStudentMarks(marksData);
-      } catch {
-        showNotification("Failed to fetch students", "error");
-      }
-    },
-    [showNotification],
-  );
+  useEffect(() => {
+    if (selectedClass && classStudents.length > 0) {
+      const marksData: StudentMarks[] = classStudents.map((s) => ({
+        studentId: s.id,
+        studentName: s.fullName,
+        admissionNumber: s.admissionNumber,
+        rollNumber: s.rollNumber ?? null,
+        marksObtained: "",
+        isAbsent: false,
+      }));
+      setStudentMarks(marksData);
+    } else if (!selectedClass) {
+      setStudentMarks([]);
+    }
+  }, [classStudents, selectedClass]);
 
   const fetchExistingResults = useCallback(async (examSubjectId: string) => {
     if (!examSubjectId) return;
@@ -132,11 +133,7 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
         setSelectedExam(exam.id.toString());
         setExamSubjects(exam.subjects || []);
 
-        const studentsData = await studentService.getStudents({
-          classId: exam.classId.toString(),
-        });
-
-        const marksData: StudentMarks[] = studentsData.map((s) => ({
+        const marksData: StudentMarks[] = classStudents.map((s) => ({
           studentId: s.id,
           studentName: s.fullName,
           admissionNumber: s.admissionNumber,
@@ -199,12 +196,6 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
   }, [selectedClass, fetchExams, loadingFromUrl]);
 
   useEffect(() => {
-    if (!loadingFromUrl && selectedClass && !searchParams.get("examId")) {
-      fetchStudents(selectedClass);
-    }
-  }, [selectedClass, fetchStudents, loadingFromUrl, searchParams]);
-
-  useEffect(() => {
     if (!loadingFromUrl && selectedSubject) {
       fetchExistingResults(selectedSubject);
     }
@@ -218,7 +209,6 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
     setStudentMarks([]);
     if (classId) {
       fetchExams(parseInt(classId));
-      fetchStudents(classId);
     }
   };
 

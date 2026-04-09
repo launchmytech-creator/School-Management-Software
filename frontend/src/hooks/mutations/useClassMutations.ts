@@ -3,16 +3,18 @@ import { classService } from '../../services/classService';
 import type { CreateClassDto, UpdateClassDto } from '../../types/class';
 import { queryKeys } from '../../lib/queryKeys';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const useCreateClass = () => {
   const qc = useQueryClient();
   const { showNotification } = useNotification();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: (data: CreateClassDto) => classService.createClass(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
-      qc.invalidateQueries({ queryKey: queryKeys.dashboard.admin });
+      qc.invalidateQueries({ queryKey: ['classes'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
       showNotification('Class created successfully', 'success');
     },
     onError: (err: Error) => {
@@ -29,7 +31,7 @@ export const useUpdateClass = () => {
     mutationFn: ({ id, data }: { id: string | number; data: UpdateClassDto }) =>
       classService.updateClass(id, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
+      qc.invalidateQueries({ queryKey: ['classes'] });
       showNotification('Class updated successfully', 'success');
     },
     onError: (err: Error) => {
@@ -45,8 +47,8 @@ export const useDeleteClass = () => {
   return useMutation({
     mutationFn: (id: string | number) => classService.deleteClass(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
-      qc.invalidateQueries({ queryKey: queryKeys.dashboard.admin });
+      qc.invalidateQueries({ queryKey: ['classes'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
       showNotification('Class deleted successfully', 'success');
     },
     onError: (err: Error) => {

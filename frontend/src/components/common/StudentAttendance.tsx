@@ -11,7 +11,7 @@ import { teacherService } from '../../services/teacherService';
 import { classService } from '../../services/classService';
 import { type TeacherAllocation } from '../../types/teacher';
 import { type Class } from '../../types/class';
-import { studentService } from '../../services/studentService';
+import { useAllStudents } from '../../hooks/queries/useStudents';
 import { type Student } from '../../types/student';
 import { Users, CheckCircle, XCircle, AlertCircle, CalendarCheck, Loader2 } from 'lucide-react';
 import { formatDate, getLocalDateString } from '../../lib/utils';
@@ -44,6 +44,36 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   const teacherId = user?.id as number;
   const isTeacher = layout === 'teacher';
 
+  const { data: allStudents = [] } = useAllStudents();
+
+  const classStudents = useMemo(() => {
+    let classId: number | undefined;
+    
+    if (isTeacher && selectedAllocation) {
+      classId = selectedAllocation.classId;
+    } else if (!isTeacher && selectedClass) {
+      classId = parseInt(selectedClass.id);
+    }
+    
+    if (!classId) return [];
+    return allStudents.filter(s => s.currentClassId === classId);
+  }, [allStudents, isTeacher, selectedAllocation, selectedClass]);
+
+  useEffect(() => {
+    if (classStudents.length > 0) {
+      setStudents(classStudents);
+      
+      const initialRecords = new Map<number, AttendanceStatus>();
+      classStudents.forEach(s => {
+        initialRecords.set(s.id, 'present');
+      });
+      setAttendanceRecords(initialRecords);
+      setHasChanges(false);
+    } else if (!isTeacher && !selectedClass) {
+      setStudents([]);
+    }
+  }, [classStudents, isTeacher, selectedClass]);
+
   const fetchAllocations = useCallback(async () => {
     if (!teacherId || !isTeacher) return;
     try {
@@ -66,37 +96,6 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
       setLoadingClasses(false);
     }
   }, [isTeacher, selectedYear, showNotification]);
-
-  const fetchStudents = useCallback(async () => {
-    if (!selectedYear?.id) return;
-    
-    let classId: number | undefined;
-    
-    if (isTeacher && selectedAllocation) {
-      classId = selectedAllocation.classId;
-    } else if (!isTeacher && selectedClass) {
-      classId = parseInt(selectedClass.id);
-    }
-    
-    if (!classId) return;
-    
-    try {
-      const data = await studentService.getStudents({ 
-        classId: String(classId),
-        academicYear: String(selectedYear.id)
-      });
-      setStudents(data);
-      
-      const initialRecords = new Map<number, AttendanceStatus>();
-      data.forEach(s => {
-        initialRecords.set(s.id, 'present');
-      });
-      setAttendanceRecords(initialRecords);
-      setHasChanges(false);
-    } catch {
-      showNotification('Failed to fetch students', 'error');
-    }
-  }, [isTeacher, selectedAllocation, selectedClass, selectedYear, showNotification]);
 
   const fetchExistingAttendance = useCallback(async () => {
     let classId: number | undefined;
@@ -137,17 +136,6 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
       fetchAllClasses();
     }
   }, [isTeacher, fetchAllocations, fetchAllClasses]);
-
-  useEffect(() => {
-    if (isTeacher && selectedAllocation && selectedYear) {
-      fetchStudents();
-    } else if (!isTeacher && selectedClass && selectedYear) {
-      fetchStudents();
-    } else {
-      setStudents([]);
-      setAttendanceRecords(new Map());
-    }
-  }, [isTeacher, selectedAllocation, selectedClass, selectedYear, fetchStudents]);
 
   useEffect(() => {
     if (isTeacher && selectedAllocation && selectedDate) {

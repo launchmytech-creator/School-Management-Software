@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Plus,
   BookOpen,
   Calendar,
   Trash2,
-  Edit2,
   ChevronRight,
   Loader2,
   ChevronLeft,
@@ -27,6 +26,14 @@ const TeacherAllocation: React.FC = () => {
     isOpen: false,
     allocationId: null as number | null,
   });
+
+  const sortedAllocations = useMemo(() => {
+    return [...allocations].sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [allocations]);
 
   // Fetch Data
   const fetchData = useCallback(async () => {
@@ -96,7 +103,7 @@ const TeacherAllocation: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {allocations.slice(0, 4).map((alloc) => (
+            {sortedAllocations.slice(0, 4).map((alloc) => (
               <div
                 key={alloc.id}
                 className="bg-white p-7 rounded-2xl border border-slate-100 shadow-sm relative group hover:shadow-md transition-all flex flex-col items-center text-center"
@@ -188,13 +195,13 @@ const TeacherAllocation: React.FC = () => {
                   <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">
                     Year
                   </th>
-                  <th className="px-8 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-right">
+                  <th className="px-8 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {allocations.map((alloc) => (
+                {sortedAllocations.map((alloc) => (
                   <tr
                     key={alloc.id}
                     className="group hover:bg-slate-50/30 transition-colors"
@@ -216,7 +223,7 @@ const TeacherAllocation: React.FC = () => {
                     </td>
                     <td className="px-6 py-5 text-center">
                       <span className="text-slate-500 text-sm font-medium tracking-tight">
-                        Class {alloc.className}
+                        {alloc.className}
                       </span>
                     </td>
                     <td className="px-6 py-5 text-center">
@@ -229,11 +236,8 @@ const TeacherAllocation: React.FC = () => {
                         {alloc.yearName}
                       </span>
                     </td>
-                    <td className="px-8 py-5 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <button className="text-slate-400 hover:text-blue-500 transition-colors">
-                          <Edit2 className="size-4" />
-                        </button>
+                    <td className="px-8 py-5 text-center">
+                      <div className="flex items-center justify-center gap-3">
                         <button
                           onClick={() => handleDeleteAllocation(alloc.id)}
                           className="text-slate-400 hover:text-rose-500 transition-colors"

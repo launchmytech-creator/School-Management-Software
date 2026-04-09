@@ -4,41 +4,41 @@ type Filters = Record<string, any>;
 export const queryKeys = {
   // ── Reference Data (rarely changes) ─────────────
   classes: {
-    all: ['classes'] as const,
-    byYear: (yearId?: string) => ['classes', { yearId }] as const,
+    all: (schoolId: number | null) => ['classes', { schoolId }] as const,
+    byYear: (schoolId: number | null, yearId?: string) => ['classes', { schoolId, yearId }] as const,
   },
 
   academicYears: {
-    all: ['academic-years'] as const,
-    current: ['academic-years', 'current'] as const,
+    all: (schoolId: number | null) => ['academic-years', { schoolId }] as const,
+    current: (schoolId: number | null) => ['academic-years', 'current', { schoolId }] as const,
   },
 
   subjects: {
-    all: ['subjects'] as const,
-    byClass: (classId: string) => ['subjects', { classId }] as const,
+    all: (schoolId: number | null) => ['subjects', { schoolId }] as const,
+    byClass: (schoolId: number | null, classId: string) => ['subjects', { schoolId, classId }] as const,
   },
 
   teachers: {
-    all: ['teachers'] as const,
-    byId: (id: string) => ['teachers', id] as const,
-    filtered: (filters: Filters) => ['teachers', 'filtered', filters] as const,
-    allocations: (teacherId: number, yearId: number) =>
-      ['teachers', teacherId, 'allocations', yearId] as const,
+    all: (schoolId: number | null) => ['teachers', { schoolId }] as const,
+    byId: (schoolId: number | null, id: string) => ['teachers', { schoolId, id }] as const,
+    filtered: (schoolId: number | null, filters: Filters) => ['teachers', 'filtered', { schoolId, ...filters }] as const,
+    allocations: (schoolId: number | null, teacherId: number, yearId: number) =>
+      ['teachers', { schoolId, teacherId, yearId }, 'allocations'] as const,
   },
 
   // ── Dynamic Data (changes with user actions) ────
   students: {
-    all: ['students'] as const,
-    byClass: (classId: string) => ['students', { classId }] as const,
-    byId: (id: number) => ['students', id] as const,
-    filtered: (filters: Filters) => ['students', 'filtered', filters] as const,
+    all: (schoolId: number | null) => ['students', { schoolId }] as const,
+    byClass: (schoolId: number | null, classId: string) => ['students', { schoolId, classId }] as const,
+    byId: (schoolId: number | null, id: number) => ['students', { schoolId, id }] as const,
+    filtered: (schoolId: number | null, filters: Filters) => ['students', 'filtered', { schoolId, ...filters }] as const,
   },
 
   // ── Assignments ─────────────────────────────────
   assignments: {
-    all: ['assignments'] as const,
-    byId: (id: number) => ['assignments', id] as const,
-    byFilters: (filters: Filters) => ['assignments', 'filtered', filters] as const,
+    all: (schoolId: number | null) => ['assignments', { schoolId }] as const,
+    byId: (schoolId: number | null, id: number) => ['assignments', { schoolId, id }] as const,
+    byFilters: (schoolId: number | null, filters: Filters) => ['assignments', 'filtered', { schoolId, ...filters }] as const,
   },
 
   // ── Schools (Super Admin) ────────────────────────
@@ -49,79 +49,100 @@ export const queryKeys = {
   },
 
   feeTransactions: {
-    all: ['fee-transactions'] as const,
-    byFilters: (filters: Filters) =>
-      ['fee-transactions', filters] as const,
-    byStudent: (studentId: number) =>
-      ['fee-transactions', 'student', studentId] as const,
+    all: (schoolId: number | null) => ['fee-transactions', { schoolId }] as const,
+    byFilters: (schoolId: number | null, filters: Filters) =>
+      ['fee-transactions', { schoolId, ...filters }] as const,
+    byStudent: (schoolId: number | null, studentId: number) =>
+      ['fee-transactions', { schoolId, studentId }, 'student'] as const,
   },
 
   feeDefaulters: {
-    all: ['fee-defaulters'] as const,
-    byFilters: (filters: Filters) =>
-      ['fee-defaulters', filters] as const,
+    all: (schoolId: number | null) => ['fee-defaulters', { schoolId }] as const,
+    byFilters: (schoolId: number | null, filters: Filters) =>
+      ['fee-defaulters', { schoolId, ...filters }] as const,
   },
 
   feeStructures: {
-    all: ['fee-structures'] as const,
-    grouped: (filters: Filters) =>
-      ['fee-structures', 'grouped', filters] as const,
+    all: (schoolId: number | null) => ['fee-structures', { schoolId }] as const,
+    grouped: (schoolId: number | null, filters: Filters) =>
+      ['fee-structures', 'grouped', { schoolId, ...filters }] as const,
   },
 
   attendance: {
-    byFilters: (filters: Filters) =>
-      ['attendance', filters] as const,
+    all: (schoolId: number | null) => ['attendance', { schoolId }] as const,
+    byFilters: (schoolId: number | null, filters: Filters) =>
+      ['attendance', { schoolId, ...filters }] as const,
   },
 
   // ── Real-time Data (always fresh) ───────────────
   dashboard: {
-    admin: ['dashboard', 'admin'] as const,
-    accountant: ['dashboard', 'accountant'] as const,
-    teacher: (teacherId: number) => ['dashboard', 'teacher', teacherId] as const,
-    parent: (parentId: number) => ['dashboard', 'parent', parentId] as const,
+    admin: (schoolId: number | null) => ['dashboard', 'admin', { schoolId }] as const,
+    accountant: (schoolId: number | null) => ['dashboard', 'accountant', { schoolId }] as const,
+    teacher: (schoolId: number | null, teacherId: number) => ['dashboard', 'teacher', { schoolId, teacherId }] as const,
+    parent: (schoolId: number | null, parentId: number) => ['dashboard', 'parent', { schoolId, parentId }] as const,
   },
 
   announcements: {
-    all: ['announcements'] as const,
-    byFilters: (filters: Filters) =>
-      ['announcements', filters] as const,
+    all: (schoolId: number | null) => ['announcements', { schoolId }] as const,
+    byFilters: (schoolId: number | null, filters: Filters) =>
+      ['announcements', { schoolId, ...filters }] as const,
   },
 
   notifications: {
-    all: ['notifications'] as const,
-    byFilters: (filters: Filters) =>
-      ['notifications', filters] as const,
+    all: (schoolId: number | null) => ['notifications', { schoolId }] as const,
+    byFilters: (schoolId: number | null, filters: Filters) =>
+      ['notifications', { schoolId, ...filters }] as const,
   },
 
   promotions: {
-    byFilters: (filters: Filters) =>
-      ['promotions', filters] as const,
+    all: (schoolId: number | null) => ['promotions', { schoolId }] as const,
+    byFilters: (schoolId: number | null, filters: Filters) =>
+      ['promotions', { schoolId, ...filters }] as const,
   },
 
   syllabus: {
-    allProgress: ['syllabus', 'all-progress'] as const,
-    classProgress: (classSubjectId: number) =>
-      ['syllabus', 'class-subject', classSubjectId] as const,
+    allProgress: (schoolId: number | null) => ['syllabus', 'all-progress', { schoolId }] as const,
+    classProgress: (schoolId: number | null, classSubjectId: number) =>
+      ['syllabus', 'class-subject', { schoolId, classSubjectId }] as const,
   },
 
   classSubjects: {
-    all: ['class-subjects'] as const,
-    byClass: (classId: string) => ['class-subjects', { classId }] as const,
+    all: (schoolId: number | null) => ['class-subjects', { schoolId }] as const,
+    byClass: (schoolId: number | null, classId: string) => ['class-subjects', { schoolId, classId }] as const,
   },
 
   exams: {
-    all: ['exams'] as const,
-    byFilters: (filters: Filters) =>
-      ['exams', filters] as const,
-    results: (examId: number) => ['exams', examId, 'results'] as const,
+    all: (schoolId: number | null) => ['exams', { schoolId }] as const,
+    byFilters: (schoolId: number | null, filters: Filters) =>
+      ['exams', { schoolId, ...filters }] as const,
+    results: (schoolId: number | null, examId: number) => ['exams', { schoolId, examId }, 'results'] as const,
   },
 
   timetables: {
-    byClass: (classId: string) => ['timetables', { classId }] as const,
+    all: (schoolId: number | null) => ['timetables', { schoolId }] as const,
+    byClass: (schoolId: number | null, classId: string) => ['timetables', { schoolId, classId }] as const,
   },
 
   holidays: {
-    all: ['holidays'] as const,
+    all: (schoolId: number | null) => ['holidays', { schoolId }] as const,
+  },
+
+  // ── Admin specific ───────────────────────────────
+  accountant: {
+    all: (schoolId: number | null) => ['accountants', { schoolId }] as const,
+    byId: (schoolId: number | null, id: number) => ['accountants', { schoolId, id }] as const,
+  },
+
+  parents: {
+    all: (schoolId: number | null) => ['parents', { schoolId }] as const,
+    byId: (schoolId: number | null, id: number) => ['parents', { schoolId, id }] as const,
+    filtered: (schoolId: number | null, filters: Filters) => ['parents', 'filtered', { schoolId, ...filters }] as const,
+  },
+
+  teacherAttendance: {
+    all: (schoolId: number | null) => ['teacher-attendance', { schoolId }] as const,
+    byFilters: (schoolId: number | null, filters: Filters) =>
+      ['teacher-attendance', { schoolId, ...filters }] as const,
   },
 } as const;
 

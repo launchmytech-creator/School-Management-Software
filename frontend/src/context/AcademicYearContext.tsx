@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
-import { academicYearService } from '../services/academicYearService';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import type { AcademicYear } from '../types/academicYear';
-import { authService } from '../services/authService';
+import { useAuth } from './AuthContext';
+import { useAcademicYears, useCurrentAcademicYear, useRefreshAcademicYears } from '../hooks/queries/useAcademicYears';
 
 export interface AcademicYearContextType {
   currentYear: AcademicYear | null;
@@ -11,7 +11,7 @@ export interface AcademicYearContextType {
   isHistorical: boolean;
   loading: boolean;
   error: string | null;
-  refreshYears: () => Promise<void>;
+  refreshYears: () => void;
 }
 
 export const AcademicYearContext = createContext<AcademicYearContextType | undefined>(undefined);
@@ -30,66 +30,59 @@ export const useAcademicYear = (): AcademicYearContextType => {
 };
 
 export const AcademicYearProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentYear, setCurrentYear] = useState<AcademicYear | null>(null);
-  const [allYears, setAllYears] = useState<AcademicYear[]>([]);
-  const [selectedYear, setSelectedYear] = useState<AcademicYear | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const hasFetched = useRef(false);
+  const { user } = useAuth();
+  const [selectedYear, setSelectedYearState] = useState<AcademicYear | null>(null);
+  const [userSelectedYear, setUserSelectedYear] = useState<AcademicYear | null>(null);
+  
+  const { data: allYearsData = [], isLoading: allYearsLoading, error: allYearsError, refetch: refetchAll } = useAcademicYears();
+  const { data: currentYearData = null, isLoading: currentLoading, error: currentError, refetch: refetchCurrent } = useCurrentAcademicYear();
+  const refreshAcademicYears = useRefreshAcademicYears();
 
-  const refreshYears = useCallback(async () => {
-    if (!authService.isAuthenticated()) {
-      setLoading(false);
-      return;
+  const allYears = allYearsData || [];
+  const currentYear = currentYearData;
+  const loading = allYearsLoading || currentLoading;
+  
+  const error = allYearsError?.message || currentError?.message || null;
+
+  useEffect(() => {
+    setSelectedYearState(null);
+    setUserSelectedYear(null);
+  }, [user?.schoolId]);
+
+  useEffect(() => {
+    if (currentYear && !userSelectedYear) {
+      setSelectedYearState(currentYear);
+    } else if (!userSelectedYear && allYears.length > 0 && !loading) {
+      const foundYear = allYears.find(y => y.id === selectedYear?.id);
+      if (foundYear) {
+        setSelectedYearState(foundYear);
+      }
     }
+  }, [currentYear, allYears, userSelectedYear, loading]);
 
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const [current, all] = await Promise.all([
-        academicYearService.getCurrentYear().catch(() => null),
-        academicYearService.getAllYears()
-      ]);
-
-      const finalCurrent = current || all.find(y => y.isCurrent) || null;
-
-      setCurrentYear(finalCurrent);
-      setAllYears(all);
-      setSelectedYear(finalCurrent);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load academic years';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
+  const setSelectedYear = useCallback((year: AcademicYear | null) => {
+    setSelectedYearState(year);
+    setUserSelectedYear(year);
   }, []);
 
-  useEffect(() => {
-    if (!hasFetched.current && authService.isAuthenticated()) {
-      hasFetched.current = true;
-      refreshYears();
-    }
-  }, [refreshYears]);
+  const refreshYears = useCallback(() => {
+    refreshAcademicYears();
+  }, [refreshAcademicYears]);
 
-  useEffect(() => {
-    if (currentYear && !selectedYear) {
-      setSelectedYear(currentYear);
-    }
-  }, [currentYear, selectedYear]);
+  const isHistorical = useMemo(() => {
+    return !!(selectedYear && currentYear && selectedYear.id !== currentYear.id);
+  }, [selectedYear, currentYear]);
 
-  const isHistorical = !!(selectedYear && currentYear && selectedYear.id !== currentYear.id);
-
-  const value: AcademicYearContextType = {
+  const value = useMemo<AcademicYearContextType>(() => ({
     currentYear,
     allYears,
-    selectedYear,
+    selectedYear: selectedYear || currentYear,
     setSelectedYear,
     isHistorical,
     loading,
     error,
     refreshYears,
-  };
+  }), [currentYear, allYears, selectedYear, setSelectedYear, isHistorical, loading, error, refreshYears]);
 
   return (
     <AcademicYearContext.Provider value={value}>

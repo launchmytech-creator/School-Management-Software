@@ -22,7 +22,7 @@ const Classes: React.FC = () => {
   const navigate = useNavigate();
   const { allYears, selectedYear, setSelectedYear } = useAcademicYear();
   
-  const { data: classes = [], isLoading } = useClasses(selectedYear?.id);
+  const { data: classes = [], isLoading, refetch } = useClasses(selectedYear?.id);
   const deleteClass = useDeleteClass();
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -245,7 +245,10 @@ const Classes: React.FC = () => {
       <CreateClassModal 
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        onSuccess={() => {}}
+        onSuccess={() => {
+          refetch();
+          setIsCreateOpen(false);
+        }}
       />
 
       <ConfirmDialog

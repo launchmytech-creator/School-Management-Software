@@ -8,7 +8,6 @@ import TeacherSyllabus from "../Pages/Teacher/Syllabus";
 import TeacherAnnouncements from "../Pages/Teacher/Announcements";
 import TeacherLayout from "../layouts/TeacherLayout";
 import StudentAttendance from "../components/common/StudentAttendance";
-import RequiresActiveYear from "../components/academicYear/RequiresActiveYear";
 
 const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({
   feature,

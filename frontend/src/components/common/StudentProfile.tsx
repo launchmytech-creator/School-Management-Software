@@ -34,6 +34,7 @@ import {
   type StudentResult,
 } from "../../services/examResultService";
 import { feeService, type FeeTransaction } from "../../services/feeService";
+import { useAuth } from "../../context/AuthContext";
 import type { AcademicYear } from "../../types/academicYear";
 import type { Student } from "../../types/student";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
@@ -156,7 +157,9 @@ const SubjectCard: React.FC<{ result: StudentResult }> = ({ result }) => {
 const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("Attendance");
+  const { hasFeature } = useAuth();
+  
+  const [activeTab, setActiveTab] = useState("Marks");
   const [activeSubject, setActiveSubject] = useState("Mathematics");
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
@@ -548,21 +551,32 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
         </div>
 
         <div className="lg:col-span-9 space-y-8">
-          <div className="bg-white p-2 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center gap-2">
-            {["Attendance", "Marks", "Performance", "Fee Status"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-3 px-6 rounded-2xl text-[13px] font-black transition-all ${
-                  activeTab === tab
-                    ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20"
-                    : "text-slate-400 hover:text-slate-600"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          {(() => {
+            const tabs = [
+              { key: "Marks", label: "Marks", feature: "marks_management" },
+              { key: "Fee Status", label: "Fee Status", feature: "fee_management" },
+              { key: "Attendance", label: "Attendance", feature: "attendance" },
+              { key: "Performance", label: "Performance", feature: "analytics" },
+            ].filter(tab => !tab.feature || hasFeature(tab.feature));
+            
+            return (
+              <div className="bg-white p-2 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center gap-2">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`flex-1 py-3 px-6 rounded-2xl text-[13px] font-black transition-all ${
+                      activeTab === tab.key
+                        ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20"
+                        : "text-slate-400 hover:text-slate-600"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
 
           {activeTab === "Attendance" && (
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">

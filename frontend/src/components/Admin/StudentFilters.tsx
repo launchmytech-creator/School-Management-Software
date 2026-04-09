@@ -19,28 +19,22 @@ const StudentFilters: React.FC<StudentFiltersProps> = ({ onFilterChange, current
     classService.getClasses().then(setClasses);
   }, []);
 
+  const combinedOptions = classes.map(c => ({
+    value: c.id.toString(),
+    label: `Class ${c.name} - Section ${c.section || 'A'}`
+  }));
+
   return (
     <div className="flex items-center gap-3">
       <select 
-        className="bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 transition-all cursor-pointer min-w-[140px]"
+        className="bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 transition-all cursor-pointer min-w-[180px]"
         onChange={(e) => onFilterChange('classId', e.target.value)}
         value={currentFilters?.classId || ''}
       >
         <option value="">All Classes</option>
-        {classes.map(c => (
-          <option key={c.id} value={c.id}>{c.name}</option>
+        {combinedOptions.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
-      </select>
-
-      <select 
-        className="bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300 transition-all cursor-pointer min-w-[120px]"
-        onChange={(e) => onFilterChange('section', e.target.value)}
-        value={currentFilters?.section || ''}
-      >
-        <option value="">Section</option>
-        <option value="A">A</option>
-        <option value="B">B</option>
-        <option value="C">C</option>
       </select>
 
       <select 

@@ -4,7 +4,6 @@ import {
   type CreateStudentDto,
   type UpdateStudentDto,
 } from '../../services/studentService';
-import { queryKeys } from '../../lib/queryKeys';
 import { useNotification } from '../../context/NotificationContext';
 
 export const useCreateStudent = () => {
@@ -14,9 +13,9 @@ export const useCreateStudent = () => {
   return useMutation({
     mutationFn: (data: CreateStudentDto) => studentService.createStudent(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.students.all });
-      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
-      qc.invalidateQueries({ queryKey: queryKeys.dashboard.admin });
+      qc.invalidateQueries({ queryKey: ['students'] });
+      qc.invalidateQueries({ queryKey: ['classes'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
       showNotification('Student created successfully', 'success');
     },
     onError: (err: Error) => {
@@ -33,8 +32,7 @@ export const useUpdateStudent = () => {
     mutationFn: ({ id, data }: { id: number; data: UpdateStudentDto }) =>
       studentService.updateStudent(id, data),
     onSuccess: (_result, variables) => {
-      qc.invalidateQueries({ queryKey: queryKeys.students.all });
-      qc.invalidateQueries({ queryKey: queryKeys.students.byId(variables.id) });
+      qc.invalidateQueries({ queryKey: ['students'] });
       showNotification('Student updated successfully', 'success');
     },
     onError: (err: Error) => {
@@ -50,9 +48,9 @@ export const useDeleteStudent = () => {
   return useMutation({
     mutationFn: (id: number) => studentService.deleteStudent(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.students.all });
-      qc.invalidateQueries({ queryKey: queryKeys.classes.all });
-      qc.invalidateQueries({ queryKey: queryKeys.dashboard.admin });
+      qc.invalidateQueries({ queryKey: ['students'] });
+      qc.invalidateQueries({ queryKey: ['classes'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
       showNotification('Student deleted successfully', 'success');
     },
     onError: (err: Error) => {

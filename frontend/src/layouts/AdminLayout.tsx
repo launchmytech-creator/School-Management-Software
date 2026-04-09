@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import AdminSidebar from "../components/layout/AdminSidebar";
 import SuperAdminSidebar from "../components/layout/SuperAdminSidebar";
 import AppHeader from "../components/common/AppHeader";
+import { useStudentCache } from "../hooks/useStudentCache";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -11,6 +12,8 @@ interface AdminLayoutProps {
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
   const location = useLocation();
+  
+  useStudentCache();
 
   React.useEffect(() => {
     if (title) {
