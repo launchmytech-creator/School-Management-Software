@@ -24,7 +24,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ feature, className
   const PlanIcon = requiredPlan === 'BUSINESS' ? Star : Shield;
 
   return (
-    <div className={`flex flex-col items-center justify-center min-h-[400px] p-8 ${className}`}>
+    <div className={`flex flex-col items-center justify-center min-h-[300px] p-6 ${className}`}>
       <div className="bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-slate-200 rounded-2xl p-8 max-w-md text-center shadow-lg">
         <div className={`w-16 h-16 ${planColors.bg} rounded-full flex items-center justify-center mx-auto mb-4`}>
           <Lock className={`w-8 h-8 ${planColors.text}`} />

@@ -2,18 +2,15 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import AttendanceStatsGrid from '../../components/common/AttendanceStatsGrid';
-import ClassSelect from '../../components/common/ClassSelect';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { useAuth } from '../../context/AuthContext';
 import { attendanceService, type AttendanceRecord, type MarkAttendanceDto } from '../../services/attendanceService';
-import { teacherService } from '../../services/teacherService';
 import { classService } from '../../services/classService';
-import { type TeacherAllocation } from '../../types/teacher';
 import { type Class } from '../../types/class';
 import { useAllStudents } from '../../hooks/queries/useStudents';
 import { type Student } from '../../types/student';
-import { Users, CheckCircle, XCircle, AlertCircle, CalendarCheck, Loader2 } from 'lucide-react';
+import { Users, CheckCircle, XCircle, AlertCircle, CalendarCheck, Loader2, ShieldOff } from 'lucide-react';
 import { formatDate, getLocalDateString } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
 
@@ -29,9 +26,8 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   const { selectedYear } = useAcademicYear();
   
   const [saving, setSaving] = useState(false);
-  const [allocations, setAllocations] = useState<TeacherAllocation[]>([]);
+  const [inchargeClasses, setInchargeClasses] = useState<Class[]>([]);
   const [allClasses, setAllClasses] = useState<Class[]>([]);
-  const [selectedAllocation, setSelectedAllocation] = useState<TeacherAllocation | null>(null);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
   const [students, setStudents] = useState<Student[]>([]);
@@ -49,15 +45,13 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   const classStudents = useMemo(() => {
     let classId: number | undefined;
     
-    if (isTeacher && selectedAllocation) {
-      classId = selectedAllocation.classId;
-    } else if (!isTeacher && selectedClass) {
+    if (selectedClass) {
       classId = parseInt(selectedClass.id);
     }
     
     if (!classId) return [];
     return allStudents.filter(s => s.currentClassId === classId);
-  }, [allStudents, isTeacher, selectedAllocation, selectedClass]);
+  }, [allStudents, selectedClass]);
 
   useEffect(() => {
     if (classStudents.length > 0) {
@@ -69,20 +63,23 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
       });
       setAttendanceRecords(initialRecords);
       setHasChanges(false);
-    } else if (!isTeacher && !selectedClass) {
+    } else if (!selectedClass) {
       setStudents([]);
     }
-  }, [classStudents, isTeacher, selectedClass]);
+  }, [classStudents, selectedClass]);
 
-  const fetchAllocations = useCallback(async () => {
+  const fetchInchargeClasses = useCallback(async () => {
     if (!teacherId || !isTeacher) return;
+    setLoadingClasses(true);
     try {
-      const data = await teacherService.getAllocationsByTeacher(teacherId);
-      setAllocations(data);
+      const data = await classService.getClassesByIncharge(teacherId, selectedYear?.id);
+      setInchargeClasses(data);
     } catch {
-      showNotification('Failed to fetch your class allocations', 'error');
+      showNotification('Failed to fetch your classes', 'error');
+    } finally {
+      setLoadingClasses(false);
     }
-  }, [teacherId, isTeacher, showNotification]);
+  }, [teacherId, isTeacher, selectedYear, showNotification]);
 
   const fetchAllClasses = useCallback(async () => {
     if (isTeacher) return;
@@ -98,19 +95,11 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   }, [isTeacher, selectedYear, showNotification]);
 
   const fetchExistingAttendance = useCallback(async () => {
-    let classId: number | undefined;
-    
-    if (isTeacher && selectedAllocation) {
-      classId = selectedAllocation.classId;
-    } else if (!isTeacher && selectedClass) {
-      classId = parseInt(selectedClass.id);
-    }
-    
-    if (!classId || !selectedDate) return;
+    if (!selectedClass || !selectedDate) return;
     
     try {
       const data = await attendanceService.getClassAttendanceByDate(
-        classId,
+        parseInt(selectedClass.id),
         selectedDate
       );
       setExistingAttendance(data);
@@ -127,31 +116,25 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
     } catch {
       showNotification('Failed to fetch existing attendance', 'error');
     }
-  }, [isTeacher, selectedAllocation, selectedClass, selectedDate, showNotification]);
+  }, [selectedClass, selectedDate, showNotification]);
 
   useEffect(() => {
     if (isTeacher) {
-      fetchAllocations();
+      fetchInchargeClasses();
     } else {
       fetchAllClasses();
     }
-  }, [isTeacher, fetchAllocations, fetchAllClasses]);
+  }, [isTeacher, fetchInchargeClasses, fetchAllClasses]);
 
   useEffect(() => {
-    if (isTeacher && selectedAllocation && selectedDate) {
-      fetchExistingAttendance();
-    } else if (!isTeacher && selectedClass && selectedDate) {
+    if (selectedClass && selectedDate) {
       fetchExistingAttendance();
     }
-  }, [isTeacher, selectedAllocation, selectedClass, selectedDate, fetchExistingAttendance]);
-
-  const handleAllocationChange = (allocation: TeacherAllocation | null) => {
-    setSelectedAllocation(allocation);
-  };
+  }, [selectedClass, selectedDate, fetchExistingAttendance]);
 
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const classId = e.target.value;
-    const selected = allClasses.find(c => c.id === classId) || null;
+    const selected = inchargeClasses.find(c => c.id === classId) || allClasses.find(c => c.id === classId) || null;
     setSelectedClass(selected);
   };
 
@@ -196,18 +179,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   }, [students, attendanceRecords]);
 
   const handleSaveAttendance = async () => {
-    let classId: number | undefined;
-    let className: string | undefined;
-    
-    if (isTeacher && selectedAllocation) {
-      classId = selectedAllocation.classId;
-      className = selectedAllocation.className;
-    } else if (!isTeacher && selectedClass) {
-      classId = parseInt(selectedClass.id);
-      className = selectedClass.name;
-    }
-    
-    if (!classId || !selectedDate) return;
+    if (!selectedClass || !selectedDate) return;
     
     setSaving(true);
     try {
@@ -217,7 +189,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
       }));
 
       const data: MarkAttendanceDto = {
-        classId,
+        classId: parseInt(selectedClass.id),
         attendanceDate: selectedDate,
         records,
       };
@@ -230,13 +202,17 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
         id: Date.now() + i,
         studentId: r.studentId,
         studentName: students.find(s => s.id === r.studentId)?.fullName || '',
-        classId,
-        className: className || '',
+        classId: parseInt(selectedClass.id),
+        className: selectedClass.name,
         attendanceDate: selectedDate,
         status: r.status,
       })));
-    } catch {
-      showNotification('Failed to mark attendance', 'error');
+    } catch (error: any) {
+      if (error.response?.status === 403) {
+        showNotification(error.response?.data?.message || 'You are not authorized to mark attendance for this class', 'error');
+      } else {
+        showNotification('Failed to mark attendance', 'error');
+      }
     } finally {
       setSaving(false);
     }
@@ -244,8 +220,9 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
 
   const isDateInFuture = selectedDate > getLocalDateString();
   const basePath = isTeacher ? '/teacher' : '/accountant';
-  const currentClassName = isTeacher ? selectedAllocation?.className : selectedClass?.name;
-  const hasSelectedClass = isTeacher ? selectedAllocation : selectedClass;
+  const currentClassName = selectedClass?.name;
+  const hasSelectedClass = !!selectedClass;
+  const teacherClasses = isTeacher ? inchargeClasses : allClasses;
 
   const renderContent = () => (
     <div className="space-y-6 pb-12">
@@ -294,29 +271,26 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <label className="block text-sm font-bold text-slate-700 mb-2">
-            {isTeacher ? 'Select Class' : 'Select Class'}
+            {isTeacher ? 'Select Your Class (Incharge)' : 'Select Class'}
           </label>
-          {isTeacher ? (
-            <ClassSelect
-              allocations={allocations}
-              value={selectedAllocation}
-              onChange={handleAllocationChange}
-              placeholder="Select a class"
-            />
-          ) : (
-            <select
-              value={selectedClass?.id || ''}
-              onChange={handleClassChange}
-              disabled={loadingClasses}
-              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              <option value="">{loadingClasses ? 'Loading classes...' : 'Select a class'}</option>
-              {allClasses.map(cls => (
-                <option key={cls.id} value={cls.id}>
-                  {cls.name} {cls.section ? `- Section ${cls.section}` : ''}
-                </option>
-              ))}
-            </select>
+          <select
+            value={selectedClass?.id || ''}
+            onChange={handleClassChange}
+            disabled={loadingClasses}
+            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          >
+            <option value="">{loadingClasses ? 'Loading classes...' : 'Select a class'}</option>
+            {teacherClasses.map(cls => (
+              <option key={cls.id} value={cls.id}>
+                {cls.name} {cls.section ? `- Section ${cls.section}` : ''}
+                {isTeacher && cls.inchargeName ? ` (Incharge: ${cls.inchargeName})` : ''}
+              </option>
+            ))}
+          </select>
+          {isTeacher && inchargeClasses.length === 0 && !loadingClasses && (
+            <p className="text-xs text-amber-600 mt-2">
+              You are not assigned as incharge for any class.
+            </p>
           )}
         </div>
 
@@ -450,11 +424,19 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
           />
         )
       ) : (
-        <EmptyState
-          icon={Users}
-          title="Please select a class"
-          description={isTeacher ? "Choose a class from your allocations to mark attendance" : "Choose a class to mark attendance"}
-        />
+        isTeacher && inchargeClasses.length === 0 && !loadingClasses ? (
+          <EmptyState
+            icon={ShieldOff}
+            title="No classes assigned"
+            description="You are not assigned as class incharge for any class. Contact your administrator to assign you as incharge."
+          />
+        ) : (
+          <EmptyState
+            icon={Users}
+            title="Please select a class"
+            description={isTeacher ? "Choose a class you are incharge of to mark attendance" : "Choose a class to mark attendance"}
+          />
+        )
       )}
 
       <BaseModal

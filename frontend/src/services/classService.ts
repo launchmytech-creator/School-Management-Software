@@ -10,6 +10,8 @@ interface BackendClass {
   year_name: string;
   start_date: string;
   end_date: string;
+  incharge_id: number | null;
+  incharge_name: string | null;
   default_fee_amount: string | number | null;
   student_count: string | number;
 }
@@ -20,6 +22,8 @@ const mapFromBackend = (data: BackendClass): Class => ({
   section: data.section,
   academicYearId: String(data.academic_year_id),
   yearName: data.year_name,
+  inchargeId: data.incharge_id || null,
+  inchargeName: data.incharge_name || null,
   defaultFeeAmount: data.default_fee_amount ? Number(data.default_fee_amount) : null,
   studentCount: Number(data.student_count || 0),
 });
@@ -27,6 +31,15 @@ const mapFromBackend = (data: BackendClass): Class => ({
 export const classService = {
   getClasses: async (academicYearId?: string | number): Promise<Class[]> => {
     const url = academicYearId ? `/classes?academicYearId=${academicYearId}` : '/classes';
+    const data = await apiRequest<BackendClass[]>(url);
+    return data.map(mapFromBackend);
+  },
+
+  getClassesByIncharge: async (teacherId: number, academicYearId?: string | number): Promise<Class[]> => {
+    const params = new URLSearchParams();
+    if (academicYearId) params.append('academicYearId', String(academicYearId));
+    const queryString = params.toString();
+    const url = `/classes/incharge/${teacherId}${queryString ? `?${queryString}` : ''}`;
     const data = await apiRequest<BackendClass[]>(url);
     return data.map(mapFromBackend);
   },
@@ -43,6 +56,7 @@ export const classService = {
         name: data.name,
         section: data.section,
         academicYearId: data.academicYearId,
+        inchargeId: data.inchargeId,
         defaultFeeAmount: data.defaultFeeAmount,
       },
     });

@@ -35,6 +35,7 @@ import StudentPromotion from "../Pages/Admin/StudentPromotion";
 import FeeStructures from "../Pages/Admin/FeeStructures";
 import MarksEntry from "../components/common/MarksEntry";
 import Reports from "@/Pages/Admin/Reports";
+import ClassComparison from "../Pages/Admin/ClassComparison";
 
 const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({
   feature,
@@ -215,6 +216,14 @@ const AdminRoutes = () => (
         element={
           <RequiresActiveYear>
             <MarksEntry />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="class-comparison"
+        element={
+          <RequiresActiveYear>
+            <ClassComparison />
           </RequiresActiveYear>
         }
       />

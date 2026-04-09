@@ -26,7 +26,8 @@ import {
   Clock3,
   Circle,
   Loader2,
-  Eye
+  Eye,
+  Shield
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { useSubjectChapters } from "../../hooks/queries";
@@ -163,6 +164,12 @@ const ClassDetail: React.FC = () => {
       icon: BookOpen,
       variant: "emerald" as const,
     },
+    {
+      label: "Class Incharge",
+      value: classData.inchargeName || "Not Assigned",
+      icon: Shield,
+      variant: "default" as const,
+    },
   ];
 
   const handleEdit = () => {
@@ -230,7 +237,7 @@ const ClassDetail: React.FC = () => {
       </div>
 
       {/* Stat Cards Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         {statCards.map((stat, i) => (
           <AdminStatCard key={i} {...stat} />
         ))}

@@ -38,6 +38,7 @@ import { useAuth } from "../../context/AuthContext";
 import type { AcademicYear } from "../../types/academicYear";
 import type { Student } from "../../types/student";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import UpgradePrompt from "../../components/common/UpgradePrompt";
 import { getLocalDateString } from "../../lib/utils";
 
 interface StudentProfileProps {
@@ -553,11 +554,11 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
         <div className="lg:col-span-9 space-y-8">
           {(() => {
             const tabs = [
-              { key: "Marks", label: "Marks", feature: "marks_management" },
-              { key: "Fee Status", label: "Fee Status", feature: "fee_management" },
-              { key: "Attendance", label: "Attendance", feature: "attendance" },
-              { key: "Performance", label: "Performance", feature: "analytics" },
-            ].filter(tab => !tab.feature || hasFeature(tab.feature));
+              { key: "Attendance", label: "Attendance" },
+              { key: "Marks", label: "Marks" },
+              { key: "Fee Status", label: "Fee Status" },
+              { key: "Performance", label: "Performance" },
+            ];
             
             return (
               <div className="bg-white p-2 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center gap-2">
@@ -579,6 +580,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
           })()}
 
           {activeTab === "Attendance" && (
+            hasFeature("attendance") ? (
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
               <div className="xl:col-span-2 bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100">
                 <div className="flex items-center justify-between mb-10">
@@ -773,6 +775,9 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                 </p>
               </div>
             </div>
+            ) : (
+              <UpgradePrompt feature="attendance" />
+            )
           )}
 
           {activeTab !== "Attendance" && (
@@ -825,6 +830,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
               )}
 
               {activeTab === "Performance" && (
+                hasFeature("analytics") ? (
                 <div className="space-y-6">
                   {loadingMarks ? (
                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 flex items-center justify-center">
@@ -912,6 +918,9 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                     </div>
                   )}
                 </div>
+              ) : (
+                <UpgradePrompt feature="analytics" />
+              )
               )}
 
               {activeTab === "Fee Status" && (

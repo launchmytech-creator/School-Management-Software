@@ -7,6 +7,7 @@ import ParentAttendance from "../Pages/Parent/Attendance";
 import ParentSyllabus from "../Pages/Parent/Syllabus";
 import ParentFeeStatus from "../Pages/Parent/FeeStatus";
 import ParentExamResults from "@/Pages/Parent/ExamResults";
+import ParentAnnouncements from "../Pages/Parent/Announcements";
 import ParentLayout from "../layouts/ParentLayout";
 
 const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({ feature, children }) => {
@@ -25,6 +26,7 @@ const ParentRoutes = () => (
       <Route path="syllabus" element={<ParentSyllabus />} />
       <Route path="fees" element={<ParentFeeStatus />} />
       <Route path="exam-results" element={<ParentExamResults />} />
+      <Route path="announcements" element={<ParentAnnouncements />} />
     </Routes>
   </ParentLayout>
 );

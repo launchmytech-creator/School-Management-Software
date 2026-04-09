@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import InputField from '../ui/InputField';
 import { classService } from '../../services/classService';
+import { teacherService } from '../../services/teacherService';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import type { CreateClassDto } from '../../types/class';
+import type { Teacher } from '../../types/teacher';
 
 interface CreateClassModalProps {
   isOpen: boolean;
@@ -17,12 +19,33 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
   const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
   const [formData, setFormData] = useState<Omit<CreateClassDto, 'academicYearId'>>({
     name: '',
     section: '',
+    inchargeId: undefined,
     defaultFeeAmount: 0,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const fetchTeachers = useCallback(async () => {
+    setLoadingTeachers(true);
+    try {
+      const data = await teacherService.getTeachers();
+      setTeachers(data.filter(t => t.isActive));
+    } catch {
+      showNotification('Failed to fetch teachers', 'error');
+    } finally {
+      setLoadingTeachers(false);
+    }
+  }, [showNotification]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchTeachers();
+    }
+  }, [isOpen, fetchTeachers]);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -36,7 +59,7 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleFieldChange = (field: string, value: string | number) => {
+  const handleFieldChange = (field: string, value: string | number | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => {
@@ -55,14 +78,16 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
     setIsSubmitting(true);
     try {
       await classService.createClass({
-        ...formData,
+        name: formData.name,
+        section: formData.section || undefined,
+        inchargeId: formData.inchargeId,
+        defaultFeeAmount: formData.defaultFeeAmount || undefined,
         academicYearId: selectedYear!.id,
       });
       showNotification('Class created successfully!', 'success');
       onSuccess();
       onClose();
-      // Reset form
-      setFormData({ name: '', section: '', defaultFeeAmount: 0 });
+      setFormData({ name: '', section: '', inchargeId: undefined, defaultFeeAmount: 0 });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } }; message?: string };
       const message = error.response?.data?.message || error.message || 'Failed to create class';
@@ -110,6 +135,26 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({ isOpen, onClose, on
             value={formData.section}
             onChange={(e) => handleFieldChange('section', e.target.value)}
           />
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide">
+              Class Incharge
+            </label>
+            <select
+              value={formData.inchargeId || ''}
+              onChange={(e) => handleFieldChange('inchargeId', e.target.value ? parseInt(e.target.value) : undefined)}
+              disabled={loadingTeachers}
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              <option value="">{loadingTeachers ? 'Loading teachers...' : 'Select class incharge (optional)'}</option>
+              {teachers.map((teacher) => (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.fullName}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-400">Class incharge can mark student attendance</p>
+          </div>
 
           <InputField
             label="Default Fee Amount"

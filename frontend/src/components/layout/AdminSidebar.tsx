@@ -52,6 +52,7 @@ const navGroups: NavGroup[] = [
       { name: 'Examinations', icon: 'assignment', path: '/admin/exams' },
       { name: 'Marks Entry', icon: 'edit_note', path: '/admin/marks-entry' },
       { name: 'Exam Results', icon: 'grade', path: '/admin/exam-results' },
+      { name: 'Class Comparison', icon: 'compare_arrows', path: '/admin/class-comparison' },
     ],
   },
   {

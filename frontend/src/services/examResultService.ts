@@ -70,6 +70,54 @@ export interface EnterMarksDto {
   }>;
 }
 
+export interface ClassComparisonSummary {
+  classId: number;
+  className: string;
+  totalStudents: number;
+  averageMarks: number;
+  passRate: number;
+}
+
+export interface ExamComparisonResult {
+  classId: number;
+  className: string;
+  averageMarks: number;
+  totalStudents: number;
+  passed: number;
+}
+
+export interface ExamComparison {
+  examId: number;
+  examName: string;
+  examDate: string;
+  examType: string;
+  results: ExamComparisonResult[];
+}
+
+export interface SubjectComparison {
+  subjectId: number;
+  subjectName: string;
+  results: {
+    classId: number;
+    className: string;
+    averageMarks: number;
+    totalStudents: number;
+  }[];
+}
+
+export interface ClassComparisonData {
+  summary: ClassComparisonSummary[];
+  exams: ExamComparison[];
+  subjects: SubjectComparison[];
+  trend: Array<{
+    examId: number;
+    examName: string;
+    examDate: string;
+    examType: string;
+    [key: string]: number | string;
+  }>;
+}
+
 interface BackendExamResult {
   id: number;
   exam_id: number;
@@ -266,6 +314,36 @@ export const examResultService = {
     await apiRequest<void>(`/exam-results/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  getClassComparison: async (
+    classIds: number[],
+    academicYearId?: number,
+    examType?: string
+  ): Promise<ClassComparisonData> => {
+    const params = new URLSearchParams();
+    params.append('classIds', classIds.join(','));
+    if (academicYearId) params.append('academicYearId', String(academicYearId));
+    if (examType) params.append('examType', examType);
+    
+    const response = await apiRequest<ClassComparisonData>(
+      `/exam-results/comparison?${params.toString()}`
+    );
+    return response;
+  },
+
+  getClassesForComparison: async (
+    className: string,
+    academicYearId?: number
+  ): Promise<{ id: number; name: string; section: string | null }[]> => {
+    const params = new URLSearchParams();
+    params.append('className', className);
+    if (academicYearId) params.append('academicYearId', String(academicYearId));
+    
+    const response = await apiRequest<{ id: number; name: string; section: string | null }[]>(
+      `/exam-results/comparison/classes?${params.toString()}`
+    );
+    return response;
   },
 };
 
