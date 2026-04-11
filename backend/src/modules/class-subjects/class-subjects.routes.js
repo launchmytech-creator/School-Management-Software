@@ -19,6 +19,13 @@ router.post(
 );
 
 router.get(
+  "/",
+  authenticate,
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  classSubjectsController.getAllClassSubjects,
+);
+
+router.get(
   "/class/:classId",
   authenticate,
   authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
@@ -51,8 +58,22 @@ router.patch(
 router.delete(
   "/:id",
   authenticate,
-  authorize(ROLES.SCHOOL_ADMIN),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
   classSubjectsController.removeSubjectFromClass,
+);
+
+router.post(
+  "/assign-multiple",
+  authenticate,
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
+  classSubjectsController.assignSubjectToMultipleClasses,
+);
+
+router.get(
+  "/check-existing",
+  authenticate,
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
+  classSubjectsController.checkExistingAssignments,
 );
 
 module.exports = router;

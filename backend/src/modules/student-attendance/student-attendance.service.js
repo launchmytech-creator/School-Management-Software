@@ -1,9 +1,40 @@
 const pool = require("../../database/connection");
-const { ERROR_CODES } = require("../../constants");
+const { ERROR_CODES, ROLES } = require("../../constants");
 const AppError = require("../../utils/AppError");
 
 class StudentAttendanceService {
-  async markAttendance(attendanceData, schoolId, userId) {
+  async markAttendance(attendanceData, schoolId, userId, userRole) {
+    // Authorization check
+    // Accountants can mark attendance for any class
+    if (userRole !== ROLES.ACCOUNTANT) {
+      // Teachers: Must be class incharge
+      if (userRole === ROLES.TEACHER) {
+        const classCheck = await pool.query(
+          'SELECT incharge_id FROM classes WHERE id = $1 AND school_id = $2',
+          [attendanceData.classId, schoolId]
+        );
+
+        if (classCheck.rows.length === 0) {
+          throw new AppError(ERROR_CODES.NOT_FOUND, "Class not found", 404);
+        }
+
+        if (classCheck.rows[0].incharge_id !== userId) {
+          throw new AppError(
+            ERROR_CODES.NOT_INCHARGE,
+            "Only the class incharge can mark attendance for this class",
+            403
+          );
+        }
+      } else {
+        // school_admin and other roles cannot mark attendance
+        throw new AppError(
+          ERROR_CODES.FORBIDDEN,
+          "Only accountants and class incharges can mark attendance",
+          403
+        );
+      }
+    }
+
     const client = await pool.connect();
 
     try {

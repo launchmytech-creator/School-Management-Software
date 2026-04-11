@@ -1,0 +1,48 @@
+paths:
+  /reports:
+    get:
+      tags:
+        - Reports
+      summary: Get report
+      description: Generate and retrieve various reports based on type (School Admin, Accountant)
+      operationId: getReport
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [student-summary, fee-collection, attendance-summary, exam-performance]
+          example: "student-summary"
+        - name: academicYearId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: classId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Report generated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Report"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"

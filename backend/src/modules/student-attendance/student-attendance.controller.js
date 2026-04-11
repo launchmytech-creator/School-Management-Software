@@ -8,6 +8,7 @@ class StudentAttendanceController {
         req.body,
         req.user.schoolId,
         req.user.id,
+        req.user.role,
       );
       return ApiResponse.success(
         res,

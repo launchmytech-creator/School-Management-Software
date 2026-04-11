@@ -71,8 +71,21 @@ tags:
     description: Parent portal - view children's marks, attendance, fees, syllabus (Parent only)
   - name: Notifications
     description: Email notifications - send, broadcast, and manage notification history
+  - name: Dashboard
+    description: Aggregated dashboard data for admin, accountant, and teacher roles
+  - name: Assignments
+    description: Assignment management - create, submit, and grade assignments
+  - name: Timetables
+    description: Timetable management for classes and teachers
+  - name: Reports
+    description: Generate various reports (School Admin, Accountant)
+  - name: School Settings
+    description: School settings and configurations (School Admin only)
+  - name: Super Admin
+    description: Platform-wide statistics and school management (Super Admin only)
 
-paths:
+paths: []
+
 components:
   securitySchemes:
     BearerAuth:

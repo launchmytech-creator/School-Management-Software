@@ -26,6 +26,13 @@ router.get(
 );
 
 router.get(
+  "/incharge/:teacherId",
+  authenticate,
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  classesController.getClassesByIncharge,
+);
+
+router.get(
   "/:id",
   authenticate,
   authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),

@@ -15,7 +15,7 @@ router.use(authenticate);
 
 router.post(
   "/generate",
-  authorize(ROLES.SCHOOL_ADMIN),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
   generateFeeTransactionsValidation,
   validate,
   feeTransactionsController.generateFeeTransactions,

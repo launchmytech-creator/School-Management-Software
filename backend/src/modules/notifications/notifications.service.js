@@ -84,7 +84,7 @@ class NotificationsService {
       message,
       referenceType,
       referenceId,
-      emailPayload: { to: user.email, subject, html },
+      emailPayload: { to: user.email, subject, html, fromName: user.school_name },
     });
   }
 
@@ -108,7 +108,7 @@ class NotificationsService {
       notificationType: "fee_reminder",
       message,
       referenceType: "fee",
-      emailPayload: { to: parent.email, subject: "Fee Payment Reminder", html },
+      emailPayload: { to: parent.email, subject: "Fee Payment Reminder", html, fromName: parent.school_name },
     });
   }
 
@@ -135,7 +135,7 @@ class NotificationsService {
       message,
       referenceType: "exam",
       referenceId: examId,
-      emailPayload: { to: parent.email, subject: `Exam Results: ${examName}`, html },
+      emailPayload: { to: parent.email, subject: `Exam Results: ${examName}`, html, fromName: parent.school_name },
     });
   }
 
@@ -160,7 +160,7 @@ class NotificationsService {
       message,
       referenceType: "student",
       referenceId: studentId,
-      emailPayload: { to: parent.email, subject: "Attendance Alert", html },
+      emailPayload: { to: parent.email, subject: "Attendance Alert", html, fromName: parent.school_name },
     });
   }
 
@@ -197,7 +197,7 @@ class NotificationsService {
           message,
           referenceType: "announcement",
           referenceId: announcementId,
-          emailPayload: { to: user.email, subject: `Announcement: ${title}`, html },
+          emailPayload: { to: user.email, subject: `Announcement: ${title}`, html, fromName: user.school_name },
         });
       }),
     );
@@ -229,7 +229,7 @@ class NotificationsService {
       userId,
       notificationType: "welcome",
       message,
-      emailPayload: { to: user.email, subject: `Welcome to ${user.school_name}`, html },
+      emailPayload: { to: user.email, subject: `Welcome to ${user.school_name}`, html, fromName: user.school_name },
     });
   }
 
@@ -296,7 +296,7 @@ class NotificationsService {
           schoolName: "",
         });
 
-        await emailService.sendMail({ to: n.email, subject: n.notification_type, html });
+        await emailService.sendMail({ to: n.email, subject: n.notification_type, html, fromName: "" });
         await pool.query(
           `UPDATE notifications SET status = 'sent', sent_at = NOW() WHERE id = $1`,
           [n.id],

@@ -1,0 +1,100 @@
+paths:
+  /super-admin/stats:
+    get:
+      tags:
+        - Super Admin
+      summary: Get platform statistics
+      description: Retrieve aggregated statistics across all schools (Super Admin only)
+      operationId: getSuperAdminStats
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SuperAdminStats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /super-admin/recent-schools:
+    get:
+      tags:
+        - Super Admin
+      summary: Get recent schools
+      description: Retrieve recently registered or updated schools (Super Admin only)
+      operationId: getRecentSchools
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+          example: 10
+      responses:
+        "200":
+          description: Recent schools retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/RecentSchool"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /super-admin/schools/bulk-deactivate:
+    post:
+      tags:
+        - Super Admin
+      summary: Bulk deactivate schools
+      description: Deactivate multiple schools at once (Super Admin only)
+      operationId: bulkDeactivateSchools
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkDeactivateRequest"
+      responses:
+        "200":
+          description: Schools deactivated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          deactivated:
+                            type: integer
+                            example: 5
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"

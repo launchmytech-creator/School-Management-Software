@@ -1,0 +1,78 @@
+paths:
+  /dashboard/admin:
+    get:
+      tags:
+        - Dashboard
+      summary: Get admin dashboard
+      description: Retrieve aggregated dashboard data for school admin including statistics, recent activities, and metrics
+      operationId: getAdminDashboard
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Admin dashboard data retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AdminDashboard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /dashboard/accountant:
+    get:
+      tags:
+        - Dashboard
+      summary: Get accountant dashboard
+      description: Retrieve aggregated dashboard data for accountant including fee statistics and collections
+      operationId: getAccountantDashboard
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Accountant dashboard data retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AccountantDashboard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /dashboard/teacher:
+    get:
+      tags:
+        - Dashboard
+      summary: Get teacher dashboard
+      description: Retrieve aggregated dashboard data for teacher including assigned classes, subjects, and upcoming tasks
+      operationId: getTeacherDashboard
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Teacher dashboard data retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/TeacherDashboard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"

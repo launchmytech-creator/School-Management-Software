@@ -6,12 +6,12 @@ class FeeTransactionsController {
     try {
       const result = await feeTransactionsService.generateFeeTransactions(
         req.body,
-        req.user.schoolId
+        req.user.schoolId,
       );
       return ApiResponse.created(
         res,
         result,
-        "Generated " + result.generated + " fee transactions successfully"
+        "Generated " + result.generated + " fee transactions successfully",
       );
     } catch (error) {
       next(error);
@@ -46,7 +46,7 @@ class FeeTransactionsController {
   async getStudentFeeTransactions(req, res, next) {
     try {
       // For parents, service verifies the student belongs to them before returning data
-      if (req.user.role === 'parent') {
+      if (req.user.role === "parent") {
         await feeTransactionsService.verifyStudentBelongsToParent(
           req.params.studentId,
           req.user.id,

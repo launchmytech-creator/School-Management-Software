@@ -43,6 +43,10 @@ const ERROR_CODES = {
   USER_ALREADY_EXISTS: "USER_002",
   USER_INACTIVE: "USER_003",
 
+  // Subject Errors
+  SUBJECT_ALREADY_EXISTS: "SUBJECT_001",
+  SUBJECT_NOT_FOUND: "SUBJECT_002",
+
   // School Errors
   SCHOOL_NOT_FOUND: "SCHOOL_001",
   SCHOOL_INACTIVE: "SCHOOL_002",
@@ -57,6 +61,8 @@ const ERROR_CODES = {
   INTERNAL_ERROR: "SYS_001",
   DATABASE_ERROR: "SYS_002",
   RESOURCE_NOT_FOUND: "SYS_003",
+  FORBIDDEN: "SYS_004",
+  NOT_INCHARGE: "SYS_005",
 };
 
 const ERROR_MESSAGES = {
@@ -75,6 +81,9 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.SCHOOL_INACTIVE]: "School is inactive",
   [ERROR_CODES.SCHOOL_SUBSCRIPTION_EXPIRED]: "School subscription has expired",
 
+  [ERROR_CODES.SUBJECT_ALREADY_EXISTS]: "Subject already exists",
+  [ERROR_CODES.SUBJECT_NOT_FOUND]: "Subject not found",
+
   [ERROR_CODES.VALIDATION_ERROR]: "Validation error",
   [ERROR_CODES.REQUIRED_FIELD_MISSING]: "Required field is missing",
   [ERROR_CODES.INVALID_INPUT]: "Invalid input provided",
@@ -82,6 +91,8 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.INTERNAL_ERROR]: "Internal server error",
   [ERROR_CODES.DATABASE_ERROR]: "Database operation failed",
   [ERROR_CODES.RESOURCE_NOT_FOUND]: "Requested resource not found",
+  [ERROR_CODES.FORBIDDEN]: "You do not have permission to perform this action",
+  [ERROR_CODES.NOT_INCHARGE]: "Only the class incharge can perform this action",
 };
 
 module.exports = {

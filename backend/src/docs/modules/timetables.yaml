@@ -1,0 +1,224 @@
+paths:
+  /timetables:
+    post:
+      tags:
+        - Timetables
+      summary: Create timetable entry
+      description: Create a single timetable entry for a class, subject, and teacher (School Admin, Teacher)
+      operationId: createTimetable
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTimetable"
+      responses:
+        "201":
+          description: Timetable entry created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Timetable"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    get:
+      tags:
+        - Timetables
+      summary: Get timetables
+      description: Retrieve timetables filtered by class, teacher, or academic year (School Admin, Teacher, Accountant)
+      operationId: getTimetables
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: classId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: teacherId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 5
+        - name: academicYearId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Timetables retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Timetable"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /timetables/bulk:
+    post:
+      tags:
+        - Timetables
+      summary: Bulk create timetables
+      description: Create multiple timetable entries at once (School Admin only)
+      operationId: bulkCreateTimetable
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkCreateTimetable"
+      responses:
+        "201":
+          description: Timetables created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          created:
+                            type: integer
+                            example: 10
+                          entries:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Timetable"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /timetables/{id}:
+    get:
+      tags:
+        - Timetables
+      summary: Get timetable by ID
+      description: Retrieve timetable entry details by ID (School Admin, Teacher)
+      operationId: getTimetableById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Timetable retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Timetable"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      tags:
+        - Timetables
+      summary: Update timetable
+      description: Update timetable entry details (School Admin, Teacher)
+      operationId: updateTimetable
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTimetable"
+      responses:
+        "200":
+          description: Timetable updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Timetable"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags:
+        - Timetables
+      summary: Delete timetable
+      description: Delete a timetable entry (School Admin only)
+      operationId: deleteTimetable
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Timetable deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"

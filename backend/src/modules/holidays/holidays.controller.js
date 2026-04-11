@@ -7,8 +7,9 @@ class HolidaysController {
       const holiday = await holidaysService.createHoliday(
         req.body,
         req.user.schoolId,
+        req.user.id,
       );
-      return ApiResponse.created(res, holiday, "Holiday created successfully");
+      return ApiResponse.created(res, holiday, "Holiday created and notification sent to all users");
     } catch (error) {
       next(error);
     }
@@ -53,8 +54,12 @@ class HolidaysController {
 
   async deleteHoliday(req, res, next) {
     try {
-      await holidaysService.deleteHoliday(req.params.id, req.user.schoolId);
-      return ApiResponse.success(res, null, "Holiday deleted successfully");
+      await holidaysService.deleteHoliday(
+        req.params.id,
+        req.user.schoolId,
+        req.user.id,
+      );
+      return ApiResponse.success(res, null, "Holiday deleted and notification sent to all users");
     } catch (error) {
       next(error);
     }

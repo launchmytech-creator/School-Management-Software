@@ -1,0 +1,303 @@
+paths:
+  /assignments:
+    post:
+      tags:
+        - Assignments
+      summary: Create assignment
+      description: Create a new assignment for a class and subject (School Admin, Teacher)
+      operationId: createAssignment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAssignment"
+      responses:
+        "201":
+          description: Assignment created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Assignment"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    get:
+      tags:
+        - Assignments
+      summary: Get all assignments
+      description: Retrieve all assignments filtered by class, subject, or academic year (School Admin, Teacher, Student)
+      operationId: getAssignments
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: classId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+        - name: subjectId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 2
+        - name: academicYearId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Assignments retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Assignment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /assignments/{id}:
+    get:
+      tags:
+        - Assignments
+      summary: Get assignment by ID
+      description: Retrieve assignment details by ID (School Admin, Teacher, Student)
+      operationId: getAssignmentById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Assignment retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Assignment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      tags:
+        - Assignments
+      summary: Update assignment
+      description: Update assignment details (School Admin, Teacher)
+      operationId: updateAssignment
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAssignment"
+      responses:
+        "200":
+          description: Assignment updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Assignment"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags:
+        - Assignments
+      summary: Delete assignment
+      description: Delete an assignment (School Admin, Teacher)
+      operationId: deleteAssignment
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Assignment deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Success"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /assignments/{id}/submissions:
+    get:
+      tags:
+        - Assignments
+      summary: Get assignment submissions
+      description: Retrieve all submissions for an assignment (School Admin, Teacher)
+      operationId: getAssignmentSubmissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        "200":
+          description: Submissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/AssignmentSubmission"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /assignments/{id}/submit:
+    post:
+      tags:
+        - Assignments
+      summary: Submit assignment
+      description: Student submits an assignment (Student only)
+      operationId: submitAssignment
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitAssignment"
+      responses:
+        "201":
+          description: Assignment submitted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AssignmentSubmission"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /assignments/submissions/{submissionId}/grade:
+    post:
+      tags:
+        - Assignments
+      summary: Grade submission
+      description: Teacher grades a student submission (School Admin, Teacher)
+      operationId: gradeSubmission
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: submissionId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GradeSubmission"
+      responses:
+        "200":
+          description: Submission graded successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/AssignmentSubmission"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"

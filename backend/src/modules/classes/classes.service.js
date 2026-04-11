@@ -28,9 +28,9 @@ class ClassesService {
 
     const query = `
       INSERT INTO classes (
-        school_id, name, section, academic_year_id, default_fee_amount
+        school_id, name, section, academic_year_id, incharge_id, default_fee_amount
       )
-      VALUES ($1, $2, $3, $4, $5)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
 
@@ -39,6 +39,7 @@ class ClassesService {
       normalizedName,
       normalizedSection,
       classData.academicYearId,
+      classData.inchargeId || null,
       classData.defaultFeeAmount || null,
     ]);
 
@@ -48,9 +49,11 @@ class ClassesService {
   async getClassesBySchool(schoolId, academicYearId = null) {
     let query = `
       SELECT c.*, ay.year_name, ay.start_date, ay.end_date,
+             u.full_name as incharge_name,
              COUNT(DISTINCT s.id) as student_count
       FROM classes c
       LEFT JOIN academic_years ay ON c.academic_year_id = ay.id
+      LEFT JOIN users u ON c.incharge_id = u.id
       LEFT JOIN students s ON c.id = s.current_class_id AND s.status = 'active'
       WHERE c.school_id = $1
     `;
@@ -62,7 +65,7 @@ class ClassesService {
       params.push(academicYearId);
     }
 
-    query += ` GROUP BY c.id, ay.year_name, ay.start_date, ay.end_date ORDER BY c.name, c.section`;
+    query += ` GROUP BY c.id, ay.year_name, ay.start_date, ay.end_date, u.full_name ORDER BY c.name, c.section`;
 
     const result = await pool.query(query, params);
     return result.rows;
@@ -71,12 +74,14 @@ class ClassesService {
   async getClassById(classId, schoolId) {
     const query = `
       SELECT c.*, ay.year_name, ay.start_date, ay.end_date,
+             u.full_name as incharge_name,
              COUNT(DISTINCT s.id) as student_count
       FROM classes c
       LEFT JOIN academic_years ay ON c.academic_year_id = ay.id
+      LEFT JOIN users u ON c.incharge_id = u.id
       LEFT JOIN students s ON c.id = s.current_class_id AND s.status = 'active'
       WHERE c.id = $1 AND c.school_id = $2
-      GROUP BY c.id, ay.year_name, ay.start_date, ay.end_date
+      GROUP BY c.id, ay.year_name, ay.start_date, ay.end_date, u.full_name
     `;
 
     const result = await pool.query(query, [classId, schoolId]);
@@ -100,6 +105,10 @@ class ClassesService {
     if (updateData.section !== undefined) {
       fields.push(`section = $${paramCount++}`);
       values.push(updateData.section);
+    }
+    if (updateData.inchargeId !== undefined) {
+      fields.push(`incharge_id = $${paramCount++}`);
+      values.push(updateData.inchargeId === null ? null : updateData.inchargeId);
     }
     if (updateData.defaultFeeAmount !== undefined) {
       fields.push(`default_fee_amount = $${paramCount++}`);
@@ -141,6 +150,31 @@ class ClassesService {
     }
 
     return result.rows[0];
+  }
+
+  async getClassesByIncharge(teacherId, schoolId, academicYearId = null) {
+    let query = `
+      SELECT c.*, ay.year_name, ay.start_date, ay.end_date,
+             u.full_name as incharge_name,
+             COUNT(DISTINCT s.id) as student_count
+      FROM classes c
+      LEFT JOIN academic_years ay ON c.academic_year_id = ay.id
+      LEFT JOIN users u ON c.incharge_id = u.id
+      LEFT JOIN students s ON c.id = s.current_class_id AND s.status = 'active'
+      WHERE c.incharge_id = $1 AND c.school_id = $2
+    `;
+
+    const params = [parseInt(teacherId), schoolId];
+
+    if (academicYearId) {
+      query += ` AND c.academic_year_id = $3`;
+      params.push(academicYearId);
+    }
+
+    query += ` GROUP BY c.id, ay.year_name, ay.start_date, ay.end_date, u.full_name ORDER BY c.name, c.section`;
+
+    const result = await pool.query(query, params);
+    return result.rows;
   }
 }
 

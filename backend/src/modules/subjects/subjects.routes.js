@@ -44,7 +44,7 @@ router.patch(
 router.delete(
   "/:id",
   authenticate,
-  authorize(ROLES.SCHOOL_ADMIN),
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
   subjectsController.deleteSubject,
 );
 

@@ -4,6 +4,19 @@ const AppError = require("../../utils/AppError");
 
 class SubjectsService {
   async createSubject(subjectData, schoolId) {
+    const existing = await pool.query(
+      'SELECT id, name FROM subjects WHERE school_id = $1 AND code = $2',
+      [schoolId, subjectData.code]
+    );
+    
+    if (existing.rows.length > 0) {
+      throw new AppError(
+        ERROR_CODES.SUBJECT_ALREADY_EXISTS,
+        `Subject with code "${subjectData.code}" already exists. Use existing subject "${existing.rows[0].name}" or choose a different code.`,
+        409
+      );
+    }
+
     const query = `
       INSERT INTO subjects (school_id, name, code)
       VALUES ($1, $2, $3)

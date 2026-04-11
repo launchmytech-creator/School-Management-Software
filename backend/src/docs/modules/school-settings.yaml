@@ -1,0 +1,59 @@
+paths:
+  /school-settings:
+    get:
+      tags:
+        - School Settings
+      summary: Get school settings
+      description: Retrieve current school settings and configurations (School Admin only)
+      operationId: getSchoolSettings
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: School settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SchoolSettings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    patch:
+      tags:
+        - School Settings
+      summary: Update school settings
+      description: Update school settings and configurations (School Admin only)
+      operationId: updateSchoolSettings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSchoolSettings"
+      responses:
+        "200":
+          description: School settings updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SchoolSettings"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"

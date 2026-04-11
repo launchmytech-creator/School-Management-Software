@@ -35,6 +35,28 @@ class ClassesController {
     }
   }
 
+  async getClassesByIncharge(req, res, next) {
+    try {
+      const schoolId = req.user.schoolId;
+      const { teacherId } = req.params;
+      const { academicYearId } = req.query;
+
+      const classes = await classesService.getClassesByIncharge(
+        teacherId,
+        schoolId,
+        academicYearId,
+      );
+
+      return ApiResponse.success(
+        res,
+        classes,
+        "Classes retrieved successfully",
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getClassById(req, res, next) {
     try {
       const schoolId = req.user.schoolId;

@@ -15,9 +15,9 @@ class EmailService {
     });
   }
 
-  async sendMail({ to, subject, html, text }) {
+  async sendMail({ to, subject, html, text, fromName }) {
     const mailOptions = {
-      from: `"${config.email.fromName}" <${config.email.from}>`,
+      from: `"${fromName || config.email.fromName}" <${config.email.from}>`,
       to,
       subject,
       html,

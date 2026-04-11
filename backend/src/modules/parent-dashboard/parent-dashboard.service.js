@@ -205,39 +205,61 @@ class ParentDashboardService {
   async getDashboardOverview(parentId, schoolId) {
     const children = await this.getMyChildren(parentId, schoolId);
 
-    const overview = await Promise.all(
-      children.map(async (child) => {
-        // Get fee summary
-        const feeSummary = await pool.query(
-          `SELECT 
-            COUNT(*) as total_fees,
-            COUNT(CASE WHEN status = 'paid' THEN 1 END) as paid_fees,
-            COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_fees,
-            SUM(CASE WHEN status = 'pending' THEN amount_due ELSE 0 END) as total_due
-          FROM fee_transactions
-          WHERE student_id = $1 AND school_id = $2`,
-          [child.id, schoolId],
-        );
+    const [overview, announcementsResult] = await Promise.all([
+      Promise.all(
+        children.map(async (child) => {
+          // Get fee summary
+          const feeSummary = await pool.query(
+            `SELECT 
+              COUNT(*) as total_fees,
+              COUNT(CASE WHEN status = 'paid' THEN 1 END) as paid_fees,
+              COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_fees,
+              SUM(CASE WHEN status = 'pending' THEN amount_due ELSE 0 END) as total_due
+            FROM fee_transactions
+            WHERE student_id = $1 AND school_id = $2`,
+            [child.id, schoolId],
+          );
 
-        // Get recent attendance
-        const recentAttendance = await pool.query(
-          `SELECT status, attendance_date
-          FROM student_attendance
-          WHERE student_id = $1 AND school_id = $2
-          ORDER BY attendance_date DESC
-          LIMIT 5`,
-          [child.id, schoolId],
-        );
+          // Get recent attendance
+          const recentAttendance = await pool.query(
+            `SELECT status, attendance_date
+            FROM student_attendance
+            WHERE student_id = $1 AND school_id = $2
+            ORDER BY attendance_date DESC
+            LIMIT 5`,
+            [child.id, schoolId],
+          );
 
-        return {
-          student: child,
-          fee_summary: feeSummary.rows[0],
-          recent_attendance: recentAttendance.rows,
-        };
-      }),
-    );
+          return {
+            student: child,
+            fee_summary: feeSummary.rows[0],
+            recent_attendance: recentAttendance.rows,
+          };
+        }),
+      ),
+      // Get recent announcements
+      pool.query(
+        `SELECT id, title, content, priority, target_audience, created_at
+        FROM announcements
+        WHERE school_id = $1
+          AND (target_audience = 'all' OR target_audience = 'parents')
+        ORDER BY created_at DESC
+        LIMIT 5`,
+        [schoolId],
+      ),
+    ]);
 
-    return overview;
+    return {
+      children: overview,
+      recentAnnouncements: announcementsResult.rows.map((a) => ({
+        id: a.id,
+        title: a.title,
+        content: a.content,
+        priority: a.priority,
+        targetAudience: a.target_audience,
+        createdAt: a.created_at,
+      })),
+    };
   }
 
   async verifyChildOwnership(childId, parentId, schoolId) {

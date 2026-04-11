@@ -9,6 +9,7 @@
     "seed:superadmin": "node src/scripts/seedSuperAdmin.js",
     "db:migrate": "node src/scripts/runMigrations.js",
     "db:migrate:002": "node src/scripts/runMigration002.js",
+    "db:migrate:003": "node src/scripts/runMigration003.js",
     "db:reset": "node src/scripts/resetDatabase.js",
     "db:test": "node src/scripts/testConnection.js",
     "db:verify": "node src/scripts/verifyNewSchema.js",

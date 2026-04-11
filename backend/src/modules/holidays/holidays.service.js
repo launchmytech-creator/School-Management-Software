@@ -3,23 +3,51 @@ const { ERROR_CODES } = require("../../constants");
 const AppError = require("../../utils/AppError");
 
 class HolidaysService {
-  async createHoliday(holidayData, schoolId) {
-    const query = `
-      INSERT INTO holidays (
-        school_id, holiday_date, description, academic_year_id
-      )
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `;
+  async createHoliday(holidayData, schoolId, createdBy) {
+    const client = await pool.connect();
 
-    const result = await pool.query(query, [
-      schoolId,
-      holidayData.holidayDate,
-      holidayData.description || null,
-      holidayData.academicYearId,
-    ]);
+    try {
+      await client.query("BEGIN");
 
-    return result.rows[0];
+      const holidayQuery = `
+        INSERT INTO holidays (
+          school_id, holiday_date, description, academic_year_id
+        )
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+      `;
+
+      const holidayResult = await client.query(holidayQuery, [
+        schoolId,
+        holidayData.holidayDate,
+        holidayData.description || null,
+        holidayData.academicYearId,
+      ]);
+
+      const holiday = holidayResult.rows[0];
+
+      const title = `Holiday Notice: ${holidayData.description || 'Holiday'}`;
+      const formattedDate = new Date(holidayData.holidayDate).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      const message = `${holidayData.description || 'Holiday'} - School will remain closed on ${formattedDate}.`;
+
+      await client.query(`
+        INSERT INTO announcements (school_id, title, message, target_role, created_by)
+        VALUES ($1, $2, $3, NULL, $4)
+      `, [schoolId, title, message, createdBy]);
+
+      await client.query("COMMIT");
+
+      return holiday;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async getHolidaysBySchool(schoolId, filters = {}) {
@@ -103,20 +131,53 @@ class HolidaysService {
     return result.rows[0];
   }
 
-  async deleteHoliday(holidayId, schoolId) {
-    const query = `
-      DELETE FROM holidays 
-      WHERE id = $1 AND school_id = $2
-      RETURNING *
-    `;
+  async deleteHoliday(holidayId, schoolId, deletedBy) {
+    const client = await pool.connect();
 
-    const result = await pool.query(query, [holidayId, schoolId]);
+    try {
+      await client.query("BEGIN");
 
-    if (result.rows.length === 0) {
-      throw new AppError(ERROR_CODES.NOT_FOUND, "Holiday not found", 404);
+      const getHolidayQuery = `
+        SELECT * FROM holidays WHERE id = $1 AND school_id = $2
+      `;
+      const holidayResult = await client.query(getHolidayQuery, [holidayId, schoolId]);
+
+      if (holidayResult.rows.length === 0) {
+        throw new AppError(ERROR_CODES.NOT_FOUND, "Holiday not found", 404);
+      }
+
+      const holiday = holidayResult.rows[0];
+
+      const deleteQuery = `
+        DELETE FROM holidays 
+        WHERE id = $1 AND school_id = $2
+        RETURNING *
+      `;
+
+      await client.query(deleteQuery, [holidayId, schoolId]);
+
+      const title = `Holiday Cancelled: ${holiday.description || 'Holiday'}`;
+      const formattedDate = new Date(holiday.holiday_date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      const message = `Previously announced holiday for ${formattedDate}${holiday.description ? ` (${holiday.description})` : ''} has been cancelled. School will be open on this day.`;
+
+      await client.query(`
+        INSERT INTO announcements (school_id, title, message, target_role, created_by)
+        VALUES ($1, $2, $3, NULL, $4)
+      `, [schoolId, title, message, deletedBy]);
+
+      await client.query("COMMIT");
+
+      return holiday;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
     }
-
-    return result.rows[0];
   }
 
   async getWorkingDaysCount(

@@ -1,0 +1,11 @@
+components:
+  parameters:
+    IdPathParam:
+      name: id
+      in: path
+      required: true
+      description: Resource ID
+      schema:
+        type: integer
+        minimum: 1
+      example: 1

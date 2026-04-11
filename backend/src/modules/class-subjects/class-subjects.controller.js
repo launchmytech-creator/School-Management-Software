@@ -66,6 +66,26 @@ class ClassSubjectsController {
     }
   }
 
+  async getAllClassSubjects(req, res, next) {
+    try {
+      const schoolId = req.user.schoolId;
+      const { academicYearId } = req.query;
+
+      const classSubjects = await classSubjectsService.getAllClassSubjects(
+        schoolId,
+        academicYearId,
+      );
+
+      return ApiResponse.success(
+        res,
+        classSubjects,
+        "All class subjects retrieved successfully",
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getClassSubjectById(req, res, next) {
     try {
       const schoolId = req.user.schoolId;
@@ -112,14 +132,74 @@ class ClassSubjectsController {
     try {
       const schoolId = req.user.schoolId;
       const { id } = req.params;
+      const parsedId = parseInt(id, 10);
 
-      await classSubjectsService.removeSubjectFromClass(id, schoolId);
+      if (isNaN(parsedId)) {
+        return ApiResponse.error(res, 400, "Invalid class subject ID");
+      }
+
+      await classSubjectsService.removeSubjectFromClass(parsedId, schoolId);
 
       return ApiResponse.success(
         res,
         null,
         "Subject removed from class successfully",
       );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async assignSubjectToMultipleClasses(req, res, next) {
+    try {
+      const { classIds, subjectId, academicYearId } = req.body;
+
+      if (!classIds || !Array.isArray(classIds) || classIds.length === 0) {
+        return ApiResponse.error(res, "At least one class must be selected", 400);
+      }
+
+      if (!subjectId) {
+        return ApiResponse.error(res, "Subject ID is required", 400);
+      }
+
+      if (!academicYearId) {
+        return ApiResponse.error(res, "Academic year is required", 400);
+      }
+
+      const result = await classSubjectsService.assignSubjectToMultipleClasses(
+        classIds,
+        subjectId,
+        academicYearId,
+        req.user.schoolId
+      );
+
+      return ApiResponse.success(res, result, `Subject assigned to ${result.length} class(es) successfully`);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async checkExistingAssignments(req, res, next) {
+    try {
+      const { classIds, academicYearId } = req.query;
+
+      if (!classIds) {
+        return ApiResponse.error(res, "Class IDs are required", 400);
+      }
+
+      const classIdArray = classIds.split(",").map(id => parseInt(id)).filter(id => !isNaN(id));
+
+      if (classIdArray.length === 0) {
+        return ApiResponse.error(res, "Invalid class IDs", 400);
+      }
+
+      const result = await classSubjectsService.checkExistingAssignments(
+        classIdArray,
+        academicYearId ? parseInt(academicYearId) : null,
+        req.user.schoolId
+      );
+
+      return ApiResponse.success(res, result);
     } catch (error) {
       next(error);
     }

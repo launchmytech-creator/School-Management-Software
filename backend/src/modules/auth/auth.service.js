@@ -9,9 +9,11 @@ class AuthService {
   async login(email, password) {
     const query = `
       SELECT u.*, s.name as school_name, s.is_active as school_active, 
-             s.subscription_status
+             s.subscription_status, s.subscription_plan_id,
+             sp.name as subscription_plan_name, sp.features as subscription_features
       FROM users u
       LEFT JOIN schools s ON u.school_id = s.id
+      LEFT JOIN subscription_plans sp ON s.subscription_plan_id = sp.id
       WHERE u.email = $1 AND u.is_active = true
     `;
 
@@ -80,6 +82,9 @@ class AuthService {
         role: user.role,
         schoolId: user.school_id,
         schoolName: user.school_name,
+        subscriptionPlanId: user.subscription_plan_id,
+        subscriptionPlan: user.subscription_plan_name,
+        subscriptionFeatures: user.subscription_features,
       },
     };
   }
@@ -88,9 +93,11 @@ class AuthService {
     const query = `
       SELECT u.id, u.email, u.full_name, u.role, u.phone,
              u.date_of_birth, u.gender, u.address, u.school_id,
-             s.name as school_name
+             s.name as school_name, s.subscription_plan_id,
+             sp.name as subscription_plan_name, sp.features as subscription_features
       FROM users u
       LEFT JOIN schools s ON u.school_id = s.id
+      LEFT JOIN subscription_plans sp ON s.subscription_plan_id = sp.id
       WHERE u.id = $1 AND u.is_active = true
     `;
 
@@ -104,7 +111,22 @@ class AuthService {
       );
     }
 
-    return result.rows[0];
+    const profile = result.rows[0];
+    return {
+      id: profile.id,
+      email: profile.email,
+      full_name: profile.full_name,
+      role: profile.role,
+      phone: profile.phone,
+      date_of_birth: profile.date_of_birth,
+      gender: profile.gender,
+      address: profile.address,
+      school_id: profile.school_id,
+      school_name: profile.school_name,
+      subscription_plan_id: profile.subscription_plan_id,
+      subscription_plan_name: profile.subscription_plan_name,
+      subscription_features: profile.subscription_features,
+    };
   }
 }
 

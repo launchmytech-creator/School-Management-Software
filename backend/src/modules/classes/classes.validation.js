@@ -18,6 +18,11 @@ const createClassValidation = [
     .isInt()
     .withMessage("Academic year ID must be an integer"),
 
+  body("inchargeId")
+    .optional()
+    .isInt()
+    .withMessage("Incharge ID must be an integer"),
+
   body("defaultFeeAmount")
     .optional()
     .isDecimal()
@@ -34,6 +39,15 @@ const updateClassValidation = [
     .optional()
     .isLength({ max: 10 })
     .withMessage("Section must be at most 10 characters"),
+
+  body("inchargeId")
+    .optional({ nullable: true })
+    .custom((value) => {
+      if (value !== null && value !== undefined && !Number.isInteger(Number(value))) {
+        throw new Error("Incharge ID must be an integer or null");
+      }
+      return true;
+    }),
 
   body("defaultFeeAmount")
     .optional()

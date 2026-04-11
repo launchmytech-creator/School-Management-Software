@@ -40,6 +40,24 @@ router.get(
   examResultsController.getClassPerformance,
 );
 
+router.get(
+  "/comparison",
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
+  examResultsController.getClassComparison,
+);
+
+router.get(
+  "/comparison/classes",
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
+  examResultsController.getClassesForComparison,
+);
+
+router.get(
+  "/comparison/subjects",
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
+  examResultsController.getClassSubjectComparison,
+);
+
 router.delete(
   "/:id",
   authorize(ROLES.SCHOOL_ADMIN),

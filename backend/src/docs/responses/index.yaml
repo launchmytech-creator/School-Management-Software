@@ -1,0 +1,61 @@
+components:
+  responses:
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/index.yaml#/components/schemas/Error"
+          example:
+            success: false
+            errorCode: "AUTH_002"
+            message: "Authentication token is missing"
+
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/index.yaml#/components/schemas/Error"
+          example:
+            success: false
+            errorCode: "AUTH_005"
+            message: "You are not authorized to perform this action"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/index.yaml#/components/schemas/Error"
+          example:
+            success: false
+            errorCode: "SYS_003"
+            message: "Requested resource not found"
+
+    ValidationError:
+      description: Validation error - Invalid input data
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/index.yaml#/components/schemas/Error"
+          example:
+            success: false
+            errorCode: "VAL_001"
+            message: "Validation failed"
+            errors:
+              - field: "email"
+                message: "Valid email is required"
+              - field: "password"
+                message: "Password must be at least 8 characters"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/index.yaml#/components/schemas/Error"
+          example:
+            success: false
+            errorCode: "SYS_001"
+            message: "Internal server error"

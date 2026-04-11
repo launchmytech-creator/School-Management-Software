@@ -31,7 +31,7 @@ const config = {
   email: {
     host: process.env.EMAIL_HOST || "smtp.gmail.com",
     port: parseInt(process.env.EMAIL_PORT || "587"),
-    secure: process.env.EMAIL_SECURE === "true", // true for port 465
+    secure: process.env.EMAIL_SECURE === "true", //true for port 587
     user: process.env.EMAIL_USER || "",
     password: process.env.EMAIL_PASSWORD || "",
     from: process.env.EMAIL_FROM || process.env.EMAIL_USER || "",
