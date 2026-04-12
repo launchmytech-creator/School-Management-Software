@@ -153,7 +153,10 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
   const resultsBySubject = useMemo(() => {
     const grouped: Record<string, ExamResult[]> = {};
     filteredResults.forEach((result) => {
-      const key = result.subjectName;
+      const classKey = result.classSection
+        ? `${result.className} - ${result.classSection}`
+        : result.className;
+      const key = `${classKey} - ${result.subjectName}`;
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(result);
     });
@@ -341,21 +344,28 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
       ) : filteredResults.length > 0 ? (
         <div className="space-y-4">
           {Object.entries(resultsBySubject).map(
-            ([subjectName, subjectResults]) => {
+            ([groupKey, subjectResults]) => {
               const subjectStats = getSubjectStats(subjectResults);
+              const isExpanded = expandedSubjects.has(groupKey);
+              
+              const firstResult = subjectResults[0];
+              const actualSubjectName = firstResult?.subjectName || 'Unknown';
+              const classInfo = firstResult?.classSection
+                ? `${firstResult.className} - ${firstResult.classSection}`
+                : firstResult?.className || '';
+
               const perf = performance.find(
-                (p) => p.subjectName === subjectName,
+                (p) => p.subjectName === actualSubjectName,
               );
-              const isExpanded = expandedSubjects.has(subjectName);
 
               return (
                 <div
-                  key={subjectName}
+                  key={groupKey}
                   className="bg-white rounded-xl border border-slate-200 overflow-hidden"
                 >
                   <div
                     className="px-6 py-4 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors"
-                    onClick={() => toggleSubject(subjectName)}
+                    onClick={() => toggleSubject(groupKey)}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-4">
                       <div className="flex items-center gap-2">
@@ -363,7 +373,7 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
                           className="p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50"
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleSubject(subjectName);
+                            toggleSubject(groupKey);
                           }}
                         >
                           {isExpanded ? (
@@ -378,7 +388,7 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="font-bold text-lg text-slate-900">
-                              {subjectName}
+                              {actualSubjectName}
                             </h3>
                             {perf?.subjectCode && (
                               <span className="text-xs text-slate-400">
@@ -387,7 +397,7 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
                             )}
                           </div>
                           <p className="text-sm text-slate-500">
-                            {subjectStats.total} students
+                            {classInfo} • {subjectStats.total} students
                           </p>
                         </div>
                       </div>

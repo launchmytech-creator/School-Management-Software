@@ -1,19 +1,22 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import {
   subjectService,
   type ClassSubject,
   type Chapter,
+  type Subject,
 } from "../../services/subjectService";
-import { classService, type Class } from "../../services/classService";
+import { classService } from "../../services/classService";
+import type { Class } from "../../types/class";
 import { BaseModal } from "../../components/common/BaseModal";
 import { Button } from "../../components/ui/button";
 import InputField from "../../components/ui/InputField";
-import { Plus, BookOpen, ChevronRight, Loader, Trash2 } from "lucide-react";
+import { Plus, BookOpen, ChevronRight, Loader, Trash2, Check, X, AlertCircle } from "lucide-react";
 
 const EMPTY_CLASSES: Class[] = [];
 
@@ -24,6 +27,7 @@ const Subjects: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<Class[]>(EMPTY_CLASSES);
   const [allClassSubjects, setAllClassSubjects] = useState<ClassSubject[]>([]);
+  const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
   const [chaptersCache, setChaptersCache] = useState<Record<number, Chapter[]>>(
     {},
   );
@@ -38,7 +42,6 @@ const Subjects: React.FC = () => {
 
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
   const [showAddChapterModal, setShowAddChapterModal] = useState(false);
-  const [selectedClassInModal, setSelectedClassInModal] = useState<string>("");
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(
     null,
   );
@@ -53,6 +56,20 @@ const Subjects: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // New modal state for multi-class assignment
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  const [existingAssignments, setExistingAssignments] = useState<ClassSubject[]>([]);
+  const [showSubjectSuggestions, setShowSubjectSuggestions] = useState(false);
+  const [isNewSubject, setIsNewSubject] = useState(true);
+  const [selectedExistingSubject, setSelectedExistingSubject] = useState<Subject | null>(null);
+
+  // Delete confirmation modal state
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    classSubjectId: number | null;
+    subjectName: string;
+  }>({ isOpen: false, classSubjectId: null, subjectName: "" });
+
   const fetchClasses = useCallback(async () => {
     try {
       const data = await classService.getClasses();
@@ -60,6 +77,15 @@ const Subjects: React.FC = () => {
       // Classes will be collapsed by default - user clicks to expand
     } catch {
       showNotification("Failed to fetch classes", "error");
+    }
+  }, []);
+
+  const fetchAllSubjects = useCallback(async () => {
+    try {
+      const data = await subjectService.getSubjects();
+      setAllSubjects(data);
+    } catch {
+      // Silently fail for subject list
     }
   }, []);
 
@@ -115,7 +141,8 @@ const Subjects: React.FC = () => {
 
   useEffect(() => {
     fetchClasses();
-  }, [fetchClasses]);
+    fetchAllSubjects();
+  }, [fetchClasses, fetchAllSubjects]);
 
   useEffect(() => {
     fetchAllClassSubjects();
@@ -174,8 +201,8 @@ const Subjects: React.FC = () => {
       setErrors({ name: "Subject name is required" });
       return;
     }
-    if (!selectedClassInModal) {
-      setErrors({ class: "Please select a class" });
+    if (selectedClasses.length === 0) {
+      setErrors({ classes: "Please select at least one class" });
       return;
     }
     if (!selectedYear?.id) {
@@ -192,30 +219,58 @@ const Subjects: React.FC = () => {
     try {
       setSaving(true);
 
-      const subject = await subjectService.createSubject({
-        name: subjectForm.name,
-        code: subjectCode,
-      });
+      let subjectId: number;
 
-      await subjectService.assignSubjectToClass({
-        classId: parseInt(selectedClassInModal),
-        subjectId: subject.id,
-        academicYearId: selectedYear.id,
-      });
+      if (isNewSubject) {
+        // Create new subject
+        const subject = await subjectService.createSubject({
+          name: subjectForm.name,
+          code: subjectCode,
+        });
+        subjectId = subject.id;
+      } else {
+        // Use existing subject
+        subjectId = selectedExistingSubject!.id;
+      }
 
-      showNotification("Subject created and assigned successfully", "success");
+      // Assign to multiple classes
+      const results = await subjectService.assignSubjectToMultipleClasses(
+        selectedClasses.map(id => parseInt(id)).filter(id => !isNaN(id)),
+        subjectId,
+        parseInt(selectedYear.id)
+      );
+
+      showNotification(
+        `Subject assigned to ${results.length} class(es) successfully`,
+        "success"
+      );
+      
+      resetSubjectModal();
       setShowAddSubjectModal(false);
-      setSubjectForm({ name: "" });
-      setSubjectCode("");
-      setCodeEditedManually(false);
-      setErrors({});
       fetchAllClassSubjects();
-    } catch (err) {
-      console.error("Create subject error:", err);
-      showNotification("Failed to create subject", "error");
+      fetchAllSubjects();
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || "Failed to create subject";
+      if (err?.response?.data?.errorCode === 'SUBJECT_001') {
+        showNotification(err.response.data.message, "warning");
+      } else {
+        showNotification(errorMessage, "error");
+      }
     } finally {
       setSaving(false);
     }
+  };
+
+  const resetSubjectModal = () => {
+    setSubjectForm({ name: "" });
+    setSubjectCode("");
+    setCodeEditedManually(false);
+    setErrors({});
+    setSelectedClasses([]);
+    setExistingAssignments([]);
+    setShowSubjectSuggestions(false);
+    setIsNewSubject(true);
+    setSelectedExistingSubject(null);
   };
 
   const handleCreateChapter = async () => {
@@ -258,18 +313,42 @@ const Subjects: React.FC = () => {
     }
   };
 
-  const handleDeleteSubject = async (classSubjectId: number) => {
-    if (
-      !confirm("Are you sure you want to delete this subject from this class?")
-    )
-      return;
+  const handleDeleteSubject = (classSubjectId: number, subjectName: string) => {
+    setDeleteConfirm({
+      isOpen: true,
+      classSubjectId,
+      subjectName,
+    });
+  };
+
+  const confirmDeleteSubject = async () => {
+    if (!deleteConfirm.classSubjectId) return;
+    
+    try {
+      await subjectService.removeSubjectFromClass(deleteConfirm.classSubjectId);
+      showNotification("Subject removed successfully", "success");
+      setDeleteConfirm({ isOpen: false, classSubjectId: null, subjectName: "" });
+      fetchAllClassSubjects();
+    } catch (error: any) {
+      showNotification(error?.message || error?.response?.data?.message || "Failed to remove subject", "error");
+    }
+  };
+
+  const handleDeleteChapter = async (chapterId: number, classSubjectId: number) => {
+    if (!confirm("Are you sure you want to delete this chapter?")) return;
 
     try {
-      await subjectService.removeSubjectFromClass(classSubjectId);
-      showNotification("Subject removed successfully", "success");
-      fetchAllClassSubjects();
+      await subjectService.deleteChapter(chapterId);
+      showNotification("Chapter deleted successfully", "success");
+      
+      // Refresh chapters cache
+      const classSubject = allClassSubjects.find(cs => cs.id === classSubjectId);
+      if (classSubject) {
+        const data = await subjectService.getChaptersBySubject(classSubject.subjectId);
+        setChaptersCache(prev => ({ ...prev, [classSubjectId]: data }));
+      }
     } catch {
-      showNotification("Failed to remove subject", "error");
+      showNotification("Failed to delete chapter", "error");
     }
   };
 
@@ -282,23 +361,84 @@ const Subjects: React.FC = () => {
     }
   };
 
-  const openAddSubjectModal = (classId?: number) => {
-    const classToSelect = classId
-      ? String(classId)
-      : classes[0]?.id
-        ? String(classes[0].id)
-        : "";
-    console.log("openAddSubjectModal called:", {
-      classId,
-      classesFirstId: classes[0]?.id,
-      classToSelect,
-    });
-    setSelectedClassInModal(classToSelect);
+  const openAddSubjectModal = async (_classId?: string) => {
+    // No classes selected by default
+    setSelectedClasses([]);
     setErrors({});
     setSubjectForm({ name: "" });
     setSubjectCode("");
     setCodeEditedManually(false);
+    setIsNewSubject(true);
+    setSelectedExistingSubject(null);
+    setShowSubjectSuggestions(false);
+    
+    // Fetch existing assignments for all classes
+    if (selectedYear?.id) {
+      try {
+        const numericClassIds = classes.map(c => parseInt(c.id)).filter(id => !isNaN(id));
+        const assignments = await subjectService.checkExistingAssignments(
+          numericClassIds,
+          parseInt(selectedYear.id)
+        );
+        setExistingAssignments(assignments);
+      } catch {
+        setExistingAssignments([]);
+      }
+    }
+    
     setShowAddSubjectModal(true);
+  };
+
+  const getSubjectSuggestions = useCallback(() => {
+    if (!subjectForm.name.trim()) return [];
+    
+    const searchTerm = subjectForm.name.toLowerCase().trim();
+    return allSubjects.filter(
+      s => s.name.toLowerCase().includes(searchTerm)
+    ).slice(0, 5);
+  }, [subjectForm.name, allSubjects]);
+
+  const selectExistingSubject = (subject: Subject) => {
+    setSelectedExistingSubject(subject);
+    setSubjectForm({ name: subject.name });
+    setSubjectCode(subject.code);
+    setCodeEditedManually(true);
+    setIsNewSubject(false);
+    setShowSubjectSuggestions(false);
+    setErrors({});
+    
+    // Auto-select classes that already have this subject assigned
+    const assignedClassIds = existingAssignments
+      .filter(a => a.subjectId === subject.id)
+      .map(a => String(a.classId));
+    setSelectedClasses(assignedClassIds);
+  };
+
+  const toggleClassSelection = (classId: string) => {
+    setSelectedClasses(prev => {
+      if (prev.includes(classId)) {
+        return prev.filter(id => id !== classId);
+      }
+      return [...prev, classId];
+    });
+    setErrors({ classes: "" });
+  };
+
+  const selectAllClasses = () => {
+    setSelectedClasses(classes.map(c => c.id));
+    setErrors({ classes: "" });
+  };
+
+  const clearAllClasses = () => {
+    setSelectedClasses([]);
+  };
+
+  const isClassAssigned = (classId: string): boolean => {
+    if (isNewSubject) return false;
+    const numericClassId = parseInt(classId);
+    return existingAssignments.some(
+      a => a.classId === numericClassId && a.subjectId === selectedExistingSubject?.id
+    );
   };
 
   const openAddChapter = (classSubjectId: number) => {
@@ -319,6 +459,11 @@ const Subjects: React.FC = () => {
             { label: "Subjects", active: true },
           ],
         }}
+        actions={
+          selectedYear?.id && !loading && classes.length > 0
+            ? [{ label: "Add Subject", icon: Plus, onClick: () => openAddSubjectModal() }]
+            : []
+        }
       />
 
       {!selectedYear?.id ? (
@@ -337,7 +482,7 @@ const Subjects: React.FC = () => {
         <div className="space-y-4">
           {classes.map((cls) => {
             const classSubjects = getSubjectsForClass(Number(cls.id));
-            const isClassExpanded = expandedClasses.has(cls.id);
+            const isClassExpanded = expandedClasses.has(Number(cls.id));
 
             return (
               <div
@@ -346,7 +491,7 @@ const Subjects: React.FC = () => {
               >
                 <div
                   className="p-4 cursor-pointer hover:bg-slate-50 transition-colors flex items-center justify-between"
-                  onClick={() => toggleClassExpand(cls.id)}
+                  onClick={() => toggleClassExpand(Number(cls.id))}
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -369,17 +514,6 @@ const Subjects: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openAddSubjectModal(cls.id);
-                      }}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Subject
-                    </Button>
                     <ChevronRight
                       className={`w-5 h-5 text-slate-400 transition-transform ${isClassExpanded ? "rotate-90" : ""}`}
                     />
@@ -434,7 +568,7 @@ const Subjects: React.FC = () => {
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleDeleteSubject(cs.id);
+                                      handleDeleteSubject(cs.id, cs.subjectName);
                                     }}
                                     className="p-1.5 hover:bg-red-50 rounded-lg"
                                   >
@@ -468,12 +602,7 @@ const Subjects: React.FC = () => {
                                             </span>
                                           </div>
                                           <button
-                                            onClick={() =>
-                                              showNotification(
-                                                "Delete coming soon",
-                                                "info",
-                                              )
-                                            }
+                                            onClick={() => handleDeleteChapter(chapter.id, cs.id)}
                                             className="p-1 hover:bg-red-50 rounded-lg"
                                           >
                                             <Trash2 className="w-3 h-3 text-red-400" />
@@ -520,75 +649,100 @@ const Subjects: React.FC = () => {
         />
       )}
 
-      {/* Add Subject Modal */}
+      {/* Add Subject Modal - New Design */}
       <BaseModal
         isOpen={showAddSubjectModal}
-        onClose={() => setShowAddSubjectModal(false)}
-        title="Add New Subject"
-        size="md"
+        onClose={() => {
+          setShowAddSubjectModal(false);
+          resetSubjectModal();
+        }}
+        title="Add Subject to Classes"
+        size="lg"
       >
-        <div className="p-6 space-y-4">
-          <InputField
-            label="Subject Name"
-            placeholder="e.g., Mathematics"
-            value={subjectForm.name}
-            onChange={(e) => {
-              const newName = e.target.value;
-              console.log("=== Subject name changed ===", newName);
-              console.log("selectedClassInModal:", selectedClassInModal);
-              console.log("codeEditedManually:", codeEditedManually);
-
-              setSubjectForm({ name: newName });
-
-              if (!codeEditedManually) {
-                const generated = generateSubjectCode(
-                  newName,
-                  selectedClassInModal,
-                );
-                console.log("Generated code:", generated);
-                setSubjectCode(generated);
-              } else {
-                console.log(
-                  "Skipping auto-generate because user edited manually",
-                );
-              }
-              setErrors((prev) => ({ ...prev, name: "" }));
-            }}
-            error={errors.name}
-          />
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Class
-            </label>
-            <select
-              value={selectedClassInModal}
+        <div className="p-6 space-y-5">
+          {/* Subject Name with Search */}
+          <div className="relative">
+            <InputField
+              label="Subject Name"
+              placeholder="Type to search or create new subject..."
+              value={subjectForm.name}
               onChange={(e) => {
-                console.log("Class changed to:", e.target.value);
-                setSelectedClassInModal(e.target.value);
-                if (!codeEditedManually) {
-                  const generated = generateSubjectCode(
-                    subjectForm.name,
-                    e.target.value,
-                  );
+                const newName = e.target.value;
+                setSubjectForm({ name: newName });
+                setShowSubjectSuggestions(true);
+                setIsNewSubject(true);
+                setSelectedExistingSubject(null);
+                
+                if (!codeEditedManually && selectedClasses.length > 0) {
+                  // Generate code from first selected class
+                  const firstClassId = String(selectedClasses[0]);
+                  const generated = generateSubjectCode(newName, firstClassId);
                   setSubjectCode(generated);
                 }
-                setErrors((prev) => ({ ...prev, class: "" }));
+                setErrors((prev) => ({ ...prev, name: "" }));
               }}
-              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select Class</option>
-              {classes.map((cls) => (
-                <option key={cls.id} value={cls.id}>
-                  Class {cls.name} - Section {cls.section || "A"}
-                </option>
-              ))}
-            </select>
-            {errors.class && (
-              <p className="text-red-500 text-xs mt-1">{errors.class}</p>
+              onFocus={() => setShowSubjectSuggestions(true)}
+              onBlur={() => {
+                setTimeout(() => setShowSubjectSuggestions(false), 200);
+              }}
+              error={errors.name}
+            />
+            
+            {/* Subject Suggestions Dropdown */}
+            {showSubjectSuggestions && subjectForm.name.trim() && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-auto">
+                {getSubjectSuggestions().length > 0 && (
+                  <div className="p-2">
+                    <p className="text-xs text-slate-500 font-medium px-2 py-1">
+                      Existing Subjects
+                    </p>
+                    {getSubjectSuggestions().map((subject) => (
+                      <button
+                        key={subject.id}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          selectExistingSubject(subject);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded-lg flex items-center justify-between"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">
+                            {subject.name}
+                          </p>
+                          <p className="text-xs text-slate-500">{subject.code}</p>
+                        </div>
+                        <Check className="w-4 h-4 text-blue-500" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
+          {/* Selected Existing Subject Indicator */}
+          {selectedExistingSubject && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-blue-500" />
+                <span className="text-sm font-medium text-blue-700">
+                  Using existing: {selectedExistingSubject.name}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedExistingSubject(null);
+                  setSubjectForm({ name: "" });
+                  setIsNewSubject(true);
+                }}
+                className="p-1 hover:bg-blue-100 rounded"
+              >
+                <X className="w-4 h-4 text-blue-500" />
+              </button>
+            </div>
+          )}
+
+          {/* Subject Code */}
           <InputField
             label="Subject Code"
             placeholder="e.g., 10A-MATH"
@@ -601,8 +755,92 @@ const Subjects: React.FC = () => {
             error={errors.code}
           />
 
+          {/* Assign to Classes */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-slate-700">
+                Assign to Classes
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={selectAllClasses}
+                  className="text-xs text-blue-600 hover:text-blue-700"
+                >
+                  Select All
+                </button>
+                <span className="text-slate-300">|</span>
+                <button
+                  type="button"
+                  onClick={clearAllClasses}
+                  className="text-xs text-slate-500 hover:text-slate-600"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+            
+            <div className="border border-slate-200 rounded-lg max-h-48 overflow-auto">
+              {classes.map((cls) => {
+                const isSelected = selectedClasses.includes(cls.id);
+                const isAssigned = isClassAssigned(cls.id);
+                
+                return (
+                  <div
+                    key={cls.id}
+                    onClick={() => !isAssigned && toggleClassSelection(cls.id)}
+                    className={`p-3 flex items-center gap-3 border-b border-slate-100 last:border-b-0 cursor-pointer transition-colors ${
+                      isAssigned 
+                        ? "bg-slate-50 cursor-not-allowed" 
+                        : isSelected 
+                          ? "bg-blue-50" 
+                          : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                      isAssigned
+                        ? "border-slate-300 bg-slate-200"
+                        : isSelected
+                          ? "border-blue-500 bg-blue-500"
+                          : "border-slate-300"
+                    }`}>
+                      {isSelected && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`text-sm font-medium ${
+                        isAssigned ? "text-slate-500" : "text-slate-800"
+                      }`}>
+                        Class {cls.name} - Section {cls.section || "A"}
+                      </p>
+                    </div>
+                    {isAssigned && (
+                      <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                        Already assigned
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            
+            {selectedClasses.length === 0 && errors.classes && (
+              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {errors.classes}
+              </p>
+            )}
+            
+            <p className="text-xs text-slate-500 mt-2">
+              {selectedClasses.length} class(es) selected
+              {selectedExistingSubject && ` for "${selectedExistingSubject.name}"`}
+            </p>
+          </div>
+
           {errors.year && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
               {errors.year}
             </div>
           )}
@@ -610,7 +848,10 @@ const Subjects: React.FC = () => {
           <div className="flex gap-3 pt-4">
             <Button
               variant="outline"
-              onClick={() => setShowAddSubjectModal(false)}
+              onClick={() => {
+                setShowAddSubjectModal(false);
+                resetSubjectModal();
+              }}
               className="flex-1"
             >
               Cancel
@@ -620,7 +861,7 @@ const Subjects: React.FC = () => {
               loading={saving}
               className="flex-1"
             >
-              Create Subject
+              {isNewSubject ? "Create & Assign" : "Assign to Classes"}
             </Button>
           </div>
         </div>
@@ -672,6 +913,16 @@ const Subjects: React.FC = () => {
           </div>
         </div>
       </BaseModal>
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, classSubjectId: null, subjectName: "" })}
+        onConfirm={confirmDeleteSubject}
+        title="Delete Subject"
+        message={`Are you sure you want to remove "${deleteConfirm.subjectName}" from this class? This will also remove all chapters associated with this subject.`}
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   );
 };

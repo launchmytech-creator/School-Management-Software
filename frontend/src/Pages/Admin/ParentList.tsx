@@ -5,6 +5,7 @@ import {
   Mail, Phone
 } from "lucide-react";
 import ParentDetailsModal from "../../components/parent/ParentDetailsModal";
+import EditParentModal from "../../components/parent/EditParentModal";
 import { parentService } from "../../services/parentService";
 import type { Parent } from "../../types/parent";
 import { useNotification } from "../../context/NotificationContext";
@@ -26,6 +27,8 @@ const ParentList: React.FC = () => {
   const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingParent, setEditingParent] = useState<Parent | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, parentId: null as number | null });
 
@@ -115,14 +118,14 @@ const ParentList: React.FC = () => {
                   <div className="size-16 bg-gradient-to-br from-indigo-50 to-blue-50 text-indigo-500 border border-indigo-100 rounded-[1.5rem] flex items-center justify-center text-2xl font-black transition-transform group-hover:scale-110">
                     {parent.fullName.charAt(0)}
                   </div>
-                  <div className="flex gap-1">
-                     <button onClick={() => { setSelectedParent(parent); setIsDetailsOpen(true); }} className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
+                   <div className="flex gap-1">
+                      <button onClick={() => { setSelectedParent(parent); setIsDetailsOpen(true); }} className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
                        <Eye className="size-5" />
-                     </button>
-                     <button className="p-2 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all">
+                      </button>
+                      <button onClick={() => { setEditingParent(parent); setIsEditOpen(true); }} className="p-2 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all">
                        <Edit2 className="size-4" />
-                     </button>
-                  </div>
+                      </button>
+                   </div>
                 </div>
                 
                 <h3 className="text-xl font-display font-black text-slate-900 tracking-tight leading-none mb-4 group-hover:text-blue-600 transition-colors uppercase">{parent.fullName}</h3>
@@ -197,17 +200,17 @@ const ParentList: React.FC = () => {
                            <StatusBadge label={parent.isActive ? 'Active' : 'Inactive'} variant={parent.isActive ? 'success' : 'neutral'} />
                         </td>
                         <td className="pl-6 pr-10 py-6">
-                           <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => { setSelectedParent(parent); setIsDetailsOpen(true); }} className="p-2.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
-                                <Eye className="size-5" />
-                              </button>
-                              <button className="p-2.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all">
-                                <Edit2 className="size-4" />
-                              </button>
-                              <button onClick={() => handleDelete(parent.id)} className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
-                                <Trash2 className="size-4" />
-                              </button>
-                           </div>
+                            <div className="flex items-center justify-end gap-2">
+                               <button onClick={() => { setSelectedParent(parent); setIsDetailsOpen(true); }} className="p-2.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
+                                 <Eye className="size-5" />
+                               </button>
+                               <button onClick={() => { setEditingParent(parent); setIsEditOpen(true); }} className="p-2.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all">
+                                 <Edit2 className="size-4" />
+                               </button>
+                               <button onClick={() => handleDelete(parent.id)} className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                                 <Trash2 className="size-4" />
+                               </button>
+                            </div>
                         </td>
                      </tr>
                    ))}
@@ -227,6 +230,13 @@ const ParentList: React.FC = () => {
       <CreateParentModal 
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
+        onSuccess={fetchParents}
+      />
+
+      <EditParentModal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        parent={editingParent}
         onSuccess={fetchParents}
       />
 

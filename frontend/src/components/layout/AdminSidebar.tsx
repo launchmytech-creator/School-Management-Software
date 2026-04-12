@@ -78,6 +78,7 @@ const navGroups: NavGroup[] = [
     label: 'Settings',
     icon: 'settings',
     items: [
+      { name: 'My Profile', icon: 'account_circle', path: '/admin/profile' },
       { name: 'School Settings', icon: 'settings', path: '/admin/school-settings' },
     ],
   },

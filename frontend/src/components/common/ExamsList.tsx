@@ -53,13 +53,26 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
     startDate: '',
     endDate: '',
     weightage: '',
-    description: '',
   });
   const [classSubjects, setClassSubjects] = useState<ClassSubject[]>([]);
   const [selectedSubjects, setSelectedSubjects] = useState<SubjectFormItem[]>([]);
   const [creating, setCreating] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, examId: null as number | null });
+  
+  // Edit exam state
+  const [editingExam, setEditingExam] = useState<Exam | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    examType: '',
+    startDate: '',
+    endDate: '',
+    weightage: '',
+  });
+  const [updating, setUpdating] = useState(false);
+  const [editHasResults, setEditHasResults] = useState(false);
+  const [checkingResults, setCheckingResults] = useState(false);
 
   const fetchClasses = useCallback(async () => {
     try {
@@ -199,7 +212,6 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
       startDate: formData.startDate,
       endDate: formData.endDate,
       weightage: formData.weightage ? parseInt(formData.weightage) : undefined,
-      description: formData.description || undefined,
       subjects: selectedSubjects.map(s => ({
         subjectId: s.subjectId,
         maxMarks: parseFloat(s.maxMarks) || 100,
@@ -230,7 +242,6 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
       startDate: '',
       endDate: '',
       weightage: '',
-      description: '',
     });
     setSelectedSubjects([]);
     setClassSubjects([]);
@@ -248,6 +259,75 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
       showNotification('Failed to delete exam', 'error');
     }
     setDeleteDialog({ isOpen: false, examId: null });
+  };
+
+  const handleEditExam = async (exam: Exam) => {
+    try {
+      setCheckingResults(true);
+      const results = await examService.getResults({ examId: exam.id });
+      const hasResults = results.length > 0;
+      setEditHasResults(hasResults);
+      
+      setEditingExam(exam);
+      setEditForm({
+        name: exam.name,
+        examType: exam.examType || '',
+        startDate: exam.startDate,
+        endDate: exam.endDate,
+        weightage: exam.weightage?.toString() || '',
+      });
+      setShowEditModal(true);
+    } catch {
+      showNotification('Failed to load exam details', 'error');
+    } finally {
+      setCheckingResults(false);
+    }
+  };
+
+  const handleUpdateExam = async () => {
+    if (!editingExam) return;
+
+    const newErrors: Record<string, string> = {};
+    if (!editForm.name.trim()) newErrors.name = 'Exam name is required';
+    if (!editForm.startDate) newErrors.startDate = 'Start date is required';
+    if (!editForm.endDate) newErrors.endDate = 'End date is required';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      await examService.updateExam(editingExam.id, {
+        name: editForm.name,
+        examType: editForm.examType || undefined,
+        startDate: editForm.startDate,
+        endDate: editForm.endDate,
+        weightage: editForm.weightage ? parseInt(editForm.weightage) : undefined,
+      });
+      showNotification('Exam updated successfully', 'success');
+      setShowEditModal(false);
+      setEditingExam(null);
+      setErrors({});
+      fetchExams();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update exam';
+      showNotification(errorMessage, 'error');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleEditFieldChange = (field: string, value: string) => {
+    setEditForm(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
   };
 
   const availableSubjects = classSubjects.filter(
@@ -313,8 +393,9 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => showNotification('Edit coming soon', 'info')}
-                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                    onClick={() => handleEditExam(exam)}
+                    disabled={checkingResults}
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
                   >
                     <Edit2 className="w-4 h-4 text-slate-400" />
                   </button>
@@ -328,7 +409,9 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
               </div>
 
               <h3 className="text-lg font-bold text-slate-900 mb-1">{exam.name}</h3>
-              <p className="text-sm text-slate-500 mb-3">{exam.className}</p>
+              <p className="text-sm text-slate-500 mb-3">
+                {exam.className} - Section {exam.classSection || 'A'}
+              </p>
               
               <div className="flex flex-wrap gap-2 mb-4">
                 {exam.examType && (
@@ -353,9 +436,6 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
                   <Calendar className="w-4 h-4 text-slate-400" />
                   <span>{formatDate(exam.startDate)} - {formatDate(exam.endDate)}</span>
                 </div>
-                {exam.description && (
-                  <p className="text-slate-500 line-clamp-2">{exam.description}</p>
-                )}
               </div>
 
               <div className="mt-4 pt-4 border-t border-slate-100 flex gap-2">
@@ -468,17 +548,6 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
                 required
               />
             </div>
-
-            <div className="col-span-2">
-              <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={2}
-                placeholder="Optional description..."
-              />
-            </div>
           </div>
 
           <div className="border-t border-slate-200 pt-4">
@@ -582,6 +651,106 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
               className="flex-1"
             >
               Create Exam
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
+
+      {/* Edit Exam Modal */}
+      <BaseModal
+        isOpen={showEditModal}
+        onClose={() => { setShowEditModal(false); setEditingExam(null); setErrors({}); }}
+        title="Edit Exam"
+        size="lg"
+      >
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          {editHasResults && (
+            <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 mb-4">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>This exam already has submitted results. You can only edit basic details.</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <InputField
+                label="Exam Name"
+                placeholder="e.g., Half Yearly Examination"
+                value={editForm.name}
+                onChange={(e) => handleEditFieldChange('name', e.target.value)}
+                error={errors.name}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Exam Type</label>
+              <select
+                value={editForm.examType}
+                onChange={(e) => setEditForm({ ...editForm, examType: e.target.value })}
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Type (Optional)</option>
+                {EXAM_TYPES.map(type => (
+                  <option key={type.value} value={type.value}>{type.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <InputField
+                label="Weightage (%)"
+                type="number"
+                placeholder="e.g., 50"
+                value={editForm.weightage}
+                onChange={(e) => handleEditFieldChange('weightage', e.target.value)}
+              />
+            </div>
+
+            <div>
+              <InputField
+                label="Start Date"
+                type="date"
+                value={editForm.startDate}
+                onChange={(e) => handleEditFieldChange('startDate', e.target.value)}
+                error={errors.startDate}
+                required
+              />
+            </div>
+
+            <div>
+              <InputField
+                label="End Date"
+                type="date"
+                value={editForm.endDate}
+                onChange={(e) => handleEditFieldChange('endDate', e.target.value)}
+                error={errors.endDate}
+                required
+              />
+            </div>
+
+            {editingExam && (
+              <div className="col-span-2 flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-slate-400" />
+                <span>Class and subjects cannot be changed after exam creation.</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-slate-200">
+            <Button
+              variant="outline"
+              onClick={() => { setShowEditModal(false); setEditingExam(null); setErrors({}); }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateExam}
+              loading={updating}
+              className="flex-1"
+            >
+              Update Exam
             </Button>
           </div>
         </div>

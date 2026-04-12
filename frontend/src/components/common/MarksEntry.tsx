@@ -258,6 +258,14 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
   };
 
   const handleMarksChange = (studentId: number, value: string) => {
+    if (value !== "") {
+      const numValue = parseFloat(value);
+      const maxMarks = selectedSubjectData?.maxMarks || 100;
+      if (isNaN(numValue) || numValue < 0 || numValue > maxMarks) {
+        return;
+      }
+    }
+    
     setStudentMarks((prev) =>
       prev.map((sm) => {
         if (sm.studentId === studentId) {

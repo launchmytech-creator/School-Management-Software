@@ -57,6 +57,20 @@ export const PLAN_SUITABILITY: Record<SubscriptionTier, string> = {
   BUSINESS: 'Designed for schools that want complete digital management',
 };
 
+// [NEW] Plan pricing (placeholder - update with actual prices)
+export const PLAN_PRICING: Record<SubscriptionTier, string> = {
+  BASIC: '$99/year',
+  PREMIUM: '$199/year',
+  BUSINESS: '$349/year',
+};
+
+// [NEW] Plan display order
+export const PLAN_ORDER: SubscriptionTier[] = ['BASIC', 'PREMIUM', 'BUSINESS'];
+
+// [NEW] Payment gateway URL placeholder
+// TODO: Replace with actual payment URL when payment gateway is integrated
+export const PAYMENT_URL = 'https://your-payment-gateway.com/checkout';
+
 export const hasFeature = (
   features: Record<string, boolean> | null,
   feature: string

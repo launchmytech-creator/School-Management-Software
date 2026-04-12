@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -13,14 +11,13 @@ import {
 } from "recharts";
 import {
   examResultService,
-  type ClassComparisonData,
-  type ClassComparisonSummary,
+  type ClassSubjectComparisonData,
+  type ClassSubjectComparisonSubject,
 } from "../../services/examResultService";
 import { classService } from "../../services/classService";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useNotification } from "../../context/NotificationContext";
-import { formatDate } from "../../lib/utils";
-import { TrendingUp, Users, Award, Target, Loader2 } from "lucide-react";
+import { TrendingUp, Users, Award, Target, Loader2, BookOpen } from "lucide-react";
 
 const CHART_COLORS = [
   "#4A9FD4",
@@ -29,13 +26,6 @@ const CHART_COLORS = [
   "#EF4444",
   "#8B5CF6",
   "#EC4899",
-];
-
-const EXAM_TYPES = [
-  { value: "", label: "All Types" },
-  { value: "Unit Test", label: "Unit Test" },
-  { value: "Half Yearly", label: "Half Yearly" },
-  { value: "Annual", label: "Annual" },
 ];
 
 interface ClassSection {
@@ -48,13 +38,10 @@ const ClassComparison: React.FC = () => {
   const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
 
-  const [uniqueClassNames, setUniqueClassNames] = useState<string[]>(
-    []
-  );
+  const [uniqueClassNames, setUniqueClassNames] = useState<string[]>([]);
   const [selectedClassName, setSelectedClassName] = useState<string>("");
   const [sections, setSections] = useState<ClassSection[]>([]);
-  const [selectedExamType, setSelectedExamType] = useState<string>("");
-  const [comparisonData, setComparisonData] = useState<ClassComparisonData | null>(null);
+  const [subjectComparisonData, setSubjectComparisonData] = useState<ClassSubjectComparisonData | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingSections, setLoadingSections] = useState(false);
@@ -63,7 +50,6 @@ const ClassComparison: React.FC = () => {
     try {
       setLoadingClasses(true);
       const data = await classService.getClasses(selectedYear?.id || undefined);
-      
       const uniqueNames = [...new Set(data.map(c => c.name))].sort();
       setUniqueClassNames(uniqueNames);
     } catch {
@@ -102,53 +88,79 @@ const ClassComparison: React.FC = () => {
     fetchSections(selectedClassName);
   }, [selectedClassName, fetchSections]);
 
-  const fetchComparison = useCallback(async () => {
+  const fetchSubjectComparison = useCallback(async () => {
     if (sections.length === 0) return;
 
     const classIds = sections.map(s => s.id);
     setLoading(true);
     try {
-      const data = await examResultService.getClassComparison(
+      const data = await examResultService.getClassSubjectComparison(
         classIds,
-        selectedYear?.id ? parseInt(selectedYear.id) : undefined,
-        selectedExamType || undefined
+        selectedYear?.id ? parseInt(selectedYear.id) : undefined
       );
-      setComparisonData(data);
-    } catch {
+      console.log("Subject Comparison Data:", JSON.stringify(data, null, 2));
+      console.log("Sections:", sections);
+      setSubjectComparisonData(data);
+    } catch (err) {
+      console.error("Failed to fetch comparison:", err);
       showNotification("Failed to fetch comparison data", "error");
     } finally {
       setLoading(false);
     }
-  }, [sections, selectedYear, selectedExamType, showNotification]);
+  }, [sections, selectedYear, showNotification]);
 
   useEffect(() => {
     if (sections.length > 0) {
-      fetchComparison();
+      fetchSubjectComparison();
     } else {
-      setComparisonData(null);
+      setSubjectComparisonData(null);
     }
-  }, [sections, selectedExamType, fetchComparison]);
+  }, [sections, fetchSubjectComparison]);
 
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedClassName(e.target.value);
-    setComparisonData(null);
+    setSubjectComparisonData(null);
   };
 
   const handleClearSelection = () => {
     setSelectedClassName("");
     setSections([]);
-    setSelectedExamType("");
-    setComparisonData(null);
+    setSubjectComparisonData(null);
   };
 
-  const getBestClass = (data: ClassComparisonSummary[]) => {
-    if (data.length === 0) return null;
-    return data.reduce((best, current) =>
+  const getBestClass = (subject: ClassSubjectComparisonSubject) => {
+    if (subject.classes.length === 0) return null;
+    return subject.classes.reduce((best, current) =>
       current.averageMarks > best.averageMarks ? current : best
     );
   };
 
-  const bestClass = comparisonData ? getBestClass(comparisonData.summary) : null;
+  const getOverallBest = () => {
+    if (!subjectComparisonData || subjectComparisonData.subjects.length === 0) return null;
+    const averages = new Map<number, { classId: number; className: string; totalMarks: number; count: number }>();
+    
+    for (const subject of subjectComparisonData.subjects) {
+      for (const cls of subject.classes) {
+        if (!averages.has(cls.classId)) {
+          averages.set(cls.classId, { classId: cls.classId, className: cls.className, totalMarks: 0, count: 0 });
+        }
+        const entry = averages.get(cls.classId)!;
+        entry.totalMarks += cls.averageMarks;
+        entry.count++;
+      }
+    }
+    
+    let best: { classId: number; className: string; avg: number } | null = null;
+    for (const [classId, data] of averages) {
+      const avg = data.totalMarks / data.count;
+      if (!best || avg > best.avg) {
+        best = { classId, className: data.className, avg };
+      }
+    }
+    return best;
+  };
+
+  const overallBest = getOverallBest();
 
   const renderEmptyState = () => (
     <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
@@ -164,16 +176,307 @@ const ClassComparison: React.FC = () => {
     </div>
   );
 
+  const renderSubjectComparisonTable = () => {
+    if (!subjectComparisonData || subjectComparisonData.subjects.length === 0) return null;
+
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white rounded-lg border border-slate-200">
+              <BookOpen className="w-5 h-5 text-blue-500" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800">Subject-wise Performance</h3>
+              <p className="text-xs text-slate-500">Average marks and pass rate by subject</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider sticky left-0 bg-slate-50">
+                  Subject
+                </th>
+                {subjectComparisonData.subjects[0]?.classes.map((cls, idx) => (
+                  <th
+                    key={cls.classId}
+                    colSpan={2}
+                    className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider"
+                    style={{ color: CHART_COLORS[idx % CHART_COLORS.length] }}
+                  >
+                    {cls.className}
+                  </th>
+                ))}
+              </tr>
+              <tr className="bg-slate-50">
+                <th className="px-6 py-2 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider sticky left-0 bg-slate-50">
+                  
+                </th>
+                {subjectComparisonData.subjects[0]?.classes.map((cls) => (
+                  <React.Fragment key={`header-${cls.classId}`}>
+                    <th className="px-4 py-2 text-center text-xs font-semibold text-slate-400">
+                      Avg
+                    </th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold text-slate-400">
+                      Pass%
+                    </th>
+                  </React.Fragment>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {subjectComparisonData.subjects.map((subject) => {
+                const best = getBestClass(subject);
+                return (
+                  <tr key={subject.subjectId} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4 sticky left-0 bg-white">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-indigo-100 rounded-lg">
+                          <BookOpen className="w-4 h-4 text-indigo-600" />
+                        </div>
+                        <span className="font-semibold text-slate-800">{subject.subjectName}</span>
+                      </div>
+                    </td>
+                    {subject.classes.map((cls, idx) => {
+                      const isBest = best?.classId === cls.classId;
+                      return (
+                        <React.Fragment key={`${subject.subjectId}-${cls.classId}`}>
+                          <td className="px-4 py-4 text-center">
+                            <span
+                              className={`text-lg font-bold ${
+                                isBest ? "text-emerald-600" : "text-slate-700"
+                              }`}
+                            >
+                              {cls.averageMarks}%
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{
+                                    width: `${cls.passRate}%`,
+                                    backgroundColor: CHART_COLORS[idx % CHART_COLORS.length]
+                                  }}
+                                />
+                              </div>
+                              <span className="text-sm font-semibold text-slate-600">
+                                {cls.passRate}%
+                              </span>
+                            </div>
+                          </td>
+                        </React.Fragment>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Legend */}
+        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50">
+          <div className="flex flex-wrap gap-4 justify-center">
+            {subjectComparisonData.subjects[0]?.classes.map((cls, idx) => (
+              <div key={cls.classId} className="flex items-center gap-2">
+                <div
+                  className="w-4 h-4 rounded"
+                  style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                />
+                <span className="text-sm font-medium text-slate-600">{cls.className}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderBarChart = () => {
+    if (!subjectComparisonData || subjectComparisonData.subjects.length === 0) return null;
+
+    const chartData = subjectComparisonData.subjects.map(subject => {
+      const dataPoint: Record<string, any> = { subjectName: subject.subjectName };
+      subject.classes.forEach((cls) => {
+        dataPoint[`class_${cls.classId}_avg`] = cls.averageMarks;
+        dataPoint[`class_${cls.classId}_pass`] = cls.passRate;
+      });
+      return dataPoint;
+    });
+
+    const classes = subjectComparisonData.subjects[0]?.classes || [];
+
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-blue-50 rounded-lg">
+            <TrendingUp className="w-5 h-5 text-blue-500" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800">Average Marks by Subject</h3>
+            <p className="text-xs text-slate-500">Compare average marks across sections</p>
+          </div>
+        </div>
+
+        <ResponsiveContainer width="100%" height={400}>
+          <BarChart data={chartData} margin={{ left: 20, right: 30, bottom: 60 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis
+              dataKey="subjectName"
+              tick={{ fontSize: 12, fill: "#64748b" }}
+              angle={-20}
+              textAnchor="end"
+              height={60}
+            />
+            <YAxis
+              domain={[0, 100]}
+              tick={{ fontSize: 12, fill: "#64748b" }}
+              tickFormatter={(value) => `${value}%`}
+            />
+            <Tooltip
+              contentStyle={{
+                borderRadius: 12,
+                border: "1px solid #e2e8f0",
+                fontSize: 12,
+              }}
+              formatter={(value: number, name: string) => {
+                const isPassRate = name.includes("_pass");
+                return [`${value}%`, isPassRate ? "Pass Rate" : "Average"];
+              }}
+            />
+            <Legend
+              wrapperStyle={{ paddingTop: 20 }}
+              formatter={(value) => {
+                const classId = value.replace("class_", "").replace("_avg", "").replace("_pass", "");
+                const cls = classes.find(c => c.classId === parseInt(classId));
+                return cls?.className || value;
+              }}
+            />
+            {classes.map((cls, index) => (
+              <Bar
+                key={`avg_${cls.classId}`}
+                dataKey={`class_${cls.classId}_avg`}
+                name={`class_${cls.classId}`}
+                fill={CHART_COLORS[index % CHART_COLORS.length]}
+                radius={[4, 4, 0, 0]}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  const renderPassRateChart = () => {
+    if (!subjectComparisonData || subjectComparisonData.subjects.length === 0) return null;
+
+    const chartData = subjectComparisonData.subjects.map(subject => {
+      const dataPoint: Record<string, any> = { subjectName: subject.subjectName };
+      subject.classes.forEach((cls) => {
+        dataPoint[`class_${cls.classId}`] = cls.passRate;
+      });
+      return dataPoint;
+    });
+
+    const classes = subjectComparisonData.subjects[0]?.classes || [];
+
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-emerald-50 rounded-lg">
+            <Award className="w-5 h-5 text-emerald-500" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800">Pass Rate by Subject</h3>
+            <p className="text-xs text-slate-500">Compare pass percentages across sections</p>
+          </div>
+        </div>
+
+        <ResponsiveContainer width="100%" height={400}>
+          <BarChart data={chartData} margin={{ left: 20, right: 30, bottom: 60 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis
+              dataKey="subjectName"
+              tick={{ fontSize: 12, fill: "#64748b" }}
+              angle={-20}
+              textAnchor="end"
+              height={60}
+            />
+            <YAxis
+              domain={[0, 100]}
+              tick={{ fontSize: 12, fill: "#64748b" }}
+              tickFormatter={(value) => `${value}%`}
+            />
+            <Tooltip
+              contentStyle={{
+                borderRadius: 12,
+                border: "1px solid #e2e8f0",
+                fontSize: 12,
+              }}
+              formatter={(value: number) => [`${value}%`, "Pass Rate"]}
+            />
+            <Legend
+              wrapperStyle={{ paddingTop: 20 }}
+              formatter={(value) => {
+                const classId = value.replace("class_", "");
+                const cls = classes.find(c => c.classId === parseInt(classId));
+                return cls?.className || value;
+              }}
+            />
+            {classes.map((cls, index) => (
+              <Bar
+                key={`pass_${cls.classId}`}
+                dataKey={`class_${cls.classId}`}
+                name={`class_${cls.classId}`}
+                fill={CHART_COLORS[index % CHART_COLORS.length]}
+                radius={[4, 4, 0, 0]}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
   const renderSummaryCards = () => {
-    if (!comparisonData || comparisonData.summary.length === 0) return null;
+    if (!subjectComparisonData || subjectComparisonData.subjects.length === 0) return null;
+
+    const classStats = new Map<number, { classId: number; className: string; totalAvg: number; totalPass: number; count: number; students: number }>();
+    
+    for (const subject of subjectComparisonData.subjects) {
+      for (const cls of subject.classes) {
+        if (!classStats.has(cls.classId)) {
+          classStats.set(cls.classId, {
+            classId: cls.classId,
+            className: cls.className,
+            totalAvg: 0,
+            totalPass: 0,
+            count: 0,
+            students: cls.totalStudents
+          });
+        }
+        const stats = classStats.get(cls.classId)!;
+        stats.totalAvg += cls.averageMarks;
+        stats.totalPass += cls.passRate;
+        stats.count++;
+      }
+    }
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {comparisonData.summary.map((item, index) => {
-          const isBest = bestClass?.classId === item.classId;
+        {Array.from(classStats.values()).map((stats, index) => {
+          const avg = stats.count > 0 ? stats.totalAvg / stats.count : 0;
+          const passRate = stats.count > 0 ? stats.totalPass / stats.count : 0;
+          const isBest = overallBest?.classId === stats.classId;
+          
           return (
             <div
-              key={item.classId}
+              key={stats.classId}
               className={`bg-white rounded-2xl border-2 p-6 transition-all ${
                 isBest
                   ? "border-emerald-300 shadow-lg shadow-emerald-100"
@@ -192,9 +495,9 @@ const ClassComparison: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-800">{item.className}</h3>
+                    <h3 className="font-bold text-slate-800">{stats.className}</h3>
                     <p className="text-xs text-slate-500">
-                      {item.totalStudents} students
+                      {stats.students} students
                     </p>
                   </div>
                 </div>
@@ -212,231 +515,26 @@ const ClassComparison: React.FC = () => {
                     className="text-2xl font-black"
                     style={{ color: CHART_COLORS[index % CHART_COLORS.length] }}
                   >
-                    {item.averageMarks}%
+                    {avg.toFixed(1)}%
                   </span>
                 </div>
                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
-                      width: `${item.averageMarks}%`,
+                      width: `${avg}%`,
                       backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
                     }}
                   />
                 </div>
                 <div className="flex justify-between text-xs text-slate-500">
                   <span>Pass Rate</span>
-                  <span className="font-semibold">{item.passRate}%</span>
+                  <span className="font-semibold">{passRate.toFixed(1)}%</span>
                 </div>
               </div>
             </div>
           );
         })}
-      </div>
-    );
-  };
-
-  const renderBarChart = () => {
-    if (!comparisonData || comparisonData.summary.length === 0) return null;
-
-    const chartData = comparisonData.summary.map((item, index) => ({
-      name: item.className,
-      marks: item.averageMarks,
-      color: CHART_COLORS[index % CHART_COLORS.length],
-    }));
-
-    return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-blue-50 rounded-lg">
-            <TrendingUp className="w-5 h-5 text-blue-500" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-800">Average Marks Comparison</h3>
-            <p className="text-xs text-slate-500">Performance across all sections of {selectedClassName}</p>
-          </div>
-        </div>
-
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 30 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12, fill: "#64748b" }} />
-            <YAxis
-              type="category"
-              dataKey="name"
-              width={100}
-              tick={{ fontSize: 12, fill: "#64748b" }}
-            />
-            <Tooltip
-              contentStyle={{
-                borderRadius: 12,
-                border: "1px solid #e2e8f0",
-                fontSize: 12,
-              }}
-              formatter={(value: number) => [`${value}%`, "Average Marks"]}
-            />
-            <Bar dataKey="marks" radius={[0, 8, 8, 0]}>
-              {chartData.map((entry, index) => (
-                <rect key={index} fill={entry.color} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  };
-
-  const renderLineChart = () => {
-    if (!comparisonData || comparisonData.trend.length === 0) return null;
-
-    return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-emerald-50 rounded-lg">
-            <Award className="w-5 h-5 text-emerald-500" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-800">Performance Trend</h3>
-            <p className="text-xs text-slate-500">Average marks across exams over time</p>
-          </div>
-        </div>
-
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={comparisonData.trend} margin={{ left: 20, right: 30 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis
-              dataKey="examName"
-              tick={{ fontSize: 11, fill: "#64748b" }}
-              angle={-20}
-              textAnchor="end"
-              height={60}
-            />
-            <YAxis domain={[0, 100]} tick={{ fontSize: 12, fill: "#64748b" }} />
-            <Tooltip
-              contentStyle={{
-                borderRadius: 12,
-                border: "1px solid #e2e8f0",
-                fontSize: 12,
-              }}
-            />
-            <Legend />
-            {comparisonData.trend[0] &&
-              Object.keys(comparisonData.trend[0])
-                .filter((k) => k.startsWith("class_"))
-                .map((key, index) => {
-                  const classId = key.replace("class_", "");
-                  const classNameKey = `className_${classId}`;
-                  const className =
-                    comparisonData.trend[0]?.[classNameKey] ||
-                    `Class ${classId}`;
-                  return (
-                    <Line
-                      key={key}
-                      type="monotone"
-                      dataKey={key}
-                      name={String(className)}
-                      stroke={CHART_COLORS[index % CHART_COLORS.length]}
-                      strokeWidth={2}
-                      dot={{ r: 4, fill: CHART_COLORS[index % CHART_COLORS.length] }}
-                    />
-                  );
-                })}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  };
-
-  const renderComparisonTable = () => {
-    if (!comparisonData || comparisonData.exams.length === 0) return null;
-
-    return (
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-amber-50 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-amber-500" />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-800">Exam-wise Comparison</h3>
-              <p className="text-xs text-slate-500">Detailed comparison by exam</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Exam
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Date
-                </th>
-            {comparisonData.exams[0]?.results.map((r) => (
-                      <th
-                        key={r.classId}
-                        className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider"
-                      >
-                        {r.className}
-                      </th>
-                    ))}
-                <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Best
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {comparisonData.exams.map((exam) => {
-                const maxMarks = Math.max(...exam.results.map((r) => r.averageMarks));
-                const bestResult = exam.results.find((r) => r.averageMarks === maxMarks);
-                return (
-                  <tr key={exam.examId} className="hover:bg-slate-50/50">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-semibold text-slate-800">{exam.examName}</p>
-                        <p className="text-xs text-slate-400">{exam.examType}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-500">
-                      {formatDate(exam.examDate)}
-                    </td>
-                    {exam.results.map((result) => (
-                      <td
-                        key={result.classId}
-                        className="px-6 py-4 text-center"
-                      >
-                        <span
-                          className={`font-bold ${
-                            result.averageMarks === maxMarks
-                              ? "text-emerald-600"
-                              : "text-slate-600"
-                          }`}
-                        >
-                          {result.averageMarks}%
-                        </span>
-                      </td>
-                    ))}
-                    <td className="px-6 py-4 text-center">
-                      <span
-                        className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold"
-                        style={{
-                          color: CHART_COLORS[
-                            exam.results.findIndex((r) => r.classId === bestResult?.classId) %
-                              CHART_COLORS.length
-                          ],
-                        }}
-                      >
-                        {bestResult?.className}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
       </div>
     );
   };
@@ -484,65 +582,49 @@ const ClassComparison: React.FC = () => {
             </select>
           </div>
 
-          {/* Exam Type */}
+          {/* Selected Sections Info */}
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-              Exam Type
+              Sections
             </label>
-            <select
-              value={selectedExamType}
-              onChange={(e) => setSelectedExamType(e.target.value)}
-              disabled={!selectedClassName}
-              className="w-full px-4 py-2.5 bg-white rounded-xl border border-slate-200 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {EXAM_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
+            {loadingSections ? (
+              <div className="flex items-center gap-2 text-slate-500">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Loading...</span>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {sections.length > 0 ? (
+                  sections.map((section) => (
+                    <span
+                      key={section.id}
+                      className="px-3 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
+                    >
+                      {section.section || "No Section"}
+                    </span>
+                  ))
+                ) : selectedClassName ? (
+                  <span className="text-sm text-amber-600">
+                    No sections found
+                  </span>
+                ) : (
+                  <span className="text-sm text-slate-400">
+                    Select a class above
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Selected Sections Info */}
-        {selectedClassName && (
-          <div className="mt-4 pt-4 border-t border-slate-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-600">
-                  Comparing sections:
-                </span>
-                {loadingSections ? (
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Loading sections...</span>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {sections.length > 0 ? (
-                      sections.map((section) => (
-                        <span
-                          key={section.id}
-                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"
-                        >
-                          {section.section || "No Section"}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-sm text-amber-600">
-                        No sections found for this class
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={handleClearSelection}
-                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 transition-colors"
-              >
-                Clear
-              </button>
-            </div>
+        {selectedClassName && sections.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+            <button
+              onClick={handleClearSelection}
+              className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 transition-colors"
+            >
+              Clear Selection
+            </button>
           </div>
         )}
       </div>
@@ -566,12 +648,12 @@ const ClassComparison: React.FC = () => {
             No sections found for {selectedClassName}. Please ensure classes are properly configured.
           </p>
         </div>
-      ) : comparisonData && comparisonData.summary.length > 0 ? (
+      ) : subjectComparisonData && subjectComparisonData.subjects.length > 0 ? (
         <div className="space-y-6">
           {renderSummaryCards()}
+          {renderSubjectComparisonTable()}
           {renderBarChart()}
-          {renderLineChart()}
-          {renderComparisonTable()}
+          {renderPassRateChart()}
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">

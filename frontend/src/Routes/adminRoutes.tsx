@@ -5,6 +5,7 @@ import UpgradePrompt from "../components/common/UpgradePrompt";
 import { useAuth } from "../context/AuthContext";
 import AdminLayout from "../layouts/AdminLayout";
 import AdminDashboard from "../Pages/Admin/Dashboard";
+import AdminProfile from "../Pages/Admin/AdminProfile";
 import AcademicYearsPage from "../Pages/Admin/AcademicYearsPage";
 import Classes from "../Pages/Admin/Classes";
 import ClassDetail from "../Pages/Admin/ClassDetail";
@@ -52,6 +53,7 @@ const AdminRoutes = () => (
   <AdminLayout>
     <Routes>
       <Route path="dashboard" element={<AdminDashboard />} />
+      <Route path="profile" element={<AdminProfile />} />
       <Route path="academic-years" element={<AcademicYearsPage />} />
       <Route path="classes" element={<Classes />} />
       <Route

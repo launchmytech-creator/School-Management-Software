@@ -127,6 +127,12 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   }, [isTeacher, fetchInchargeClasses, fetchAllClasses]);
 
   useEffect(() => {
+    if (isTeacher && inchargeClasses.length === 1 && !selectedClass) {
+      setSelectedClass(inchargeClasses[0]);
+    }
+  }, [inchargeClasses, selectedClass, isTeacher]);
+
+  useEffect(() => {
     if (selectedClass && selectedDate) {
       fetchExistingAttendance();
     }
@@ -269,39 +275,76 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <label className="block text-sm font-bold text-slate-700 mb-2">
-            {isTeacher ? 'Select Your Class (Incharge)' : 'Select Class'}
-          </label>
-          <select
-            value={selectedClass?.id || ''}
-            onChange={handleClassChange}
-            disabled={loadingClasses}
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-          >
-            <option value="">{loadingClasses ? 'Loading classes...' : 'Select a class'}</option>
-            {teacherClasses.map(cls => (
-              <option key={cls.id} value={cls.id}>
-                {cls.name} {cls.section ? `- Section ${cls.section}` : ''}
-                {isTeacher && cls.inchargeName ? ` (Incharge: ${cls.inchargeName})` : ''}
-              </option>
-            ))}
-          </select>
-          {isTeacher && inchargeClasses.length === 0 && !loadingClasses && (
-            <p className="text-xs text-amber-600 mt-2">
-              You are not assigned as incharge for any class.
-            </p>
-          )}
-        </div>
+        {isTeacher ? (
+          <>
+            {inchargeClasses.length > 1 && (
+              <div className="bg-white rounded-xl border border-slate-200 p-5 md:col-span-2">
+                <label className="block text-sm font-bold text-slate-700 mb-3">Class</label>
+                <div className="flex items-start gap-2 flex-wrap">
+                  {inchargeClasses.map(cls => (
+                    <button
+                      key={cls.id}
+                      onClick={() => setSelectedClass(cls)}
+                      className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                        selectedClass?.id === cls.id
+                          ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {cls.name} {cls.section ? `- Section ${cls.section}` : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {inchargeClasses.length === 1 && selectedClass && (
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-bold text-slate-700 whitespace-nowrap">Class:</label>
+                <span className="px-4 py-2.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold border border-blue-200">
+                  {selectedClass.name} {selectedClass.section ? `- Section ${selectedClass.section}` : ''}
+                </span>
+              </div>
+            )}
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <label className="block text-sm font-bold text-slate-700 mb-2">Attendance Date</label>
+            {inchargeClasses.length === 0 && !loadingClasses && (
+              <div className="bg-white rounded-xl border border-slate-200 p-5 md:col-span-2">
+                <div className="flex items-center gap-3 text-amber-600">
+                  <ShieldOff className="w-5 h-5" />
+                  <p className="text-sm font-medium">
+                    You are not assigned as incharge for any class.
+                  </p>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-bold text-slate-700 whitespace-nowrap">Class:</label>
+            <select
+              value={selectedClass?.id || ''}
+              onChange={handleClassChange}
+              disabled={loadingClasses}
+              className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              <option value="">{loadingClasses ? 'Loading classes...' : 'Select a class'}</option>
+              {allClasses.map(cls => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name} {cls.section ? `- Section ${cls.section}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-bold text-slate-700 whitespace-nowrap">Attendance Date:</label>
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
             max={getLocalDateString()}
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </div>
@@ -430,13 +473,13 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
             title="No classes assigned"
             description="You are not assigned as class incharge for any class. Contact your administrator to assign you as incharge."
           />
-        ) : (
+        ) : !isTeacher ? (
           <EmptyState
             icon={Users}
             title="Please select a class"
-            description={isTeacher ? "Choose a class you are incharge of to mark attendance" : "Choose a class to mark attendance"}
+            description="Choose a class to mark attendance"
           />
-        )
+        ) : null
       )}
 
       <BaseModal

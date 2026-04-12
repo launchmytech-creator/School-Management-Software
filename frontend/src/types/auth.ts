@@ -10,6 +10,7 @@ export interface AuthUser {
   subscriptionPlanId: number | null;
   subscriptionPlan: string | null;
   subscriptionFeatures: Record<string, boolean> | null;
+  subscriptionStatus: string | null;
 }
 
 export interface LoginResponse {
@@ -34,4 +35,5 @@ export interface BackendProfileResponse {
   subscription_plan_id?: number | null;
   subscription_plan_name?: string | null;
   subscription_features?: Record<string, boolean> | null;
+  subscription_status?: string | null;
 }

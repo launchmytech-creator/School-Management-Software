@@ -50,12 +50,16 @@ const extractErrorMessage = (error: unknown): string => {
     }
     
     console.error('API Error Response:', error.response.data);
+    console.error('API Error Status:', error.response.status);
+    console.error('API Error Headers:', error.response.headers);
     
     const data = error.response.data as { message?: string; error?: string; errors?: Array<{message: string}> };
     
-    if (data?.errors && Array.isArray(data.errors)) {
-      return data.errors.map(e => e.message).join(', ');
+    // Check errors array first (validation errors)
+    if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+      return data.errors.map(e => e.message || e).join(', ');
     }
+    // Then check direct message
     if (data?.message) return data.message;
     if (data?.error) return data.error;
     

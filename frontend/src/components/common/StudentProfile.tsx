@@ -42,7 +42,7 @@ import UpgradePrompt from "../../components/common/UpgradePrompt";
 import { getLocalDateString } from "../../lib/utils";
 
 interface StudentProfileProps {
-  layout: "admin" | "accountant";
+  layout: "admin" | "accountant" | "teacher";
 }
 
 type AttendanceStatus = "present" | "absent" | "holiday" | "sunday" | "none";
@@ -160,7 +160,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   const navigate = useNavigate();
   const { hasFeature } = useAuth();
   
-  const [activeTab, setActiveTab] = useState("Marks");
+  const [activeTab, setActiveTab] = useState("Attendance");
   const [activeSubject, setActiveSubject] = useState("Mathematics");
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
@@ -181,7 +181,9 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   const [activeType, setActiveType] = useState("All");
 
   const isAdmin = layout === "admin";
-  const basePath = isAdmin ? "/admin" : "/accountant";
+  const isAccountant = layout === "accountant";
+  const isTeacher = layout === "teacher";
+  const basePath = isAdmin ? "/admin" : isAccountant ? "/accountant" : "/teacher";
 
   const fetchAcademicYears = useCallback(async () => {
     try {
@@ -293,10 +295,10 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   useEffect(() => {
     if (activeTab === "Marks" || activeTab === "Performance") {
       fetchMarks();
-    } else if (activeTab === "Fee Status") {
+    } else if (activeTab === "Fee Status" && isAccountant) {
       fetchFeeStatus();
     }
-  }, [activeTab, fetchMarks, fetchFeeStatus]);
+  }, [activeTab, fetchMarks, fetchFeeStatus, isAccountant]);
 
   const calendarDays = useMemo<CalendarDay[]>(() => {
     const year = currentMonth.getFullYear();
@@ -536,12 +538,14 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
             </div>
 
             <div className="mt-10 space-y-3">
-              <button
-                onClick={handleEdit}
-                className="w-full py-3.5 rounded-2xl border-2 border-slate-900 text-slate-900 font-black text-sm hover:bg-slate-900 hover:text-white transition-all active:scale-95 shadow-sm"
-              >
-                Edit Profile
-              </button>
+              {!isTeacher && (
+                <button
+                  onClick={handleEdit}
+                  className="w-full py-3.5 rounded-2xl border-2 border-slate-900 text-slate-900 font-black text-sm hover:bg-slate-900 hover:text-white transition-all active:scale-95 shadow-sm"
+                >
+                  Edit Profile
+                </button>
+              )}
               {isAdmin && (
                 <button className="w-full py-3.5 rounded-2xl border-2 border-rose-100 text-rose-500 font-black text-sm hover:bg-rose-50 transition-all active:scale-95">
                   Delete Student
@@ -556,7 +560,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
             const tabs = [
               { key: "Attendance", label: "Attendance" },
               { key: "Marks", label: "Marks" },
-              { key: "Fee Status", label: "Fee Status" },
+              ...(!isTeacher ? [{ key: "Fee Status", label: "Fee Status" }] : []),
               { key: "Performance", label: "Performance" },
             ];
             

@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useFeeCollectionPage } from '../../hooks/useFeeCollectionPage';
+import { useAuth } from '../../context/AuthContext';
 import { FeeCollectionTable } from './FeeCollectionTable';
 import { FeePaymentModal } from './FeePaymentModal';
 import { FeeWaiverModal } from './FeeWaiverModal';
 import { FeeTransactionEditModal } from './FeeTransactionEditModal';
 import { FeeStatsCards } from './FeeStatsCards';
+import { FeeReceiptModal } from './FeeReceiptModal';
 import PageHeader from '../common/PageHeader';
+import type { FeeTransaction } from '../../services/feeService';
 
 interface FeeCollectionPageProps {
   layout: 'admin' | 'accountant';
@@ -19,6 +22,19 @@ const FeeCollectionPage: React.FC<FeeCollectionPageProps> = ({
   canApplyWaiver,
   canEdit,
 }) => {
+  const { user } = useAuth();
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptTransaction, setReceiptTransaction] = useState<FeeTransaction | null>(null);
+  const [receiptStudentName, setReceiptStudentName] = useState('');
+  const [receiptAcademicYear, setReceiptAcademicYear] = useState('');
+
+  const handleViewReceipt = (transaction: FeeTransaction, studentName: string, academicYearName: string) => {
+    setReceiptTransaction(transaction);
+    setReceiptStudentName(studentName);
+    setReceiptAcademicYear(academicYearName);
+    setShowReceiptModal(true);
+  };
+
   const {
     classes,
     filteredStudents,
@@ -119,6 +135,7 @@ const FeeCollectionPage: React.FC<FeeCollectionPageProps> = ({
           onCollect={handlers.openPaymentModal}
           onWaive={handlers.openWaiverModal}
           onEdit={handlers.openEditModal}
+          onViewReceipt={handleViewReceipt}
           canApplyWaiver={canApplyWaiver}
           canEdit={canEdit}
           loading={isLoading}
@@ -148,6 +165,17 @@ const FeeCollectionPage: React.FC<FeeCollectionPageProps> = ({
             onClose={() => handlers.setShowEditModal(false)}
             transaction={handlers.selectedTransaction}
             onSubmit={handlers.handleEditDueDate}
+          />
+        )}
+
+        {showReceiptModal && receiptTransaction && (
+          <FeeReceiptModal
+            isOpen={showReceiptModal}
+            onClose={() => setShowReceiptModal(false)}
+            transaction={receiptTransaction}
+            studentName={receiptStudentName}
+            academicYearName={receiptAcademicYear}
+            schoolName={user?.schoolName || 'School Name'}
           />
         )}
       </div>

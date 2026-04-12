@@ -8,6 +8,8 @@ import TeacherSyllabus from "../Pages/Teacher/Syllabus";
 import TeacherAnnouncements from "../Pages/Teacher/Announcements";
 import TeacherLayout from "../layouts/TeacherLayout";
 import StudentAttendance from "../components/common/StudentAttendance";
+import TeacherStudentList from "../Pages/Teacher/StudentList";
+import TeacherStudentProfile from "../Pages/Teacher/StudentProfile";
 
 const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({
   feature,
@@ -25,10 +27,20 @@ const TeacherRoutes = () => (
     <Routes>
       <Route path="dashboard" element={<TeacherDashboard />} />
       <Route
-        path="my-classes"
+        path="syllabus"
+        element={
+          <PlanGuard feature="syllabus_tracking">
+            <RequiresActiveYear>
+              <TeacherSyllabus />
+            </RequiresActiveYear>
+          </PlanGuard>
+        }
+      />
+      <Route
+        path="students"
         element={
           <RequiresActiveYear>
-            <TeacherSyllabus customTitle="My Classes" isEditable={true} />
+            <TeacherStudentList />
           </RequiresActiveYear>
         }
       />
@@ -42,17 +54,8 @@ const TeacherRoutes = () => (
           </PlanGuard>
         }
       />
-      <Route
-        path="syllabus"
-        element={
-          <PlanGuard feature="syllabus_tracking">
-            <RequiresActiveYear>
-              <TeacherSyllabus />
-            </RequiresActiveYear>
-          </PlanGuard>
-        }
-      />
       <Route path="announcements" element={<TeacherAnnouncements />} />
+      <Route path="students/:id" element={<TeacherStudentProfile />} />
     </Routes>
   </TeacherLayout>
 );

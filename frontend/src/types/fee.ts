@@ -17,6 +17,7 @@ export interface StudentGroup {
   studentName: string;
   admissionNumber: string;
   className: string;
+  academicYearName: string;
   terms: TermGroup[];
   totalAmountDue: number;
   totalAmountPaid: number;
@@ -53,6 +54,7 @@ export interface FeeCollectionHandlers {
   openPaymentModal: (term: TermGroup) => void;
   openWaiverModal: (transaction: FeeTransaction) => void;
   openEditModal: (transaction: FeeTransaction) => void;
+  openReceiptModal: (transaction: FeeTransaction, studentName: string, academicYearName: string) => void;
   showPaymentModal: boolean;
   setShowPaymentModal: (value: boolean) => void;
   showWaiverModal: boolean;

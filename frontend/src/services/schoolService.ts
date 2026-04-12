@@ -1,5 +1,5 @@
 import { apiRequest } from './api';
-import type { School, CreateSchoolRequest, SubscriptionTier, SchoolUpdateData, SchoolAdmin, UpdateSchoolAdminData } from '../types/school';
+import type { School, CreateSchoolRequest, SubscriptionTier, SchoolUpdateData, SchoolAdmin, UpdateSchoolAdminData, SubscriptionPlan, PlanChangeRequest } from '../types/school';
 import { getCurrentAcademicYear } from '../lib/utils';
 
 const VALID_SUBSCRIPTION_PLANS: SubscriptionTier[] = ['BASIC', 'PREMIUM', 'BUSINESS'];
@@ -84,5 +84,23 @@ export const schoolService = {
     apiRequest<SchoolAdmin>(`/schools/${schoolId}/admin`, {
       method: 'PATCH',
       data,
+    }),
+
+  // [NEW] Get all available subscription plans
+  getAvailablePlans: async (schoolId: string): Promise<SubscriptionPlan[]> => {
+    const data = await apiRequest<Record<string, unknown>[]>(`/schools/${schoolId}/available-plans`);
+    return data.map(plan => ({
+      id: plan.id as number,
+      name: normalizePlan(plan.name as string),
+      features: (plan.features as Record<string, boolean>) || {},
+      created_at: plan.created_at as string,
+    }));
+  },
+
+  // [NEW] Change subscription plan
+  changePlan: (schoolId: string, data: PlanChangeRequest): Promise<School> => 
+    apiRequest<School>(`/schools/${schoolId}`, {
+      method: 'PATCH',
+      data: { subscriptionPlanId: data.targetPlanId },
     }),
 };

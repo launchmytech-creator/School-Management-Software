@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { authService } from '../services/authService';
 import type { AuthUser, LoginCredentials } from '../types/auth';
-import { clearQueryCache } from '../lib/queryClient';
+import { clearQueryCache, queryClient } from '../lib/queryClient';
+import { queryKeys } from '../lib/queryKeys';
 
 export interface AuthContextType {
   user: AuthUser | null;
@@ -10,6 +11,9 @@ export interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   hasFeature: (feature: string) => boolean;
+  refetchUser: () => Promise<void>;
+  updateUser: (user: AuthUser) => void;
+  userLoading: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,6 +29,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(authService.getUser());
   const [loading, setLoading] = useState(true);
+  const [userLoading, setUserLoading] = useState(false);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -32,6 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (authService.isAuthenticated()) {
           const profile = await authService.getProfile();
           setUser(profile);
+          queryClient.setQueryData(queryKeys.user.current(), profile);
         }
       } catch {
         authService.logout();
@@ -48,6 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearQueryCache();
     const response = await authService.login(credentials);
     setUser(response.user);
+    queryClient.setQueryData(queryKeys.user.current(), response.user);
     setLoading(false);
     return response.user;
   }, []);
@@ -56,12 +63,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearQueryCache();
     authService.logout();
     setUser(null);
+    queryClient.removeQueries({ queryKey: queryKeys.user.current() });
   }, []);
 
   const hasFeature = useCallback((feature: string): boolean => {
     if (!user?.subscriptionFeatures) return false;
     return user.subscriptionFeatures[feature] === true;
   }, [user?.subscriptionFeatures]);
+
+  const refetchUser = useCallback(async () => {
+    setUserLoading(true);
+    try {
+      const profile = await authService.getProfile();
+      setUser(profile);
+      queryClient.setQueryData(queryKeys.user.current(), profile);
+    } catch (error) {
+      console.error('Failed to refetch user:', error);
+    } finally {
+      setUserLoading(false);
+    }
+  }, []);
+
+  const updateUser = useCallback((userData: AuthUser) => {
+    setUser(userData);
+    queryClient.setQueryData(queryKeys.user.current(), userData);
+  }, []);
 
   const value = useMemo(() => ({
     user,
@@ -70,7 +96,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     isAuthenticated: !!user,
     hasFeature,
-  }), [user, loading, hasFeature]);
+    refetchUser,
+    updateUser,
+    userLoading,
+  }), [user, loading, hasFeature, refetchUser, updateUser, userLoading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

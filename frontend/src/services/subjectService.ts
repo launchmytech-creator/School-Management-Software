@@ -179,6 +179,44 @@ export const subjectService = {
       return '';
     }
   },
+
+  assignSubjectToMultipleClasses: async (
+    classIds: number[],
+    subjectId: number,
+    academicYearId: number
+  ): Promise<ClassSubject[]> => {
+    const raw = await apiRequest<any[]>("/class-subjects/assign-multiple", {
+      method: "POST",
+      data: { classIds, subjectId, academicYearId },
+    });
+    return raw.map((r) => ({
+      id: r.id,
+      classId: r.class_id,
+      className: r.class_name ?? "",
+      subjectId: r.subject_id,
+      subjectName: r.subject_name ?? "",
+      academicYearId: r.academic_year_id,
+      academicYearName: r.year_name ?? "",
+    }));
+  },
+
+  checkExistingAssignments: async (
+    classIds: number[],
+    academicYearId: number
+  ): Promise<ClassSubject[]> => {
+    const raw = await apiRequest<any[]>(
+      `/class-subjects/check-existing?classIds=${classIds.join(",")}&academicYearId=${academicYearId}`
+    );
+    return raw.map((r) => ({
+      id: r.id,
+      classId: r.class_id,
+      className: r.class_name ?? r.class?.name ?? "",
+      subjectId: r.subject_id,
+      subjectName: r.subject_name ?? r.subject?.name ?? "",
+      academicYearId: r.academic_year_id,
+      academicYearName: r.year_name ?? "",
+    }));
+  },
 };
 
 export default subjectService;

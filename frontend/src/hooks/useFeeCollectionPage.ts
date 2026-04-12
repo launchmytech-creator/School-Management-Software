@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useAcademicYear } from '../context/AcademicYearContext';
+import { useAuth } from '../context/AuthContext';
 import { useClasses, useFeeTransactions } from './queries';
 import { useRecordPayment, useApplyWaiver } from './mutations';
 import { feeService, type FeeTransaction, type RecordPaymentDto } from '../services/feeService';
 import type { TermGroup, StudentGroup, FeeCollectionStats, FeeCollectionHandlers } from '../types/fee';
+import { formatCurrency } from '../lib/utils';
 
 interface UseFeeCollectionPageReturn {
   classes: ReturnType<typeof useClasses>['data'];
@@ -17,6 +19,7 @@ interface UseFeeCollectionPageReturn {
 
 export const useFeeCollectionPage = (): UseFeeCollectionPageReturn => {
   const { selectedYear } = useAcademicYear();
+  const { user } = useAuth();
 
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -51,6 +54,7 @@ export const useFeeCollectionPage = (): UseFeeCollectionPageReturn => {
           studentName: tx.studentName,
           admissionNumber: tx.admissionNumber,
           className: tx.className,
+          academicYearName: tx.academicYearName,
           terms: [],
           totalAmountDue: 0,
           totalAmountPaid: 0,
@@ -187,6 +191,153 @@ export const useFeeCollectionPage = (): UseFeeCollectionPageReturn => {
     setShowEditModal(true);
   };
 
+  const formatDisplayDate = (dateStr: string | null): string => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  const formatPaymentMode = (mode: string | null): string => {
+    if (!mode) return '-';
+    return mode.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const openReceiptModal = (transaction: FeeTransaction, studentName: string, academicYearName: string) => {
+    const schoolName = user?.schoolName || 'School Name';
+    
+    let feeBreakdownHtml = '';
+    if (transaction.feeBreakdown && Object.keys(transaction.feeBreakdown).length > 0) {
+      feeBreakdownHtml = Object.entries(transaction.feeBreakdown)
+        .map(([feeName, amount]) => `
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-transform: capitalize;">${feeName.replace(/_/g, ' ')}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 500;">${formatCurrency(amount)}</td>
+          </tr>
+        `).join('');
+    }
+
+    const receiptHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Fee Receipt</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; color: #1e293b; }
+          .header { background: linear-gradient(135deg, #2563eb, #4f46e5); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; }
+          .header h1 { font-size: 24px; margin-bottom: 4px; }
+          .header p { color: #bfdbfe; font-size: 14px; }
+          .receipt-number { background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 24px; display: flex; justify-content: space-between; }
+          .receipt-number span { color: #64748b; font-size: 12px; text-transform: uppercase; }
+          .receipt-number strong { color: #1e293b; font-size: 14px; display: block; margin-top: 4px; }
+          .section { background: white; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+          .section-header { background: #f1f5f9; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; }
+          .section-content { padding: 16px; }
+          .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+          .row:last-child { border-bottom: none; }
+          .row-label { color: #64748b; font-size: 14px; }
+          .row-value { font-weight: 500; font-size: 14px; }
+          .status { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+          .status-paid { background: #dcfce7; color: #16a34a; }
+          .total-paid { font-size: 24px; font-weight: 700; color: #16a34a; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>${schoolName}</h1>
+          <p>Fee Receipt</p>
+        </div>
+        
+        <div class="receipt-number">
+          <div>
+            <span>Receipt Number</span>
+            <strong>${transaction.receiptNumber || '-'}</strong>
+          </div>
+          <div>
+            <span>Payment Date</span>
+            <strong>${formatDisplayDate(transaction.paymentDate)}</strong>
+          </div>
+        </div>
+        
+        <div class="section">
+          <div class="section-header">Student Details</div>
+          <div class="section-content">
+            <div class="row">
+              <span class="row-label">Student Name</span>
+              <span class="row-value">${studentName}</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Admission Number</span>
+              <span class="row-value" style="font-family: monospace;">${transaction.admissionNumber}</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Class</span>
+              <span class="row-value">${transaction.className} ${transaction.classSection ? `- Section ${transaction.classSection}` : ''}</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Academic Year</span>
+              <span class="row-value">${academicYearName}</span>
+            </div>
+            ${transaction.termNumber ? `
+            <div class="row">
+              <span class="row-label">Term</span>
+              <span class="row-value">Term ${transaction.termNumber}</span>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+        
+        <div class="section">
+          <div class="section-header" style="background: #dcfce7; color: #16a34a;">Payment Details</div>
+          <div class="section-content">
+            <div class="row">
+              <span class="row-label">Total Amount</span>
+              <span class="row-value">${formatCurrency(transaction.amountDue)}</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Amount Paid</span>
+              <span class="row-value total-paid">${formatCurrency(transaction.amountPaid)}</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Payment Mode</span>
+              <span class="row-value">${formatPaymentMode(transaction.paymentMode)}</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Status</span>
+              <span class="status status-paid">Paid</span>
+            </div>
+          </div>
+        </div>
+        
+        ${feeBreakdownHtml ? `
+        <div class="section">
+          <div class="section-header">Fee Breakdown</div>
+          <div class="section-content" style="padding: 0;">
+            <table style="width: 100%;">
+              <tbody>
+                ${feeBreakdownHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        ` : ''}
+        
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank', 'width=600,height=800');
+    if (printWindow) {
+      printWindow.document.write(receiptHtml);
+      printWindow.document.close();
+    }
+  };
+
   const handlePayment = async (data: RecordPaymentDto) => {
     if (!selectedTerm) return;
 
@@ -258,6 +409,7 @@ export const useFeeCollectionPage = (): UseFeeCollectionPageReturn => {
       openPaymentModal,
       openWaiverModal,
       openEditModal,
+      openReceiptModal,
       showPaymentModal,
       setShowPaymentModal,
       showWaiverModal,

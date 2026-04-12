@@ -16,6 +16,7 @@ import StudentsList from "../components/common/StudentsList";
 import ExamsList from "../components/common/ExamsList";
 import ExamResults from "../components/common/ExamResults";
 import MarksEntry from "../components/common/MarksEntry";
+import Subjects from "../Pages/Admin/Subjects";
 import StudentAttendance from "../components/common/StudentAttendance";
 
 const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({
@@ -79,6 +80,14 @@ const AccountantRoutes = () => (
         element={
           <RequiresActiveYear>
             <MarksEntry layout="accountant" />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="subjects"
+        element={
+          <RequiresActiveYear>
+            <Subjects />
           </RequiresActiveYear>
         }
       />

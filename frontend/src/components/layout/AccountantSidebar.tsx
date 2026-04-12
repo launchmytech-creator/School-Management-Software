@@ -29,6 +29,11 @@ const navItems = [
     path: "/accountant/exam-results",
   },
   {
+    name: "Subjects",
+    icon: "menu_book",
+    path: "/accountant/subjects",
+  },
+  {
     name: "Fee Structures",
     icon: "receipt_long",
     path: "/accountant/fee-structures",

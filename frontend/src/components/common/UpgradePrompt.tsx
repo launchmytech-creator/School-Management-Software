@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FEATURE_LABELS, getRequiredPlan, PLAN_LABELS, PLAN_SUITABILITY, FEATURE_DESCRIPTIONS } from '../../lib/permissions';
-import { Lock, Shield, Star } from 'lucide-react';
+import { Lock, Shield, Star, ArrowRight } from 'lucide-react';
 import type { SubscriptionTier } from '../../types/school';
+import { Button } from '../ui/button';
 
 interface UpgradePromptProps {
   feature: string;
@@ -15,6 +17,7 @@ const PLAN_COLORS: Record<SubscriptionTier, { bg: string; text: string; border: 
 };
 
 export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ feature, className = '' }) => {
+  const navigate = useNavigate();
   const requiredPlan = getRequiredPlan(feature);
   const featureName = FEATURE_LABELS[feature] || feature;
   const planName = requiredPlan ? PLAN_LABELS[requiredPlan as SubscriptionTier] : 'Premium';
@@ -22,6 +25,10 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ feature, className
   const featureDescription = FEATURE_DESCRIPTIONS[feature] || '';
   const planColors = requiredPlan ? PLAN_COLORS[requiredPlan as SubscriptionTier] : PLAN_COLORS.PREMIUM;
   const PlanIcon = requiredPlan === 'BUSINESS' ? Star : Shield;
+
+  const handleUpgrade = () => {
+    navigate('/admin/profile?section=subscription');
+  };
 
   return (
     <div className={`flex flex-col items-center justify-center min-h-[300px] p-6 ${className}`}>
@@ -60,11 +67,20 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({ feature, className
           </p>
         )}
         
-        <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
+        <div className="bg-amber-50 rounded-lg p-3 border border-amber-100 mb-4">
           <p className="text-xs text-amber-700">
             Contact your administrator to upgrade your subscription plan.
           </p>
         </div>
+
+        <Button
+          onClick={handleUpgrade}
+          className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold"
+        >
+          <Shield className="w-4 h-4 mr-2" />
+          Upgrade Plan
+          <ArrowRight className="w-4 h-4 ml-2" />
+        </Button>
       </div>
     </div>
   );

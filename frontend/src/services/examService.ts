@@ -4,6 +4,7 @@ export interface Exam {
   id: number;
   classId: number;
   className: string;
+  classSection?: string;
   name: string;
   examType?: string;
   startDate: string;
@@ -111,6 +112,7 @@ const mapExamFromBackend = (data: BackendExam): Exam => ({
   id: data.id,
   classId: data.class_id,
   className: data.class_name || '',
+  classSection: data.class_section || undefined,
   name: data.name,
   examType: data.exam_type || undefined,
   startDate: data.start_date,

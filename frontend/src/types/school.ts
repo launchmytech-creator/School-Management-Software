@@ -70,3 +70,24 @@ export interface UpdateSchoolAdminData {
   phone?: string;
   password?: string;
 }
+
+// [NEW] Subscription Plan interface
+export interface SubscriptionPlan {
+  id: number;
+  name: SubscriptionTier;
+  features: Record<string, boolean>;
+  created_at?: string;
+}
+
+// [NEW] Plan change request
+export interface PlanChangeRequest {
+  targetPlanId: number;
+}
+
+// [NEW] Profile update data
+export interface UpdateProfileData {
+  fullName?: string;
+  phone?: string;
+  password?: string;
+  currentPassword?: string;
+}

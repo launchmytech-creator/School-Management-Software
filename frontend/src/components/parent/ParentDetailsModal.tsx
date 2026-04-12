@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Mail, Phone, MapPin, Calendar, 
   User, Link2, Unlink2, Loader2, GraduationCap,
-  ChevronRight
+  ChevronRight, UserCheck
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { parentService } from '../../services/parentService';
@@ -71,177 +71,213 @@ const ParentDetailsModal: React.FC<ParentDetailsModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <div className="absolute inset-0" onClick={onClose} />
         
-        <div className="relative bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-auto max-h-[90vh] animate-in fade-in zoom-in duration-300">
+        <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-300">
           
-          {/* Left Panel - Profile Card */}
-          <div className="w-full md:w-80 bg-slate-50 border-r border-slate-100 p-8 flex flex-col items-center">
-             <div className="size-32 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[2.5rem] flex items-center justify-center text-white text-4xl font-black shadow-2xl shadow-blue-500/20 mb-6">
-                {parent.fullName.charAt(0)}
-             </div>
-             
-             <h2 className="text-2xl font-display font-black text-slate-900 text-center tracking-tight mb-1">{parent.fullName}</h2>
-             <span className="px-3 py-1 bg-white border border-slate-200 text-slate-400 font-black text-[10px] uppercase tracking-widest rounded-full mb-8">Parent Account</span>
-
-             <div className="w-full space-y-4">
-                <div className="flex items-center gap-4 bg-white p-3.5 rounded-2xl border border-slate-100 hover:border-blue-200 transition-all group">
-                   <div className="size-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all">
-                      <Mail className="size-4" />
-                   </div>
-                   <div className="flex-1 overflow-hidden">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Email</p>
-                      <p className="text-sm font-bold text-slate-700 truncate">{parent.email}</p>
-                   </div>
+          {/* Header */}
+          <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-700 text-2xl font-black">
+                {parent.fullName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">{parent.fullName}</h2>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                    parent.isActive 
+                      ? 'bg-slate-900 text-white' 
+                      : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {parent.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    Joined {new Date(parent.createdAt).toLocaleDateString('en-IN', { 
+                      day: '2-digit', 
+                      month: 'short', 
+                      year: 'numeric' 
+                    })}
+                  </span>
                 </div>
-
-                <div className="flex items-center gap-4 bg-white p-3.5 rounded-2xl border border-slate-100 hover:border-blue-200 transition-all group">
-                   <div className="size-10 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-all">
-                      <Phone className="size-4" />
-                   </div>
-                   <div className="flex-1">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Phone</p>
-                      <p className="text-sm font-bold text-slate-700">{parent.phone || "N/A"}</p>
-                   </div>
-                </div>
-
-                <div className="flex items-center gap-4 bg-white p-3.5 rounded-2xl border border-slate-100 hover:border-blue-200 transition-all group">
-                   <div className="size-10 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-all">
-                      <User className="size-4" />
-                   </div>
-                   <div className="flex-1">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Gender</p>
-                      <p className="text-sm font-bold text-slate-700">{parent.gender || "Not specified"}</p>
-                   </div>
-                </div>
-             </div>
+              </div>
+            </div>
+            <button 
+              onClick={onClose}
+              className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
+            >
+              <X className="size-5" />
+            </button>
           </div>
 
-          {/* Right Panel - Content */}
-          <div className="flex-1 flex flex-col min-w-0">
-             {/* Modal Header */}
-             <div className="p-8 pb-4 flex items-center justify-between">
-                <div>
-                   <h3 className="text-xl font-display font-black text-slate-900 tracking-tight">Parent Profile Details</h3>
-                   <p className="text-slate-500 font-medium text-sm">Managing linked children and personal information.</p>
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            {/* Info Cards - Row 1 */}
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                    <Mail className="w-4 h-4 text-slate-600" />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email</span>
                 </div>
-                <button 
-                  onClick={onClose}
-                  className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
-                >
-                  <X className="size-6" />
-                </button>
-             </div>
-
-             {/* Content Area */}
-             <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
-                {/* Additional Info Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                      <div className="flex items-center gap-2 text-slate-400 mb-2">
-                         <Calendar className="size-4" />
-                         <span className="text-[10px] font-black uppercase tracking-widest">Date of Birth</span>
-                      </div>
-                      <p className="font-bold text-slate-900">{parent.dateOfBirth ? new Date(parent.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
-                   </div>
-                   <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                      <div className="flex items-center gap-2 text-slate-400 mb-2">
-                         <MapPin className="size-4" />
-                         <span className="text-[10px] font-black uppercase tracking-widest">Address</span>
-                      </div>
-                      <p className="font-bold text-slate-900 truncate">{parent.address || 'N/A'}</p>
-                   </div>
+                <p className="text-sm font-semibold text-slate-800 break-all">{parent.email}</p>
+              </div>
+              
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                    <Phone className="w-4 h-4 text-slate-600" />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phone</span>
                 </div>
-
-                {/* Children Section */}
-                <div className="space-y-4">
-                   <div className="flex items-center justify-between">
-                      <h4 className="flex items-center gap-2 text-lg font-display font-black text-slate-900 uppercase tracking-tight">
-                         Linked Children
-                         <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-xs ml-2">{children.length}</span>
-                      </h4>
-                      <Button 
-                        onClick={() => setIsLinkModalOpen(true)}
-                        className="bg-[#2596be] hover:bg-[#1a7a9c] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-                      >
-                         <Link2 className="size-3.5 mr-2" />
-                         Link Student
-                      </Button>
-                   </div>
-
-                   <div className="grid grid-cols-1 gap-3">
-                      {loading ? (
-                        <div className="flex flex-col items-center justify-center py-10 opacity-40">
-                          <Loader2 className="size-8 text-blue-500 animate-spin mb-3" />
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fetching children...</p>
-                        </div>
-                      ) : children.length > 0 ? (
-                        children.map(child => (
-                          <div key={child.id} className="group bg-white border border-slate-100 rounded-3xl p-5 flex items-center justify-between hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all">
-                             <div className="flex items-center gap-5">
-                                <div className="size-14 bg-gradient-to-br from-slate-50 to-blue-50 text-blue-500 rounded-2xl flex items-center justify-center border border-blue-50 shadow-sm transition-transform duration-500 group-hover:scale-110">
-                                   <GraduationCap className="size-7" />
-                                </div>
-                                <div>
-                                   <p className="font-display font-black text-slate-900 text-lg tracking-tight mb-1">{child.fullName}</p>
-                                   <div className="flex items-center gap-3">
-                                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID: {child.admissionNumber}</span>
-                                      <span className="size-1 bg-slate-200 rounded-full"></span>
-                                      <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                         {child.className} {child.classSection}
-                                      </span>
-                                   </div>
-                                </div>
-                             </div>
-                             
-                             <div className="flex items-center gap-2">
-                                <Button 
-                                  variant="ghost"
-                                  onClick={() => handleUnlink(child.id)}
-                                  disabled={unlinking === child.id}
-                                  className="text-slate-300 hover:text-rose-500 hover:bg-rose-50 px-3 h-10 rounded-xl"
-                                >
-                                   {unlinking === child.id ? <Loader2 className="size-4 animate-spin text-rose-500" /> : <Unlink2 className="size-5" />}
-                                </Button>
-                                <button className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-50 rounded-xl">
-                                   <ChevronRight className="size-5" />
-                                </button>
-                             </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-[2.5rem] border border-dashed border-slate-200 opacity-60">
-                           <div className="size-16 bg-white rounded-3xl flex items-center justify-center mb-4 border border-slate-100">
-                             <GraduationCap className="size-8 text-slate-300" />
-                           </div>
-                           <p className="text-sm font-bold text-slate-500">No children linked to this parent</p>
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Students must be linked for fee payments & results</p>
-                        </div>
-                      )}
-                   </div>
+                <p className="text-sm font-semibold text-slate-800">{parent.phone || 'N/A'}</p>
+              </div>
+              
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                    <User className="w-4 h-4 text-slate-600" />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gender</span>
                 </div>
-             </div>
+                <p className="text-sm font-semibold text-slate-800 capitalize">{parent.gender || 'Not specified'}</p>
+              </div>
+            </div>
 
-             {/* Footer */}
-             <div className="p-8 border-t border-slate-100 flex items-center justify-between bg-slate-50/30">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                   <Calendar className="size-3" /> Joined {new Date(parent.createdAt).toLocaleDateString()}
+            {/* Info Cards - Row 2 */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                    <Calendar className="w-4 h-4 text-slate-600" />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date of Birth</span>
+                </div>
+                <p className="text-sm font-semibold text-slate-800">
+                  {parent.dateOfBirth 
+                    ? new Date(parent.dateOfBirth).toLocaleDateString('en-IN', { 
+                        day: '2-digit', 
+                        month: 'short', 
+                        year: 'numeric' 
+                      })
+                    : 'N/A'}
                 </p>
-                <div className="flex items-center gap-3">
-                   <Button 
-                     variant="outline"
-                     className="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border-slate-200"
-                   >
-                     Reset Password
-                   </Button>
-                   <Button 
-                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20"
-                   >
-                     Update Profile
-                   </Button>
+              </div>
+              
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                    <MapPin className="w-4 h-4 text-slate-600" />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Address</span>
                 </div>
-             </div>
+                <p className="text-sm font-semibold text-slate-800">{parent.address || 'N/A'}</p>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-slate-100 my-6" />
+
+            {/* Linked Children Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="flex items-center gap-2 text-base font-bold text-slate-900">
+                  <UserCheck className="w-5 h-5 text-slate-600" />
+                  Linked Children
+                  <span className="px-2.5 py-1 bg-slate-900 text-white rounded-full text-xs font-bold">
+                    {children.length}
+                  </span>
+                </h4>
+                <Button 
+                  onClick={() => setIsLinkModalOpen(true)}
+                  className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg active:scale-95 transition-all"
+                >
+                  <Link2 className="w-4 h-4 mr-2" />
+                  Link Student
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="w-10 h-10 text-slate-400 animate-spin mb-3" />
+                    <p className="text-sm font-semibold text-slate-400">Fetching children...</p>
+                  </div>
+                ) : children.length > 0 ? (
+                  children.map(child => (
+                    <div 
+                      key={child.id} 
+                      className="group bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 hover:shadow-lg transition-all cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+                            <GraduationCap className="w-6 h-6 text-slate-500" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 text-lg">{child.fullName}</p>
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+                                {child.admissionNumber}
+                              </span>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-xs font-semibold text-slate-600">
+                                {child.className} {child.classSection ? `- ${child.classSection}` : ''}
+                              </span>
+                              <span className="text-slate-300">•</span>
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                                child.status === 'active' 
+                                  ? 'bg-slate-900 text-white' 
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {child.status === 'active' ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUnlink(child.id);
+                            }}
+                            disabled={unlinking === child.id}
+                            className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                            title="Unlink student"
+                          >
+                            {unlinking === child.id ? (
+                              <Loader2 className="w-5 h-5 animate-spin text-rose-500" />
+                            ) : (
+                              <Unlink2 className="w-5 h-5" />
+                            )}
+                          </button>
+                          <div className="p-2 text-slate-300 group-hover:text-slate-500 transition-colors">
+                            <ChevronRight className="w-5 h-5" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm">
+                      <GraduationCap className="w-8 h-8 text-slate-300" />
+                    </div>
+                    <p className="text-base font-semibold text-slate-600">No children linked</p>
+                    <p className="text-sm text-slate-400 mt-1">Link students to this parent for fee payments & results</p>
+                    <Button 
+                      onClick={() => setIsLinkModalOpen(true)}
+                      className="mt-4 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg active:scale-95 transition-all"
+                    >
+                      <Link2 className="w-4 h-4 mr-2" />
+                      Link First Child
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -19,6 +19,8 @@ import {
   Clock,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
+  BookOpen,
 } from "lucide-react";
 import { formatCurrency } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
@@ -27,11 +29,13 @@ import { classService } from "../../services/classService";
 import { feeService } from "../../services/feeService";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
+import { useAuth } from "../../context/AuthContext";
+import { useTeacherAllocations } from "../../hooks/queries/useTeachers";
 import type { Student, FeeStatus } from "../../types/student";
 import type { Class } from "../../types/class";
 
 interface StudentsListProps {
-  layout: "admin" | "accountant";
+  layout: "admin" | "accountant" | "teacher";
 }
 
 interface EnrichedStudent extends Student {
@@ -49,10 +53,24 @@ interface ClassGroup {
 
 const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { selectedYear } = useAcademicYear();
   const { showNotification } = useNotification();
 
   const isAdmin = layout === "admin";
+  const isAccountant = layout === "accountant";
+  const isTeacher = layout === "teacher";
+
+  const teacherId = user?.id as number;
+  const { data: allocations } = useTeacherAllocations(
+    teacherId,
+    selectedYear?.id,
+  );
+
+  const teacherClassIds = useMemo(() => {
+    if (!allocations) return new Set<string>();
+    return new Set<string>(allocations.map((a) => String(a.classId)));
+  }, [allocations]);
 
   const [classes, setClasses] = useState<Class[]>([]);
   const [allStudents, setAllStudents] = useState<EnrichedStudent[]>([]);
@@ -75,12 +93,16 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
   const fetchClasses = useCallback(async () => {
     try {
       const data = await classService.getClasses();
-      console.log(data)
-      setClasses(data);
+      if (isTeacher) {
+        const filteredClasses = data.filter((c) => teacherClassIds.has(c.id));
+        setClasses(filteredClasses);
+      } else {
+        setClasses(data);
+      }
     } catch {
       showNotification("Failed to fetch classes", "error");
     }
-  }, [showNotification]);
+  }, [showNotification, isTeacher, teacherClassIds]);
 
   const fetchAllStudents = useCallback(async () => {
     if (!selectedYear?.id) {
@@ -136,11 +158,14 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
         }));
 
         setAllStudents(enrichedData);
-      } else {
+      } else if (isAccountant) {
+        // Accountant: Fetch fee data for each student individually
         const enrichedData: EnrichedStudent[] = await Promise.all(
           studentsData.map(async (s) => {
             try {
-              const transactions = await feeService.getStudentFeeTransactions(s.id);
+              const transactions = await feeService.getStudentFeeTransactions(
+                s.id,
+              );
               const totalDue = transactions.reduce(
                 (sum, t) => sum + (t.amountDue || 0),
                 0,
@@ -178,13 +203,26 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
         );
 
         setAllStudents(enrichedData);
+      } else {
+        // Teacher: Just return students without fee data
+        const enrichedData: EnrichedStudent[] = studentsData.map((s) => ({
+          ...s,
+          parentName: s.parentName || "—",
+          parentPhone: s.parentPhone || "",
+          totalDue: 0,
+          totalPaid: 0,
+          balance: 0,
+          feeStatusLocal: "pending" as const,
+        }));
+
+        setAllStudents(enrichedData);
       }
     } catch {
       showNotification("Failed to fetch students", "error");
     } finally {
       setLoading(false);
     }
-  }, [selectedYear, isAdmin, showNotification]);
+  }, [selectedYear, isAdmin, isAccountant, showNotification]);
 
   useEffect(() => {
     fetchClasses();
@@ -254,7 +292,9 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
   };
 
   const getFilteredStudents = (classId: string): EnrichedStudent[] => {
-    const students = allStudents.filter((s) => s.currentClassId?.toString() === classId);
+    const students = allStudents.filter(
+      (s) => s.currentClassId?.toString() === classId,
+    );
 
     return students
       .filter((s) => {
@@ -293,16 +333,17 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
 
   const matchingClassIds = useMemo(() => {
     if (!searchTerm.trim()) return [];
-    
+
     const search = searchTerm.toLowerCase();
     return classGroups
-      .map(group => group.classId)
-      .filter(classId => {
-        const students = allStudents.filter(s => 
-          s.currentClassId?.toString() === classId &&
-          (s.fullName?.toLowerCase().includes(search) ||
-           s.parentName?.toLowerCase().includes(search) ||
-           s.admissionNumber?.toLowerCase().includes(search))
+      .map((group) => group.classId)
+      .filter((classId) => {
+        const students = allStudents.filter(
+          (s) =>
+            s.currentClassId?.toString() === classId &&
+            (s.fullName?.toLowerCase().includes(search) ||
+              s.parentName?.toLowerCase().includes(search) ||
+              s.admissionNumber?.toLowerCase().includes(search)),
         );
         return students.length > 0;
       });
@@ -352,10 +393,54 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
     }
   };
 
-  const basePath = isAdmin ? "/admin" : "/accountant";
+  const basePath = isAdmin
+    ? "/admin"
+    : isAccountant
+      ? "/accountant"
+      : "/teacher";
 
   const renderStudentRow = (student: EnrichedStudent) => {
-    if (isAdmin) {
+    if (isTeacher) {
+      return (
+        <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
+          <td className="pl-10 pr-6 py-4">
+            <div className="flex items-center gap-4">
+              <div className="size-10 rounded-xl overflow-hidden border-2 border-slate-100 bg-slate-50 shadow-sm">
+                <img
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.id}`}
+                  alt={student.fullName}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div>
+                <span className="font-semibold text-slate-900 block">
+                  {student.fullName}
+                </span>
+                <span className="text-xs text-slate-400">
+                  ADM: {student.admissionNumber}
+                  {student.rollNumber && ` | Roll: ${student.rollNumber}`}
+                </span>
+              </div>
+            </div>
+          </td>
+          <td className="px-6 py-4 text-sm text-slate-600">
+            {student.parentName || "—"}
+          </td>
+          <td className="px-6 py-4 text-sm text-slate-500">
+            {student.parentPhone || "—"}
+          </td>
+          <td className="py-4 ">
+            <button
+              onClick={() => navigate(`${basePath}/students/${student.id}`)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-sm  font-medium hover:bg-blue-100 transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" />
+              View Profile
+            </button>
+          </td>
+        </tr>
+      );
+    } else if (isAdmin) {
       return (
         <tr
           key={student.id}
@@ -516,7 +601,53 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
 
   const renderContent = () => (
     <div className="space-y-6 pb-12">
-      {!isAdmin && (
+      {isTeacher && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-primary">
+                  {stats.totalClasses}
+                </p>
+                <p className="text-sm text-slate-500">Classes Assigned</p>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-xl">
+                <Users className="w-5 h-5 text-blue-500" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-slate-700">
+                  {stats.totalLoadedStudents}
+                </p>
+                <p className="text-sm text-slate-500">Total Students</p>
+              </div>
+              <div className="p-3 bg-slate-100 rounded-xl">
+                <Users className="w-5 h-5 text-slate-500" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-purple-600">
+                  {allocations?.length || 0}
+                </p>
+                <p className="text-sm text-slate-500">Subject Allocations</p>
+              </div>
+              <div className="p-3 bg-purple-50 rounded-xl">
+                <BookOpen className="w-5 h-5 text-purple-500" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAccountant && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between">
@@ -591,21 +722,21 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
       )}
 
       {isAdmin && (
-        <PageHeader 
+        <PageHeader
           title="Students"
           subtitle="Manage student enrollments, profiles and academic records"
           breadcrumb={{
             links: [
               { label: "Dashboard", href: "/admin/dashboard" },
-              { label: "Students", active: true }
-            ]
+              { label: "Students", active: true },
+            ],
           }}
           actions={[
             {
               label: "Add Student",
               icon: Plus,
-              onClick: () => navigate(`${basePath}/add-student`)
-            }
+              onClick: () => navigate(`${basePath}/add-student`),
+            },
           ]}
         />
       )}
@@ -693,11 +824,23 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
                         <th className="pl-10 pr-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
                           Student Name
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                          Parent Name
-                        </th>
-                        {isAdmin ? (
+                        {isTeacher ? (
                           <>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              Parent Name
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              Parent Phone
+                            </th>
+                            <th className=" pr-16 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              Action
+                            </th>
+                          </>
+                        ) : isAdmin ? (
+                          <>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              Parent Name
+                            </th>
                             <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
                               Fee Status
                             </th>
@@ -707,6 +850,9 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
                           </>
                         ) : (
                           <>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              Parent Name
+                            </th>
                             <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
                               Total Due
                             </th>
@@ -730,7 +876,7 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
                       {students.map(renderStudentRow)}
                     </tbody>
                   </table>
-                  ) : (
+                ) : (
                   <div className="py-8 text-center text-slate-500 text-sm">
                     {searchTerm || filters.status
                       ? "No students match your filters in this class"

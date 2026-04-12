@@ -2,6 +2,11 @@
 type Filters = Record<string, any>;
 
 export const queryKeys = {
+  // ── User (Auth) ────────────────────────────────
+  user: {
+    current: () => ['user', 'current'] as const,
+  },
+
   // ── Reference Data (rarely changes) ─────────────
   classes: {
     all: (schoolId: number | null) => ['classes', { schoolId }] as const,

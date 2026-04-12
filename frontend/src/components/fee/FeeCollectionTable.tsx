@@ -34,6 +34,7 @@ interface StudentGroup {
   studentName: string;
   admissionNumber: string;
   className: string;
+  academicYearName: string;
   terms: TermGroup[];
   totalAmountDue: number;
   totalAmountPaid: number;
@@ -51,6 +52,7 @@ interface FeeCollectionTableProps {
   onCollect: (term: TermGroup) => void;
   onWaive: (transaction: FeeTransaction, termLabel: string) => void;
   onEdit: (transaction: FeeTransaction) => void;
+  onViewReceipt: (transaction: FeeTransaction, studentName: string, academicYearName: string) => void;
   canApplyWaiver: boolean;
   canEdit: boolean;
   loading?: boolean;
@@ -86,6 +88,7 @@ export const FeeCollectionTable: React.FC<FeeCollectionTableProps> = ({
   onCollect,
   onWaive,
   onEdit,
+  onViewReceipt,
   canApplyWaiver,
   canEdit,
   loading = false,
@@ -272,6 +275,21 @@ export const FeeCollectionTable: React.FC<FeeCollectionTableProps> = ({
                                 title="Edit Due Date"
                               >
                                 <Pencil className="w-4 h-4 text-blue-500" />
+                              </button>
+                            )}
+
+                            {term.status === "paid" && term.transactions[0]?.receiptNumber && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (term.transactions.length > 0) {
+                                    onViewReceipt(term.transactions[0], student.studentName, student.academicYearName);
+                                  }
+                                }}
+                                className="p-1.5 hover:bg-blue-50 rounded transition-colors"
+                                title="View Receipt"
+                              >
+                                <Receipt className="w-4 h-4 text-blue-500" />
                               </button>
                             )}
 

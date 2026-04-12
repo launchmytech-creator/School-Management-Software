@@ -78,6 +78,25 @@ export interface ClassComparisonSummary {
   passRate: number;
 }
 
+export interface ClassSubjectComparisonClass {
+  classId: number;
+  className: string;
+  averageMarks: number;
+  passRate: number;
+  totalStudents: number;
+  passedStudents: number;
+}
+
+export interface ClassSubjectComparisonSubject {
+  subjectId: number;
+  subjectName: string;
+  classes: ClassSubjectComparisonClass[];
+}
+
+export interface ClassSubjectComparisonData {
+  subjects: ClassSubjectComparisonSubject[];
+}
+
 export interface ExamComparisonResult {
   classId: number;
   className: string;
@@ -342,6 +361,20 @@ export const examResultService = {
     
     const response = await apiRequest<{ id: number; name: string; section: string | null }[]>(
       `/exam-results/comparison/classes?${params.toString()}`
+    );
+    return response;
+  },
+
+  getClassSubjectComparison: async (
+    classIds: number[],
+    academicYearId?: number
+  ): Promise<ClassSubjectComparisonData> => {
+    const params = new URLSearchParams();
+    params.append('classIds', classIds.join(','));
+    if (academicYearId) params.append('academicYearId', String(academicYearId));
+    
+    const response = await apiRequest<ClassSubjectComparisonData>(
+      `/exam-results/comparison/subjects?${params.toString()}`
     );
     return response;
   },
