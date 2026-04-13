@@ -1,5 +1,5 @@
 import { apiRequest } from './api';
-import type { StudentFilters, Student } from '../types/student';
+import type { StudentFilters, Student, StudentHistory } from '../types/student';
 
 interface BackendStudent {
   id: number;
@@ -106,6 +106,25 @@ export const studentService = {
     await apiRequest<void>(`/students/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  deactivateStudent: async (id: number): Promise<void> => {
+    await apiRequest<void>(`/students/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  activateStudent: async (id: number): Promise<void> => {
+    await apiRequest<void>(`/students/${id}`, {
+      method: 'PATCH',
+      data: { status: 'active' },
+    });
+  },
+
+  // [NEW] Get comprehensive student history
+  getStudentHistory: async (id: number): Promise<StudentHistory> => {
+    const data = await apiRequest<StudentHistory>(`/students/${id}/history`);
+    return data;
   },
 };
 

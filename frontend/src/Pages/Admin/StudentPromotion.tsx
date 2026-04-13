@@ -3,6 +3,7 @@ import React from 'react';
 import { useStudentPromotionPage } from '../../hooks/useStudentPromotionPage';
 import { PromotionForm, PromotionHistory, StudentSelectionModal } from '../../components/promotion';
 import { Minimize2 } from 'lucide-react';
+import PageHeader from '../../components/common/PageHeader';
 
 const StudentPromotion: React.FC = () => {
   const {
@@ -43,18 +44,18 @@ const StudentPromotion: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-        <div className="bg-white rounded-[2rem] border border-slate-100 p-10 shadow-sm">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                Student Promotions
-              </h2>
-              <p className="text-sm text-slate-500 mt-1">
-                Manage student grade promotions and academic year transitions
-              </p>
-            </div>
-          </div>
+      <PageHeader
+        title="Student Promotion"
+        subtitle="Promote students to the next academic year"
+        breadcrumb={{
+          links: [
+            { label: "People", href: "/admin/student-promotion" },
+            { label: "Student Promotion", active: true },
+          ],
+        }}
+      />
 
+        <div className="bg-white rounded-[2rem] border border-slate-100 p-10 shadow-sm">
           <PromotionForm
             classes={classes}
             nextYearOptions={nextYearOptions}

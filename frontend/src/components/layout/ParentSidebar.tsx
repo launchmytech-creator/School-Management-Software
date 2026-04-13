@@ -77,10 +77,15 @@ const ParentSidebar: React.FC = () => {
 
       {/* Contact Support */}
       <div className="p-4 border-t border-white/5 space-y-3">
-        <button className="w-full flex items-center justify-center gap-2 bg-[#4A9FD4] hover:bg-[#3a8fc4] text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-colors">
+        <a
+          href="https://wa.me/91628384605"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-center gap-2 bg-[#4A9FD4] hover:bg-[#3a8fc4] text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-colors"
+        >
           <span className="material-symbols-outlined text-[16px]">support_agent</span>
           Contact Support
-        </button>
+        </a>
         <button
           onClick={handleLogout}
           className="flex items-center gap-2 text-white/40 hover:text-white transition-all text-xs font-bold tracking-tight w-full px-2"

@@ -62,7 +62,7 @@ const ParentAnnouncements: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="px-8 py-8 space-y-6 pb-12 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

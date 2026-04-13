@@ -8,28 +8,6 @@ export interface SchoolSettings {
   contactPhone: string | null;
   address: string | null;
   logoUrl: string | null;
-  gradingSystem: {
-    A?: number;
-    B?: number;
-    C?: number;
-    D?: number;
-    F?: number;
-  };
-  attendancePolicy: {
-    allowedLeaves?: number;
-    requireMedicalCertificate?: boolean;
-  };
-  termStructure: {
-    terms?: number;
-    durationMonths?: number;
-  };
-  workingDays: {
-    days?: number[];
-  };
-  examPolicy: {
-    passingMarks?: number;
-    internalWeightage?: number;
-  };
   createdAt: string;
   updatedAt: string;
 }
@@ -40,11 +18,6 @@ export interface UpdateSettingsDto {
   contactPhone?: string;
   address?: string;
   logoUrl?: string;
-  gradingSystem?: SchoolSettings['gradingSystem'];
-  attendancePolicy?: SchoolSettings['attendancePolicy'];
-  termStructure?: SchoolSettings['termStructure'];
-  workingDays?: SchoolSettings['workingDays'];
-  examPolicy?: SchoolSettings['examPolicy'];
 }
 
 interface BackendSettings {
@@ -55,11 +28,6 @@ interface BackendSettings {
   contact_phone: string | null;
   address: string | null;
   logo_url: string | null;
-  grading_system: SchoolSettings['gradingSystem'];
-  attendance_policy: SchoolSettings['attendancePolicy'];
-  term_structure: SchoolSettings['termStructure'];
-  working_days: SchoolSettings['workingDays'];
-  exam_policy: SchoolSettings['examPolicy'];
   created_at: string;
   updated_at: string;
 }
@@ -72,11 +40,6 @@ const mapSettings = (data: BackendSettings): SchoolSettings => ({
   contactPhone: data.contact_phone,
   address: data.address,
   logoUrl: data.logo_url,
-  gradingSystem: data.grading_system || {},
-  attendancePolicy: data.attendance_policy || {},
-  termStructure: data.term_structure || {},
-  workingDays: data.working_days || {},
-  examPolicy: data.exam_policy || {},
   createdAt: data.created_at,
   updatedAt: data.updated_at,
 });

@@ -4,15 +4,11 @@ import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
-import { useClasses } from '../../hooks/queries';
 import { subjectService, type ClassSubject } from '../../services/subjectService';
 import { syllabusService, type ChapterWithStatus, type AllClassesProgress, type ClassProgress } from '../../services/syllabusService';
-import type { Class } from '../../types/class';
 import { BookOpen, CheckCircle, Clock, BookMarked, ChevronRight, Loader, Circle } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
 import { Button } from '../../components/ui/button';
-
-const EMPTY_CLASSES: Class[] = [];
 
 const SyllabusTracking: React.FC = () => {
   const { showNotification } = useNotification();
@@ -26,9 +22,6 @@ const SyllabusTracking: React.FC = () => {
   const [chapterStatusesCache, setChapterStatusesCache] = useState<Record<string, ChapterWithStatus[]>>({});
   const [loadingChapters, setLoadingChapters] = useState<Set<string>>(new Set());
   const [updatingChapter, setUpdatingChapter] = useState<number | null>(null);
-
-  const { data: classesData } = useClasses();
-  const classes = classesData || EMPTY_CLASSES;
 
   const fetchAllClassesProgress = useCallback(async () => {
     try {
@@ -219,8 +212,8 @@ const SyllabusTracking: React.FC = () => {
         subtitle="Track and manage syllabus completion progress"
         breadcrumb={{
           links: [
-            { label: "Dashboard", href: "/admin/dashboard" },
-            { label: "Syllabus", active: true }
+            { label: "Academics", href: "/admin/syllabus-tracking" },
+            { label: "Syllabus Tracking", active: true }
           ]
         }}
       />

@@ -68,17 +68,17 @@ const navGroups: NavGroup[] = [
     label: 'Schedule & Comms',
     icon: 'schedule',
     items: [
-      { name: 'Timetables', icon: 'schedule', path: '/admin/timetables' },
       { name: 'Holidays', icon: 'event', path: '/admin/holidays' },
       { name: 'Academic Years', icon: 'calendar_month', path: '/admin/academic-years' },
       { name: 'Announcements', icon: 'campaign', path: '/admin/announcements' },
+      { name: 'Student Records', icon: 'history', path: '/admin/student-history' },
     ],
   },
   {
     label: 'Settings',
     icon: 'settings',
     items: [
-      { name: 'My Profile', icon: 'account_circle', path: '/admin/profile' },
+      { name: 'Plans', icon: 'credit_card', path: '/admin/profile' },
       { name: 'School Settings', icon: 'settings', path: '/admin/school-settings' },
     ],
   },

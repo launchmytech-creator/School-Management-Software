@@ -126,7 +126,7 @@ export const subjectService = {
 
   getSubjectsByClass: async (classId: number): Promise<ClassSubject[]> => {
     const raw = await apiRequest<any[]>(`/class-subjects/class/${classId}`);
-    console.log('API Response for getSubjectsByClass:', raw);
+    // console.log('API Response for getSubjectsByClass:', raw);
     return raw.map((r) => ({
       id: r.id,
       classId: r.class_id,
@@ -140,7 +140,7 @@ export const subjectService = {
 
   getAllClassSubjects: async (academicYearId: number): Promise<ClassSubject[]> => {
     const raw = await apiRequest<any[]>(`/class-subjects?academicYearId=${academicYearId}`);
-    console.log('API Response for getAllClassSubjects:', raw);
+    // console.log('API Response for getAllClassSubjects:', raw);
     return raw.map((r) => ({
       id: r.id,
       classId: r.class_id,

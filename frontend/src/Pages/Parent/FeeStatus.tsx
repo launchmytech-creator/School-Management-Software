@@ -91,8 +91,11 @@ const ParentFeeStatus: React.FC = () => {
   const [settings, setSettings]     = useState<SchoolSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [txLoading, setTxLoading]   = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const statementRef = useRef<HTMLDivElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (children.length > 0 && !selected) {
@@ -123,6 +126,35 @@ const ParentFeeStatus: React.FC = () => {
   }, [selected]);
 
   useEffect(() => { fetchTxns(); }, [fetchTxns]);
+
+  useEffect(() => {
+    const updateScrollState = () => {
+      if (tabsRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
+        setCanScrollLeft(scrollLeft > 0);
+        setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+      }
+    };
+
+    if (tabsRef.current) {
+      updateScrollState();
+      tabsRef.current.addEventListener('scroll', updateScrollState);
+      return () => tabsRef.current?.removeEventListener('scroll', updateScrollState);
+    }
+  }, [children]);
+
+  const handleScrollTabs = (direction: 'left' | 'right') => {
+    if (tabsRef.current) {
+      tabsRef.current.scrollBy({ left: direction === 'left' ? -300 : 300, behavior: 'smooth' });
+      setTimeout(() => {
+        if (tabsRef.current) {
+          const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
+          setCanScrollLeft(scrollLeft > 0);
+          setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+        }
+      }, 300);
+    }
+  };
 
   const urgentTx   = transactions.find(t => t.status === 'pending' || t.status === 'partial');
   const totalAnnual = feeSummary?.totalAmount  ?? 0;
@@ -193,20 +225,38 @@ const ParentFeeStatus: React.FC = () => {
 
         {/* Child tabs */}
         {children.length > 0 && (
-          <div className="flex items-center gap-1 border-b border-slate-200">
-            {children.map(c => (
+          <div className="relative">
+            <div ref={tabsRef} className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto scrollbar-hide px-10">
+              {children.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelected(c)}
+                  className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all -mb-px whitespace-nowrap flex-shrink-0 ${
+                    selected?.id === c.id
+                      ? 'border-[#4A9FD4] text-[#4A9FD4]'
+                      : 'border-transparent text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  {c.fullName.split(' ')[0]}
+                </button>
+              ))}
+            </div>
+            {canScrollLeft && (
               <button
-                key={c.id}
-                onClick={() => setSelected(c)}
-                className={`px-5 py-3 text-sm font-semibold border-b-2 transition-all -mb-px ${
-                  selected?.id === c.id
-                    ? 'border-[#4A9FD4] text-[#4A9FD4]'
-                    : 'border-transparent text-slate-400 hover:text-slate-600'
-                }`}
+                onClick={() => handleScrollTabs('left')}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
               >
-                {c.fullName.split(' ')[0]}
+                <span className="material-symbols-outlined text-slate-600" style={{ fontVariationSettings: "'FILL' 1" }}>chevron_left</span>
               </button>
-            ))}
+            )}
+            {canScrollRight && (
+              <button
+                onClick={() => handleScrollTabs('right')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-slate-600" style={{ fontVariationSettings: "'FILL' 1" }}>chevron_right</span>
+              </button>
+            )}
           </div>
         )}
 

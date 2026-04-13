@@ -34,8 +34,8 @@ export const AcademicYearProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [selectedYear, setSelectedYearState] = useState<AcademicYear | null>(null);
   const [userSelectedYear, setUserSelectedYear] = useState<AcademicYear | null>(null);
   
-  const { data: allYearsData = [], isLoading: allYearsLoading, error: allYearsError, refetch: refetchAll } = useAcademicYears();
-  const { data: currentYearData = null, isLoading: currentLoading, error: currentError, refetch: refetchCurrent } = useCurrentAcademicYear();
+  const { data: allYearsData = [], isLoading: allYearsLoading, error: allYearsError } = useAcademicYears();
+  const { data: currentYearData = null, isLoading: currentLoading, error: currentError } = useCurrentAcademicYear();
   const refreshAcademicYears = useRefreshAcademicYears();
 
   const allYears = allYearsData || [];

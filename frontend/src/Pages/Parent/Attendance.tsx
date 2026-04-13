@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useParentChildren } from '../../hooks/queries';
@@ -71,6 +71,7 @@ const EMPTY_CHILDREN: LinkedStudent[] = [];
 const ParentAttendance: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const tabsRef = useRef<HTMLDivElement>(null);
 
   const [viewYear, setViewYear]   = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -82,6 +83,8 @@ const ParentAttendance: React.FC = () => {
   const [records, setRecords]       = useState<AttendanceRecord[]>([]);
   const [holidays, setHolidays]     = useState<Holiday[]>([]);
   const [monthOpenDays, setMonthOpenDays] = useState<number>(0);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   // ── set initial child ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -127,7 +130,6 @@ const ParentAttendance: React.FC = () => {
   const recordMap = new Map(records.map(r => [r.attendanceDate.slice(0, 10), r.status]));
   const holidaySet = new Set(holidays.map(h => h.holidayDate.slice(0, 10)));
 
-  // month summary
   const monthRecords = records.filter(r => {
     const d = new Date(r.attendanceDate);
     return d.getFullYear() === viewYear && d.getMonth() === viewMonth;
@@ -135,9 +137,6 @@ const ParentAttendance: React.FC = () => {
   const monthPresent = monthRecords.filter(r => r.status === 'present').length;
   const monthAbsent  = monthRecords.filter(r => r.status === 'absent').length;
   const monthPct     = monthOpenDays > 0 ? Math.round((monthPresent / monthOpenDays) * 100) : 0;
-
-  const statusLabel = monthPct >= 90 ? 'EXCELLENT' : monthPct >= 75 ? 'GOOD' : 'NEEDS IMPROVEMENT';
-  const statusColor = monthPct >= 90 ? 'bg-emerald-500' : monthPct >= 75 ? 'bg-amber-500' : 'bg-rose-500';
 
   // ── calendar grid ────────────────────────────────────────────────────────────
   const daysInMonth  = getDaysInMonth(viewYear, viewMonth);
@@ -172,6 +171,33 @@ const ParentAttendance: React.FC = () => {
     else setViewMonth(m => m + 1);
   };
 
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabsRef.current) {
+      const scrollAmount = 200;
+      tabsRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+      setTimeout(() => updateScrollState(), 300);
+    }
+  };
+
+  const updateScrollState = () => {
+    if (tabsRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
+    }
+  };
+
+  useEffect(() => {
+    if (tabsRef.current) {
+      tabsRef.current.addEventListener('scroll', updateScrollState);
+      updateScrollState();
+      return () => tabsRef.current?.removeEventListener('scroll', updateScrollState);
+    }
+  }, [children.length]);
+
   if (childrenLoading) {
     return (
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -196,39 +222,58 @@ const ParentAttendance: React.FC = () => {
 
         {/* Child selector tabs */}
         {children.length > 1 && (
-          <div className="flex gap-2">
-            {children.map(c => (
+          <div className="relative">
+            {canScrollLeft && (
               <button
-                key={c.id}
-                onClick={() => setSelected(c)}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                  selected?.id === c.id
-                    ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
-                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
-                }`}
+                onClick={() => scrollTabs('left')}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
               >
-                {c.fullName.split(' ')[0]}
+                <span
+                  className="material-symbols-outlined text-slate-600"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  chevron_left
+                </span>
               </button>
-            ))}
+            )}
+            <div
+              ref={tabsRef}
+              className="flex gap-2 overflow-x-auto scrollbar-hide px-10"
+            >
+              {children.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelected(c)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap flex-shrink-0 ${
+                    selected?.id === c.id
+                      ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
+                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                  }`}
+                >
+                  {c.fullName.split(' ')[0]}
+                </button>
+              ))}
+            </div>
+            {canScrollRight && (
+              <button
+                onClick={() => scrollTabs('right')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
+              >
+                <span
+                  className="material-symbols-outlined text-slate-600"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  chevron_right
+                </span>
+              </button>
+            )}
           </div>
         )}
 
-        {/* Monthly overview card */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 flex flex-col items-center">
-          <CircularProgress pct={monthPct} />
-          <h2 className="text-lg font-black text-slate-900 mt-4">Monthly Attendance Overview</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Present:{' '}
-            <span className="text-emerald-500 font-bold">{monthPresent} days</span>
-            {' | '}Absent:{' '}
-            <span className="text-rose-500 font-bold">{monthAbsent} days</span>
-            {' | '}School Open:{' '}
-            <span className="text-slate-700 font-bold">{monthOpenDays} days</span>
-          </p>
-        </div>
-
-        {/* Calendar card */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        {/* Calendar + Overview side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Calendar card */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           {/* Month nav */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <button
@@ -344,6 +389,31 @@ const ParentAttendance: React.FC = () => {
           </div>
         </div>
 
+          {/* Monthly overview card */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col items-center">
+            <CircularProgress pct={monthPct} />
+            <h2 className="text-base font-black text-slate-900 mt-4">Monthly Attendance</h2>
+            <div className="w-full mt-4 space-y-2">
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-sm text-slate-500">Present</span>
+                <span className="text-sm font-bold text-emerald-500">{monthPresent} days</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-sm text-slate-500">Absent</span>
+                <span className="text-sm font-bold text-rose-500">{monthAbsent} days</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-sm text-slate-500">School Open</span>
+                <span className="text-sm font-bold text-slate-700">{monthOpenDays} days</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-sm text-slate-500">Attendance %</span>
+                <span className={`text-sm font-bold ${monthPct >= 75 ? 'text-emerald-500' : 'text-rose-500'}`}>{monthPct}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Legend */}
         <div className="flex items-center gap-5 px-1 flex-wrap">
           {[
@@ -357,38 +427,9 @@ const ParentAttendance: React.FC = () => {
               {l.label}
             </span>
           ))}
-        </div>
-
-        {/* Month summary sticky footer */}
-        <div className="fixed bottom-0 left-56 right-0 z-30">
-          <div className="mx-6 mb-4 bg-[#1E3A5F] rounded-2xl px-6 py-3.5 flex items-center justify-between shadow-xl">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#4A9FD4] text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                info
-              </span>
-              <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Month Summary</span>
-            </div>
-            <div className="flex items-center gap-6 text-xs font-bold">
-              <span className="flex items-center gap-1.5 text-white">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                Present: {monthPresent}
-              </span>
-              <span className="flex items-center gap-1.5 text-white">
-                <span className="w-2 h-2 rounded-full bg-rose-400" />
-                Absent: {monthAbsent}
-              </span>
-              <span className="flex items-center gap-1.5 text-white">
-                <span className="w-2 h-2 rounded-full bg-slate-400" />
-                School Open: {monthOpenDays}
-              </span>
-            </div>
-            <span className={`text-[11px] font-black text-white px-3 py-1 rounded-full ${statusColor}`}>
-              STATUS: {statusLabel}
-            </span>
-          </div>
-        </div>
+</div>
       </div>
-  );
-};
+    );
+  };
 
 export default ParentAttendance;

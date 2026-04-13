@@ -100,9 +100,8 @@ const FeeDefaulters: React.FC = () => {
           subtitle="Students with pending fee payments"
           breadcrumb={{
             links: [
-              { label: "Admin", href: "/admin/dashboard" },
-              { label: "Fees", href: "/admin/fees" },
-              { label: "Defaulters", active: true }
+              { label: "Finance", href: "/admin/fee-defaulters" },
+              { label: "Fee Defaulters", active: true }
             ]
           }}
         />

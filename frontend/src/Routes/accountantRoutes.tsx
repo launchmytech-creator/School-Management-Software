@@ -18,6 +18,8 @@ import ExamResults from "../components/common/ExamResults";
 import MarksEntry from "../components/common/MarksEntry";
 import Subjects from "../Pages/Admin/Subjects";
 import StudentAttendance from "../components/common/StudentAttendance";
+import StudentHistory from "../Pages/Admin/StudentHistory";
+import NotFound from "../Pages/NotFound";
 
 const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({
   feature,
@@ -91,6 +93,15 @@ const AccountantRoutes = () => (
           </RequiresActiveYear>
         }
       />
+      <Route
+        path="student-history"
+        element={
+          <RequiresActiveYear>
+            <StudentHistory />
+          </RequiresActiveYear>
+        }
+      />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   </AccountantLayout>
 );

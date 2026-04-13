@@ -259,14 +259,9 @@ const TeacherDashboard: React.FC = () => {
                       {announcement.title}
                     </h4>
                     <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                      {announcement.content}
+                      {announcement.message}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
-                      {announcement.priority === 'high' && (
-                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded">
-                          URGENT
-                        </span>
-                      )}
                       <span className="text-[10px] text-slate-400">
                         {timeAgo(announcement.createdAt)}
                       </span>

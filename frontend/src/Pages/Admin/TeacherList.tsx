@@ -56,7 +56,7 @@ const TeacherList: React.FC = () => {
           subtitle="Manage faculty members, contact details and professional profiles"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "People", href: "/admin/teachers" },
               { label: "Teachers", active: true }
             ]
           }}

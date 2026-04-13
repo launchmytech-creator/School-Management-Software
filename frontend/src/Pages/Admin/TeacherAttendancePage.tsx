@@ -141,7 +141,7 @@ const TeacherAttendancePage: React.FC = () => {
           subtitle="Track and manage teacher attendance records"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "People", href: "/admin/teachers" },
               { label: "Teacher Attendance", active: true }
             ]
           }}

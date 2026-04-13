@@ -31,7 +31,7 @@ export const useUpdateStudent = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateStudentDto }) =>
       studentService.updateStudent(id, data),
-    onSuccess: (_result, variables) => {
+    onSuccess: (_result, _variables) => {
       qc.invalidateQueries({ queryKey: ['students'] });
       showNotification('Student updated successfully', 'success');
     },

@@ -144,24 +144,35 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
-        <h3 className="text-lg font-display font-bold text-slate-800 tracking-tight mb-8">
-          Syllabus Completion
-        </h3>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-display font-bold text-slate-800 tracking-tight">
+            Syllabus Completion
+          </h3>
+          <button 
+            onClick={() => navigate("/admin/syllabus-tracking")}
+            className="text-sm font-bold text-blue-600 hover:underline"
+          >
+            View Detail
+          </button>
+        </div>
 
         {syllabusProgress.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <p className="text-slate-500">No syllabus data available</p>
           </div>
         ) : (
-          <div className="space-y-8">
-            {syllabusProgress.slice(0, 5).map((item) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {syllabusProgress.map((item) => {
               const color = getProgressColor(item.overallPercentage);
               const displayName = item.classSection
                 ? `${item.className} - Section ${item.classSection}`
                 : item.className;
 
               return (
-                <div key={item.classId} className="space-y-3">
+                <div 
+                  key={item.classId} 
+                  className="p-4 bg-slate-50 rounded-2xl space-y-3 border border-slate-100"
+                >
                   <div className="flex justify-between items-center">
                     <span className="text-slate-800 font-bold text-sm tracking-tight">
                       {displayName}
@@ -170,7 +181,7 @@ const AdminDashboard: React.FC = () => {
                       {item.overallPercentage}%
                     </span>
                   </div>
-                  <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-1000 ease-out"
                       style={{

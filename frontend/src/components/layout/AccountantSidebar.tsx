@@ -11,6 +11,7 @@ const navItems = [
     path: "/accountant/fee-defaulters",
   },
   { name: "Students", icon: "group", path: "/accountant/students" },
+  { name: "Student Records", icon: "history", path: "/accountant/student-history" },
   { name: "Add Student", icon: "person_add", path: "/accountant/add-student" },
   { name: "Attendance", icon: "how_to_reg", path: "/accountant/attendance" },
   {

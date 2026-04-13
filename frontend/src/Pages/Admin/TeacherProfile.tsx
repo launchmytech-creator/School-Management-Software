@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { 
   User, Mail, Phone, Calendar, 
   BookOpen, ChevronLeft, ChevronRight, Loader2, Clock,
@@ -12,6 +12,7 @@ import { useTeacherById, useTeacherAllocations } from "../../hooks/queries";
 import { holidayService, type Holiday } from "../../services/holidayService";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { getLocalDateString } from "../../lib/utils";
+import PageHeader from "../../components/common/PageHeader";
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'holiday' | 'sunday' | 'none';
 
@@ -25,7 +26,6 @@ interface CalendarDay {
 
 const TeacherProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   
   // Tab state
   const [activeTab, setActiveTab] = useState('Attendance');
@@ -202,26 +202,16 @@ const TeacherProfile: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate("/admin/teachers")}
-              className="p-3 bg-white border border-slate-100 rounded-2xl text-slate-400 hover:text-slate-600 hover:shadow-md transition-all active:scale-95"
-            >
-              <ChevronLeft className="size-5" />
-            </button>
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              <span>Teachers</span>
-              <span className="text-slate-200">/</span>
-              <span className="text-blue-500">Profile</span>
-            </div>
-          </div>
-          <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 ${teacher.isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-500'}`}>
-            <div className={`size-2 rounded-full ${teacher.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-            {teacher.isActive ? 'Active' : 'Inactive'}
-          </div>
-        </div>
+      <PageHeader
+        title="Teacher Profile"
+        subtitle={teacher.fullName}
+        breadcrumb={{
+          links: [
+            { label: "People", href: "/admin/teachers" },
+            { label: "Teacher Profile", active: true },
+          ],
+        }}
+      />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column - Profile Card */}

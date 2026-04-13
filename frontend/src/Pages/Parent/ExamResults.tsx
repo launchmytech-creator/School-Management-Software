@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
@@ -138,6 +138,9 @@ const ParentExamResults: React.FC = () => {
   const [results, setResults] = useState<StudentResult[]>([]);
   const [activeType, setActiveType] = useState("All");
   const [activeSubject, setActiveSubject] = useState("Mathematics");
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const tabsRef = useRef<HTMLDivElement>(null);
 
   // set initial child
   useEffect(() => {
@@ -162,6 +165,29 @@ const ParentExamResults: React.FC = () => {
   useEffect(() => {
     fetchResults();
   }, [fetchResults]);
+
+  const scrollTabs = (direction: "left" | "right") => {
+    if (tabsRef.current) {
+      tabsRef.current.scrollBy({ left: direction === "left" ? -300 : 300, behavior: "smooth" });
+      setTimeout(() => updateScrollState(), 300);
+    }
+  };
+
+  const updateScrollState = () => {
+    if (tabsRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  useEffect(() => {
+    if (tabsRef.current) {
+      updateScrollState();
+      tabsRef.current.addEventListener("scroll", updateScrollState);
+      return () => tabsRef.current?.removeEventListener("scroll", updateScrollState);
+    }
+  }, [children]);
 
   // derived
   const filtered = results.filter(
@@ -243,26 +269,44 @@ const ParentExamResults: React.FC = () => {
 
         {/* Child tabs */}
         {children.length > 1 && (
-          <div className="flex gap-2">
-            {children.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setSelected(c)}
-                className={`flex items-center gap-2 px-5 py-2 text-sm font-semibold border-b-2 transition-all ${
-                  selected?.id === c.id
-                    ? "border-[#4A9FD4] text-[#4A9FD4]"
-                    : "border-transparent text-slate-400 hover:text-slate-600"
-                }`}
-              >
-                <span
-                  className="material-symbols-outlined text-[16px]"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
+          <div className="relative">
+            <div ref={tabsRef} className="flex gap-2 overflow-x-auto scrollbar-hide px-10">
+              {children.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelected(c)}
+                  className={`flex items-center gap-2 px-5 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap flex-shrink-0 ${
+                    selected?.id === c.id
+                      ? "border-[#4A9FD4] text-[#4A9FD4]"
+                      : "border-transparent text-slate-400 hover:text-slate-600"
+                  }`}
                 >
-                  account_circle
-                </span>
-                {c.fullName.split(" ")[0]}
+                  <span
+                    className="material-symbols-outlined text-[16px]"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    account_circle
+                  </span>
+                  {c.fullName.split(" ")[0]}
+                </button>
+              ))}
+            </div>
+            {canScrollLeft && (
+              <button
+                onClick={() => scrollTabs("left")}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-slate-600" style={{ fontVariationSettings: "'FILL' 1" }}>chevron_left</span>
               </button>
-            ))}
+            )}
+            {canScrollRight && (
+              <button
+                onClick={() => scrollTabs("right")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-slate-600" style={{ fontVariationSettings: "'FILL' 1" }}>chevron_right</span>
+              </button>
+            )}
           </div>
         )}
 

@@ -23,6 +23,7 @@ import {
   Tooltip,
 } from "recharts";
 import { studentService } from "../../services/studentService";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import {
   attendanceService,
   type AttendanceRecord,
@@ -39,6 +40,7 @@ import type { AcademicYear } from "../../types/academicYear";
 import type { Student } from "../../types/student";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import UpgradePrompt from "../../components/common/UpgradePrompt";
+import PageHeader from "../../components/common/PageHeader";
 import { getLocalDateString } from "../../lib/utils";
 
 interface StudentProfileProps {
@@ -179,6 +181,8 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   const [feeData, setFeeData] = useState<FeeTransaction[]>([]);
   const [loadingFee, setLoadingFee] = useState(false);
   const [activeType, setActiveType] = useState("All");
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const isAdmin = layout === "admin";
   const isAccountant = layout === "accountant";
@@ -299,6 +303,30 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
       fetchFeeStatus();
     }
   }, [activeTab, fetchMarks, fetchFeeStatus, isAccountant]);
+
+  const handleDeactivate = async () => {
+    if (!id) return;
+    setIsProcessing(true);
+    try {
+      await studentService.deactivateStudent(Number(id));
+      navigate(`${basePath}/students`);
+    } catch {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleActivate = async () => {
+    if (!id) return;
+    setIsProcessing(true);
+    try {
+      await studentService.activateStudent(Number(id));
+      setStudent(prev => prev ? { ...prev, status: 'active' } : null);
+      setIsProcessing(false);
+      setShowDeactivateModal(false);
+    } catch {
+      setIsProcessing(false);
+    }
+  };
 
   const calendarDays = useMemo<CalendarDay[]>(() => {
     const year = currentMonth.getFullYear();
@@ -459,15 +487,17 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
 
   const renderContent = () => (
     <div className="space-y-6 pb-12">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-          <span>Dashboard</span>
-          <span className="text-slate-300">/</span>
-          <span>Students</span>
-          <span className="text-slate-300">/</span>
-          <span className="text-blue-500">Student Profile</span>
-        </div>
-      </div>
+      <PageHeader
+        title="Student Profile"
+        subtitle={student ? `${student.fullName} - ${student.className || 'N/A'}` : "View student details"}
+        breadcrumb={{
+          links: [
+            { label: "People", href: `${basePath}/students` },
+            { label: "Students", href: `${basePath}/students` },
+            { label: "Profile", active: true },
+          ],
+        }}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-3 space-y-6">
@@ -482,12 +512,19 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="absolute bottom-1 right-1 size-6 bg-emerald-500 border-4 border-white rounded-full"></div>
+              <div className={`absolute bottom-1 right-1 size-6 border-4 border-white rounded-full ${
+                student?.status === 'inactive' ? 'bg-rose-400' : 'bg-emerald-500'
+              }`}></div>
             </div>
 
             <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">
               {student?.fullName}
             </h2>
+            {student?.status === 'inactive' && (
+              <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 text-[10px] font-black uppercase tracking-wider mb-2">
+                Inactive
+              </div>
+            )}
             <div className="inline-flex px-4 py-1.5 bg-blue-50 text-blue-500 text-[11px] font-black rounded-full uppercase tracking-widest mb-2">
               {student?.className}
             </div>
@@ -547,9 +584,25 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                 </button>
               )}
               {isAdmin && (
-                <button className="w-full py-3.5 rounded-2xl border-2 border-rose-100 text-rose-500 font-black text-sm hover:bg-rose-50 transition-all active:scale-95">
-                  Delete Student
-                </button>
+                <>
+                  {student?.status === 'inactive' ? (
+                    <button
+                      onClick={handleActivate}
+                      disabled={isProcessing}
+                      className="w-full py-3.5 rounded-2xl border-2 border-emerald-100 text-emerald-600 font-black text-sm hover:bg-emerald-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isProcessing ? 'Activating...' : 'Activate Student'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowDeactivateModal(true)}
+                      disabled={isProcessing}
+                      className="w-full py-3.5 rounded-2xl border-2 border-rose-100 text-rose-500 font-black text-sm hover:bg-rose-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Deactivate Student
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1154,6 +1207,18 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
               )}
             </div>
           )}
+
+          <ConfirmDialog
+            isOpen={showDeactivateModal}
+            onClose={() => setShowDeactivateModal(false)}
+            onConfirm={handleDeactivate}
+            title="Deactivate Student"
+            message={`Are you sure you want to deactivate ${student?.fullName}? The student will no longer be able to access the system. You can reactivate them at any time.`}
+            confirmText="Deactivate"
+            cancelText="Cancel"
+            variant="warning"
+            loading={isProcessing}
+          />
         </div>
       </div>
     </div>

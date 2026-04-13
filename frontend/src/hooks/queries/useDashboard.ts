@@ -120,9 +120,8 @@ interface ParentDashboardData {
   recentAnnouncements: Array<{
     id: number;
     title: string;
-    content: string;
-    priority: string;
-    targetAudience: string;
+    message: string;
+    targetRole: string | null;
     createdAt: string;
   }>;
 }

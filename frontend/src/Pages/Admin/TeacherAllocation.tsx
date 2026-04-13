@@ -16,6 +16,7 @@ import AllocateTeacherModal from "../../components/teacher/AllocateTeacherModal"
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import ClassInchargeCard from "../../components/teacher/ClassInchargeCard";
 import EmptyState from "../../components/common/EmptyState";
+import PageHeader from "../../components/common/PageHeader";
 import {
   Users,
   Trash2,
@@ -215,11 +216,19 @@ const TeacherAllocation: React.FC = () => {
   return (
     <>
       <div className="space-y-8 pb-12">
-        {/* Header */}
+        <PageHeader
+          title="Teacher Allocation"
+          subtitle="Assign teachers to classes and subjects"
+          breadcrumb={{
+            links: [
+              { label: "People", href: "/admin/teacher-allocation" },
+              { label: "Teacher Allocation", active: true },
+            ],
+          }}
+        />
+
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] font-display font-black text-slate-800 tracking-tight">
-            Teacher Allocation
-          </h1>
+          <div />
           <div className="flex items-center gap-3">
             <Button
               onClick={() => setIsModalOpen(true)}

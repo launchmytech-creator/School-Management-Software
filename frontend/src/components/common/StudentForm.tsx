@@ -15,11 +15,9 @@ import {
   Mail,
   Calendar,
   MapPin,
-  Shield,
-  ChevronDown,
-  Check
+  Shield
 } from 'lucide-react';
-import { studentService, type CreateStudentDto, type UpdateStudentDto } from '../../services/studentService';
+import { studentService, type CreateStudentDto } from '../../services/studentService';
 import { feeService } from '../../services/feeService';
 import { classService } from '../../services/classService';
 import { parentService } from '../../services/parentService';

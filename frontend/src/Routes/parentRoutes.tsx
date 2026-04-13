@@ -9,6 +9,7 @@ import ParentFeeStatus from "../Pages/Parent/FeeStatus";
 import ParentExamResults from "@/Pages/Parent/ExamResults";
 import ParentAnnouncements from "../Pages/Parent/Announcements";
 import ParentLayout from "../layouts/ParentLayout";
+import NotFound from "../Pages/NotFound";
 
 const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({ feature, children }) => {
   const { hasFeature } = useAuth();
@@ -27,6 +28,7 @@ const ParentRoutes = () => (
       <Route path="fees" element={<ParentFeeStatus />} />
       <Route path="exam-results" element={<ParentExamResults />} />
       <Route path="announcements" element={<ParentAnnouncements />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   </ParentLayout>
 );

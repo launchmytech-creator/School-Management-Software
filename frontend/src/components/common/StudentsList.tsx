@@ -64,7 +64,7 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
   const teacherId = user?.id as number;
   const { data: allocations } = useTeacherAllocations(
     teacherId,
-    selectedYear?.id,
+    selectedYear?.id ? Number(selectedYear?.id) : undefined,
   );
 
   const teacherClassIds = useMemo(() => {
@@ -586,13 +586,7 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
     try {
       await studentService.deleteStudent(deleteDialog.studentId);
       showNotification("Student deleted successfully!", "success");
-      setClassStudents((prev) => {
-        const next = { ...prev };
-        Object.keys(next).forEach((key) => {
-          next[key] = next[key].filter((s) => s.id !== deleteDialog.studentId);
-        });
-        return next;
-      });
+      setAllStudents((prev) => prev.filter((s) => s.id !== deleteDialog.studentId));
     } catch {
       showNotification("Failed to delete student", "error");
     }
@@ -727,7 +721,7 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
           subtitle="Manage student enrollments, profiles and academic records"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "People", href: `${basePath}/students` },
               { label: "Students", active: true },
             ],
           }}

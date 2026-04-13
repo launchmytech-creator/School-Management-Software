@@ -14,6 +14,7 @@ import {
 import { accountantService } from '../../services/accountantService';
 import { useNotification } from '../../context/NotificationContext';
 import { getLocalDateString } from '../../lib/utils';
+import PageHeader from '../../components/common/PageHeader';
 
 const EditAccountant: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -95,18 +96,19 @@ const EditAccountant: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto pb-20">
-        {/* Header */}
-        <div className="mb-10">
-          <div className="flex items-center gap-2 mb-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-            <span>Accountants</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-blue-500">Edit Accountant</span>
-          </div>
-          <h1 className="text-4xl font-display font-black text-slate-900 tracking-tight">Edit Accountant</h1>
-          <p className="text-slate-400 font-bold text-sm tracking-tight mt-1">Update accountant profile details and status.</p>
-        </div>
+    <div className="space-y-6 pb-12">
+      <PageHeader
+        title="Edit Accountant"
+        subtitle="Update accountant information"
+        breadcrumb={{
+          links: [
+            { label: "People", href: "/admin/accountants" },
+            { label: "Edit Accountant", active: true },
+          ],
+        }}
+      />
 
+      <div className="max-w-4xl mx-auto pb-20">
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Section 1: Personal Information */}
           <div className="bg-white rounded-3xl p-10 shadow-sm border border-slate-100">
@@ -226,8 +228,9 @@ const EditAccountant: React.FC = () => {
               )}
               {loading ? 'Saving...' : 'Update Accountant'}
             </button>
-          </div>
-      </form>
+        </div>
+        </form>
+      </div>
     </div>
   );
 };

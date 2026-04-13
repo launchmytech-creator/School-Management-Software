@@ -62,7 +62,7 @@ const Attendance: React.FC = () => {
           subtitle="Track and manage daily student attendance"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "People", href: "/admin/students" },
               { label: "Attendance", active: true }
             ]
           }}

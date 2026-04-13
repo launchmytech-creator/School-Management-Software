@@ -1,14 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { classService } from '../../services/classService';
 import type { CreateClassDto, UpdateClassDto } from '../../types/class';
-import { queryKeys } from '../../lib/queryKeys';
 import { useNotification } from '../../context/NotificationContext';
-import { useAuth } from '../../context/AuthContext';
 
 export const useCreateClass = () => {
   const qc = useQueryClient();
   const { showNotification } = useNotification();
-  const { user } = useAuth();
 
   return useMutation({
     mutationFn: (data: CreateClassDto) => classService.createClass(data),

@@ -106,7 +106,7 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
             allocation.subjectId,
             Number(selectedYear!.id),
           );
-          console.log('[Syllabus] getChaptersWithStatusDirect chapters:', chapters);
+          // console.log('[Syllabus] getChaptersWithStatusDirect chapters:', chapters);
 
           const completedChapters = chapters.filter(c => c.status === 'completed').length;
           const inProgressChapters = chapters.filter(c => c.status === 'in-progress').length;
@@ -152,7 +152,7 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
         subjectId,
         Number(selectedYear!.id),
       );
-      console.log('[Syllabus fetchChapters] chapters:', chapters);
+      // console.log('[Syllabus fetchChapters] chapters:', chapters);
       
       setChapterProgress(prev => ({ ...prev, [subjectId]: chapters }));
     } catch {

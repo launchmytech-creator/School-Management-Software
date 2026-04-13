@@ -62,7 +62,7 @@ const FeeStructures: React.FC = () => {
           subtitle="Manage fee structures for different classes"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Finance", href: "/admin/fee-structures" },
               { label: "Fee Structures", active: true },
             ],
           }}

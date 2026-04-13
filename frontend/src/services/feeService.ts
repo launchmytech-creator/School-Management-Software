@@ -312,7 +312,7 @@ export const feeService = {
     const rows = await apiRequest<BackendFeeTransaction[]>(
       `/fee-transactions/student/${studentId}`,
     );
-    console.log(rows);
+    // console.log(rows);
     return rows.map(mapTransaction);
   },
 

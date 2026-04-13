@@ -51,7 +51,7 @@ const FeeCollectionPage: React.FC<FeeCollectionPageProps> = ({
           subtitle="Manage fee payments and track collection status"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: layout === 'admin' ? "/admin/dashboard" : "/accountant/dashboard" },
+              { label: "Finance", href: layout === 'admin' ? "/admin/fees" : "/accountant/fees" },
               { label: "Fee Collection", active: true },
             ],
           }}

@@ -50,7 +50,6 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
     new Set(),
   );
 
-  const layoutTitle = layout === "accountant" ? "Exam Results" : undefined;
   const selectedAcademicYearId = selectedAcademicYear
     ? parseInt(selectedAcademicYear)
     : undefined;
@@ -218,9 +217,8 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
           layout === "admin"
             ? {
                 links: [
-                  { label: "Dashboard", href: "/admin/dashboard" },
                   { label: "Exams", href: "/admin/exams" },
-                  { label: "Results", active: true },
+                  { label: "Exam Results", active: true },
                 ],
               }
             : undefined

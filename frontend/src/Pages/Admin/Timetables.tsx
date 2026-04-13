@@ -104,7 +104,7 @@ const Timetables: React.FC = () => {
           subtitle="Manage class schedules and periods"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Schedule", href: "/admin/timetables" },
               { label: "Timetables", active: true }
             ]
           }}

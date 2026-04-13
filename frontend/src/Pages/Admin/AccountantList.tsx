@@ -104,6 +104,12 @@ const AccountantList: React.FC = () => {
         <PageHeader 
           title="Accountant Records"
           subtitle="Manage administrative staff and system accountants"
+          breadcrumb={{
+            links: [
+              { label: "People", href: "/admin/accountants" },
+              { label: "Accountants", active: true }
+            ]
+          }}
           actions={[
             {
               label: "Add Accountant",

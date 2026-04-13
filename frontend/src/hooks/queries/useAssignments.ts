@@ -51,7 +51,7 @@ export const useUpdateAssignment = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<CreateAssignmentDto> }) =>
       assignmentService.updateAssignment(id, data),
-    onSuccess: (_, { id }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
   });

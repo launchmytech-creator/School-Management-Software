@@ -2,7 +2,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { studentService } from '../../services/studentService';
 import type { Student, StudentFilters } from '../../types/student';
 import { queryKeys } from '../../lib/queryKeys';
-import { QUERY_STALE_TIME } from '../../lib/constants';
 import { useAuth } from '../../context/AuthContext';
 
 const DEFAULT_STALE_TIME = 30 * 60 * 1000; // 30 minutes

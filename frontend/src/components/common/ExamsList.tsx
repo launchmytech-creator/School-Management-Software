@@ -342,7 +342,7 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
           subtitle="Manage exams and view results"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: `${basePath}/dashboard` },
+              { label: "Exams", href: `${basePath}/exams` },
               { label: "Examinations", active: true }
             ]
           }}

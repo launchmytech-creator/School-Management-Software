@@ -30,13 +30,14 @@ import SyllabusTracking from "../Pages/Admin/SyllabusTracking";
 import Holidays from "../Pages/Admin/Holidays";
 import TeacherAttendancePage from "../Pages/Admin/TeacherAttendancePage";
 import Announcements from "../Pages/Admin/Announcements";
-import Timetables from "../Pages/Admin/Timetables";
 import SchoolSettingsPage from "../Pages/Admin/SchoolSettingsPage";
 import StudentPromotion from "../Pages/Admin/StudentPromotion";
 import FeeStructures from "../Pages/Admin/FeeStructures";
 import MarksEntry from "../components/common/MarksEntry";
 import Reports from "@/Pages/Admin/Reports";
 import ClassComparison from "../Pages/Admin/ClassComparison";
+import StudentHistory from "../Pages/Admin/StudentHistory";
+import NotFound from "../Pages/NotFound";
 
 const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({
   feature,
@@ -104,6 +105,14 @@ const AdminRoutes = () => (
         element={
           <RequiresActiveYear>
             <StudentPromotion />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="student-history"
+        element={
+          <RequiresActiveYear>
+            <StudentHistory />
           </RequiresActiveYear>
         }
       />
@@ -217,7 +226,7 @@ const AdminRoutes = () => (
         path="marks-entry"
         element={
           <RequiresActiveYear>
-            <MarksEntry />
+            <MarksEntry layout="admin" />
           </RequiresActiveYear>
         }
       />
@@ -270,20 +279,12 @@ const AdminRoutes = () => (
         }
       />
 
-      {/* Announcements & Timetables */}
+      {/* Announcements */}
       <Route
         path="announcements"
         element={
           <RequiresActiveYear>
             <Announcements />
-          </RequiresActiveYear>
-        }
-      />
-      <Route
-        path="timetables"
-        element={
-          <RequiresActiveYear>
-            <Timetables />
           </RequiresActiveYear>
         }
       />
@@ -302,6 +303,9 @@ const AdminRoutes = () => (
 
       {/* Settings */}
       <Route path="school-settings" element={<SchoolSettingsPage />} />
+
+      {/* Catch-all */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   </AdminLayout>
 );

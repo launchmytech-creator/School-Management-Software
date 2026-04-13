@@ -20,7 +20,7 @@ const Schools: React.FC = () => {
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [viewingSchool, setViewingSchool] = useState<School | null>(null);
-  console.log(viewingSchool)
+  // console.log(viewingSchool)
   const filteredSchools = useMemo(() => {
     return schools.filter((school) => {
       const matchesSearch =

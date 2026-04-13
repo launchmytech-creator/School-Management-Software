@@ -7,9 +7,10 @@ import { Button } from '../ui/button';
 interface Action {
   label: string;
   icon?: LucideIcon;
-  onClick: () => void;
+  onClick?: () => void;
   variant?: 'default' | 'outline' | 'secondary';
   disabled?: boolean;
+  className?: string;
 }
 
 interface PageHeaderProps {
@@ -50,12 +51,12 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                 {link.href && !link.active ? (
                   <Link 
                     to={link.href} 
-                    className="hover:text-blue-500 transition-colors"
+                    className="hover:text-blue-500 transition-colors cursor-pointer"
                   >
                     {link.label}
                   </Link>
                 ) : (
-                  <span className={link.active ? "text-blue-500" : ""}>
+                  <span className={`${link.active ? "text-blue-500 cursor-default" : "cursor-default"}`}>
                     {link.label}
                   </span>
                 )}
@@ -84,7 +85,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
               key={index}
               variant={action.variant || 'default'}
               onClick={action.onClick}
-              className="gap-2"
+              className={`gap-2 ${action.className || ''}`}
               disabled={action.disabled}
             >
               {action.icon && <action.icon className="size-4" />}

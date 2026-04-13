@@ -354,7 +354,6 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
           }
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: `${basePath}/dashboard` },
               { label: "Exams", href: `${basePath}/exams` },
               { label: "Marks Entry", active: true },
             ],

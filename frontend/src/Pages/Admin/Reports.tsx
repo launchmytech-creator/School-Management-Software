@@ -68,7 +68,7 @@ const Reports: React.FC = () => {
           subtitle="View comprehensive reports and analytics"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Reports", href: "/admin/reports" },
               { label: "Reports", active: true }
             ]
           }}

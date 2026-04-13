@@ -131,7 +131,7 @@ const Announcements: React.FC = () => {
         payload.targetRole = formData.targetRole;
       }
 
-      console.log('Payload sent:', JSON.stringify(payload, null, 2));
+      // console.log('Payload sent:', JSON.stringify(payload, null, 2));
 
       if (editingAnnouncement) {
         await announcementService.updateAnnouncement(editingAnnouncement.id, payload);
@@ -173,7 +173,7 @@ const Announcements: React.FC = () => {
           subtitle="Create and manage school-wide announcements"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Schedule", href: "/admin/announcements" },
               { label: "Announcements", active: true }
             ]
           }}

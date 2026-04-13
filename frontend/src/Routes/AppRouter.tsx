@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "../Pages/Auth/Login";
 import PublicRoute from "./PublicRoute";
 import ProtectedRoute from "./ProtectedRoute";
+import NotFound from "../Pages/NotFound";
 
 // Route chunks — only loaded when the user navigates to that role's pages
 const SuperAdminRoutes = lazy(() => import("./superAdminRoutes"));
@@ -87,7 +88,7 @@ const AppRouter = () => (
       }
     />
 
-    <Route path="*" element={<Navigate to="/login" replace />} />
+    <Route path="*" element={<NotFound />} />
   </Routes>
 );
 

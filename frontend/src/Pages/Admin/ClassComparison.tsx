@@ -18,6 +18,7 @@ import { classService } from "../../services/classService";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useNotification } from "../../context/NotificationContext";
 import { TrendingUp, Users, Award, Target, Loader2, BookOpen } from "lucide-react";
+import PageHeader from "../../components/common/PageHeader";
 
 const CHART_COLORS = [
   "#4A9FD4",
@@ -98,8 +99,8 @@ const ClassComparison: React.FC = () => {
         classIds,
         selectedYear?.id ? parseInt(selectedYear.id) : undefined
       );
-      console.log("Subject Comparison Data:", JSON.stringify(data, null, 2));
-      console.log("Sections:", sections);
+      // console.log("Subject Comparison Data:", JSON.stringify(data, null, 2));
+      // console.log("Sections:", sections);
       setSubjectComparisonData(data);
     } catch (err) {
       console.error("Failed to fetch comparison:", err);
@@ -541,13 +542,16 @@ const ClassComparison: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Class Performance Comparison</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Compare performance across sections of the same class
-        </p>
-      </div>
+      <PageHeader
+        title="Class Comparison"
+        subtitle="Compare performance across classes"
+        breadcrumb={{
+          links: [
+            { label: "Exams", href: "/admin/exams" },
+            { label: "Class Comparison", active: true },
+          ],
+        }}
+      />
 
       {/* Filters */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6">

@@ -6,6 +6,7 @@ import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { useAuth } from '../../context/AuthContext';
 import { attendanceService, type AttendanceRecord, type MarkAttendanceDto } from '../../services/attendanceService';
+import { holidayService, type Holiday } from '../../services/holidayService';
 import { classService } from '../../services/classService';
 import { type Class } from '../../types/class';
 import { useAllStudents } from '../../hooks/queries/useStudents';
@@ -36,6 +37,9 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [loadingClasses, setLoadingClasses] = useState(false);
+  
+  // [NEW] Holidays state for validating attendance dates
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
 
   const teacherId = user?.id as number;
   const isTeacher = layout === 'teacher';
@@ -138,6 +142,25 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
     }
   }, [selectedClass, selectedDate, fetchExistingAttendance]);
 
+  // [NEW] Fetch holidays when academic year changes
+  useEffect(() => {
+    const fetchHolidays = async () => {
+      if (!selectedYear?.id) return;
+      try {
+        const data = await holidayService.getHolidays(Number(selectedYear.id));
+        setHolidays(data);
+      } catch {
+        // Silently fail - don't block attendance marking
+      }
+    };
+    fetchHolidays();
+  }, [selectedYear]);
+
+  // [NEW] Helper functions to check if selected date is a holiday or Sunday
+  const isHoliday = (date: string) => holidays.some(h => h.holidayDate === date);
+  const isSunday = (date: string) => new Date(date).getDay() === 0;
+  const getHolidayInfo = (date: string) => holidays.find(h => h.holidayDate === date);
+
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const classId = e.target.value;
     const selected = inchargeClasses.find(c => c.id === classId) || allClasses.find(c => c.id === classId) || null;
@@ -224,11 +247,15 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
     }
   };
 
+  // [NEW] Validation checks for attendance date
   const isDateInFuture = selectedDate > getLocalDateString();
+  const isHolidayDate = isHoliday(selectedDate);
+  const isSundayDate = isSunday(selectedDate);
+  const cannotMarkAttendance = isDateInFuture || isHolidayDate || isSundayDate;
+
   const basePath = isTeacher ? '/teacher' : '/accountant';
   const currentClassName = selectedClass?.name;
   const hasSelectedClass = !!selectedClass;
-  const teacherClasses = isTeacher ? inchargeClasses : allClasses;
 
   const renderContent = () => (
     <div className="space-y-6 pb-12">
@@ -238,7 +265,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
           subtitle="Mark and manage attendance for your classes"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: `${basePath}/dashboard` },
+              { label: "People", href: `${basePath}/students` },
               { label: "Attendance", active: true }
             ]
           }}
@@ -247,7 +274,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
               label: "Mark All Present",
               icon: CheckCircle,
               onClick: handleMarkAllPresent,
-              disabled: students.length === 0 || !hasChanges
+              disabled: students.length === 0 || !hasChanges || cannotMarkAttendance
             }
           ]}
         />
@@ -259,7 +286,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
           subtitle="View and mark attendance for classes"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: `${basePath}/dashboard` },
+              { label: "People", href: `${basePath}/students` },
               { label: "Attendance", active: true }
             ]
           }}
@@ -268,10 +295,33 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
               label: "Mark All Present",
               icon: CheckCircle,
               onClick: handleMarkAllPresent,
-              disabled: students.length === 0 || !hasChanges
+              disabled: students.length === 0 || !hasChanges || cannotMarkAttendance
             }
           ]}
         />
+      )}
+
+      {/* [NEW] Warning banners for holidays and Sundays */}
+      {isHolidayDate && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <span className="material-symbols-outlined text-amber-500">celebration</span>
+          <div>
+            <p className="text-sm font-semibold text-amber-800">
+              Holiday: {getHolidayInfo(selectedDate)?.description}
+            </p>
+            <p className="text-xs text-amber-600">Attendance cannot be marked on holidays</p>
+          </div>
+        </div>
+      )}
+
+      {isSundayDate && (
+        <div className="bg-slate-100 border border-slate-200 rounded-xl p-4 flex items-start gap-3">
+          <span className="material-symbols-outlined text-slate-500">weekend</span>
+          <div>
+            <p className="text-sm font-semibold text-slate-700">Sunday</p>
+            <p className="text-xs text-slate-500">Attendance cannot be marked on Sundays</p>
+          </div>
+        </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -447,9 +497,9 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
               </button>
               <button
                 onClick={() => setShowConfirmModal(true)}
-                disabled={!hasChanges || isDateInFuture || saving}
+                disabled={!hasChanges || isDateInFuture || cannotMarkAttendance || saving}
                 className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${
-                  hasChanges && !isDateInFuture
+                  hasChanges && !isDateInFuture && !cannotMarkAttendance
                     ? 'bg-blue-600 text-white hover:bg-blue-700' 
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }`}

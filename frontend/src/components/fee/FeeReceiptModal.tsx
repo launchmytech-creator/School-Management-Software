@@ -322,7 +322,6 @@ export const FeeReceiptModal: React.FC<FeeReceiptModalProps> = ({
       onClose={onClose}
       title="Fee Receipt"
       size="xl"
-      className="max-w-4xl"
     >
       <div className="p-0" id="fee-receipt-content">
         <div className="px-8 py-6 border-b border-slate-200">

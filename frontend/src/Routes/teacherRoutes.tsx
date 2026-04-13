@@ -10,6 +10,7 @@ import TeacherLayout from "../layouts/TeacherLayout";
 import StudentAttendance from "../components/common/StudentAttendance";
 import TeacherStudentList from "../Pages/Teacher/StudentList";
 import TeacherStudentProfile from "../Pages/Teacher/StudentProfile";
+import NotFound from "../Pages/NotFound";
 
 const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({
   feature,
@@ -56,6 +57,7 @@ const TeacherRoutes = () => (
       />
       <Route path="announcements" element={<TeacherAnnouncements />} />
       <Route path="students/:id" element={<TeacherStudentProfile />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   </TeacherLayout>
 );

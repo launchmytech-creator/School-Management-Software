@@ -81,6 +81,12 @@ const ParentList: React.FC = () => {
           <PageHeader 
             title="Parent Accounts"
             subtitle="Manage guardian information and linked students profiles."
+            breadcrumb={{
+              links: [
+                { label: "People", href: "/admin/parents" },
+                { label: "Parents", active: true }
+              ]
+            }}
           />
            <div className="flex items-center gap-3">
               <ViewToggle viewMode={viewMode} onToggle={setViewMode} />

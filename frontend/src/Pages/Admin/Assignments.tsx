@@ -149,7 +149,7 @@ const Assignments: React.FC = () => {
           subtitle="Create and manage student assignments"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Schedule", href: "/admin/announcements" },
               { label: "Assignments", active: true }
             ]
           }}
