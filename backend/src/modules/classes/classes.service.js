@@ -3,6 +3,10 @@ const { ERROR_CODES, ERROR_MESSAGES } = require("../../constants");
 const AppError = require("../../utils/AppError");
 
 class ClassesService {
+  /**
+   * Creates a new class. [UPDATED]
+   * incharge_id field links a teacher as the class incharge (optional).
+   */
   async createClass(classData, schoolId) {
     // Normalize: trim whitespace and collapse internal spaces
     const normalizedName = classData.name.trim().replace(/\s+/g, ' ');
@@ -46,6 +50,10 @@ class ClassesService {
     return result.rows[0];
   }
 
+  /**
+   * Returns all classes for a school. [UPDATED]
+   * Includes incharge name via LEFT JOIN. Includes active student count.
+   */
   async getClassesBySchool(schoolId, academicYearId = null) {
     let query = `
       SELECT c.*, ay.year_name, ay.start_date, ay.end_date,
@@ -106,6 +114,7 @@ class ClassesService {
       fields.push(`section = $${paramCount++}`);
       values.push(updateData.section);
     }
+    // [UPDATED] Handle incharge_id update (can be set to null to remove incharge)
     if (updateData.inchargeId !== undefined) {
       fields.push(`incharge_id = $${paramCount++}`);
       values.push(updateData.inchargeId === null ? null : updateData.inchargeId);
@@ -152,6 +161,10 @@ class ClassesService {
     return result.rows[0];
   }
 
+  /**
+   * Returns all classes where the specified teacher is the incharge. [NEW]
+   * Use case: Dashboard shows incharge their classes, attendance filters to incharge classes.
+   */
   async getClassesByIncharge(teacherId, schoolId, academicYearId = null) {
     let query = `
       SELECT c.*, ay.year_name, ay.start_date, ay.end_date,

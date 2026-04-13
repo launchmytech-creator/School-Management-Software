@@ -33,13 +33,22 @@ router.get(
   schoolsController.getSchoolById,
 );
 
+// [UPDATED] Allow SCHOOL_ADMIN to update own school (including subscription plan)
 router.patch(
   "/:id",
   authenticate,
-  authorize(ROLES.SUPER_ADMIN),
+  authorize(ROLES.SUPER_ADMIN, ROLES.SCHOOL_ADMIN),
   updateSchoolValidation,
   validate,
   schoolsController.updateSchool,
+);
+
+// [NEW] Get available subscription plans
+router.get(
+  "/:id/available-plans",
+  authenticate,
+  authorize(ROLES.SUPER_ADMIN, ROLES.SCHOOL_ADMIN),
+  schoolsController.getAvailablePlans,
 );
 
 router.get(

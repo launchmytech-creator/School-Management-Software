@@ -85,15 +85,17 @@ class AuthService {
         subscriptionPlanId: user.subscription_plan_id,
         subscriptionPlan: user.subscription_plan_name,
         subscriptionFeatures: user.subscription_features,
+        subscriptionStatus: user.subscription_status, // [UPDATED] Include subscriptionStatus in login response
       },
     };
   }
 
+  // [UPDATED] Include subscription_status in query and response
   async getProfile(userId) {
     const query = `
       SELECT u.id, u.email, u.full_name, u.role, u.phone,
              u.date_of_birth, u.gender, u.address, u.school_id,
-             s.name as school_name, s.subscription_plan_id,
+             s.name as school_name, s.subscription_plan_id, s.subscription_status,
              sp.name as subscription_plan_name, sp.features as subscription_features
       FROM users u
       LEFT JOIN schools s ON u.school_id = s.id
@@ -126,7 +128,94 @@ class AuthService {
       subscription_plan_id: profile.subscription_plan_id,
       subscription_plan_name: profile.subscription_plan_name,
       subscription_features: profile.subscription_features,
+      subscription_status: profile.subscription_status,
     };
+  }
+
+  // [NEW] Update user profile
+  async updateProfile(userId, data) {
+    const { fullName, phone, password, currentPassword } = data;
+
+    // Get current user
+    const userResult = await pool.query(
+      "SELECT password_hash FROM users WHERE id = $1 AND is_active = true",
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      throw new AppError(
+        ERROR_CODES.USER_NOT_FOUND,
+        ERROR_MESSAGES[ERROR_CODES.USER_NOT_FOUND],
+        404,
+      );
+    }
+
+    // If changing password, verify current password
+    if (password) {
+      if (!currentPassword) {
+        throw new AppError(
+          ERROR_CODES.VALIDATION_ERROR,
+          "Current password is required to change password",
+          400,
+        );
+      }
+
+      const isPasswordValid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+      if (!isPasswordValid) {
+        throw new AppError(
+          ERROR_CODES.AUTH_INVALID_CREDENTIALS,
+          "Current password is incorrect",
+          400,
+        );
+      }
+    }
+
+    // Build update query
+    const fields = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (fullName !== undefined) {
+      fields.push(`full_name = $${paramCount++}`);
+      values.push(fullName);
+    }
+    if (phone !== undefined) {
+      fields.push(`phone = $${paramCount++}`);
+      values.push(phone);
+    }
+    if (password !== undefined) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      fields.push(`password_hash = $${paramCount++}`);
+      values.push(hashedPassword);
+    }
+
+    if (fields.length === 0) {
+      throw new AppError(
+        ERROR_CODES.INVALID_INPUT,
+        "No fields to update",
+        400,
+      );
+    }
+
+    values.push(userId);
+    const query = `
+      UPDATE users
+      SET ${fields.join(", ")}
+      WHERE id = $${paramCount}
+      RETURNING id, email, full_name, phone, role, school_id
+    `;
+
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
+      throw new AppError(
+        ERROR_CODES.USER_NOT_FOUND,
+        ERROR_MESSAGES[ERROR_CODES.USER_NOT_FOUND],
+        404,
+      );
+    }
+
+    return result.rows[0];
   }
 }
 

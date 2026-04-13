@@ -150,6 +150,11 @@ class ClassSubjectsController {
     }
   }
 
+  /**
+   * Assigns a subject to multiple classes. [NEW]
+   * Body: { classIds: [], subjectId, academicYearId }
+   * Validates inputs, returns count of successfully assigned classes.
+   */
   async assignSubjectToMultipleClasses(req, res, next) {
     try {
       const { classIds, subjectId, academicYearId } = req.body;
@@ -179,6 +184,11 @@ class ClassSubjectsController {
     }
   }
 
+  /**
+   * Checks existing assignments for given classes. [NEW]
+   * Query params: ?classIds=1,2&academicYearId=1
+   * Returns all existing class-subject assignments for those classes.
+   */
   async checkExistingAssignments(req, res, next) {
     try {
       const { classIds, academicYearId } = req.query;

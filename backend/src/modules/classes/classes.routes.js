@@ -25,6 +25,7 @@ router.get(
   classesController.getClasses,
 );
 
+// Get all classes assigned to a teacher as incharge. [NEW]
 router.get(
   "/incharge/:teacherId",
   authenticate,

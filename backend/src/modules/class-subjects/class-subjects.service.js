@@ -162,6 +162,10 @@ class ClassSubjectsService {
     return result.rows[0];
   }
 
+  /**
+   * Removes subject from class. [UPDATED]
+   * Also deletes the subject record if no other classes are assigned to it (orphan cleanup).
+   */
   async removeSubjectFromClass(classSubjectId, schoolId) {
     const existing = await pool.query(
       'SELECT subject_id FROM class_subjects WHERE id = $1 AND school_id = $2',
@@ -195,6 +199,10 @@ class ClassSubjectsService {
     return existing.rows[0];
   }
 
+  /**
+   * Assigns a subject to multiple classes. [NEW]
+   * Uses transaction for atomicity. Skip duplicates silently, returns only newly inserted rows.
+   */
   async assignSubjectToMultipleClasses(classIds, subjectId, academicYearId, schoolId) {
     if (!classIds || classIds.length === 0) {
       throw new AppError(ERROR_CODES.INVALID_INPUT, "At least one class must be selected", 400);
@@ -244,6 +252,10 @@ class ClassSubjectsService {
     }
   }
 
+  /**
+   * Checks existing class-subject assignments for given classes. [NEW]
+   * Used by frontend to show which subjects are already assigned to selected classes.
+   */
   async checkExistingAssignments(classIds, academicYearId, schoolId) {
     if (!classIds || classIds.length === 0) {
       return [];

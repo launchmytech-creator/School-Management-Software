@@ -43,8 +43,8 @@ const ERROR_CODES = {
   USER_ALREADY_EXISTS: "USER_002",
   USER_INACTIVE: "USER_003",
 
-  // Subject Errors
-  SUBJECT_ALREADY_EXISTS: "SUBJECT_001",
+  // Subject Errors [NEW]
+  SUBJECT_ALREADY_EXISTS: "SUBJECT_001", // Thrown when creating subject with code that already exists
   SUBJECT_NOT_FOUND: "SUBJECT_002",
 
   // School Errors
@@ -62,7 +62,11 @@ const ERROR_CODES = {
   DATABASE_ERROR: "SYS_002",
   RESOURCE_NOT_FOUND: "SYS_003",
   FORBIDDEN: "SYS_004",
-  NOT_INCHARGE: "SYS_005",
+  NOT_INCHARGE: "SYS_005", // [NEW] Thrown when teacher accesses resource requiring class incharge
+
+  // [NEW] Attendance Validation Errors
+  NOT_A_SCHOOL_DAY: "ATT_001", // Thrown when trying to mark attendance on a holiday
+  SUNDAY_ATTENDANCE_NOT_ALLOWED: "ATT_002", // Thrown when trying to mark attendance on Sunday
 };
 
 const ERROR_MESSAGES = {
@@ -93,6 +97,10 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.RESOURCE_NOT_FOUND]: "Requested resource not found",
   [ERROR_CODES.FORBIDDEN]: "You do not have permission to perform this action",
   [ERROR_CODES.NOT_INCHARGE]: "Only the class incharge can perform this action",
+
+  // [NEW] Attendance Validation Error Messages
+  [ERROR_CODES.NOT_A_SCHOOL_DAY]: "Attendance cannot be marked on holidays",
+  [ERROR_CODES.SUNDAY_ATTENDANCE_NOT_ALLOWED]: "Attendance cannot be marked on Sundays",
 };
 
 module.exports = {

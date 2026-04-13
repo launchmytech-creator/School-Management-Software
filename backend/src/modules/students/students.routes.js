@@ -32,6 +32,14 @@ router.get(
   studentsController.getStudentById,
 );
 
+// [NEW] Get student history across all academic years
+router.get(
+  "/:id/history",
+  authenticate,
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
+  studentsController.getStudentHistory,
+);
+
 router.patch(
   "/:id",
   authenticate,

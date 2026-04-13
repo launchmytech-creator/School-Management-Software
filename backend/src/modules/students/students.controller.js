@@ -82,6 +82,20 @@ class StudentsController {
       next(error);
     }
   }
+
+  // [NEW] Get comprehensive student history
+  async getStudentHistory(req, res, next) {
+    try {
+      const schoolId = req.user.schoolId;
+      const { id } = req.params;
+
+      const history = await studentsService.getStudentHistory(parseInt(id, 10), schoolId);
+
+      return ApiResponse.success(res, history, "Student history retrieved successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new StudentsController();

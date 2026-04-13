@@ -3,11 +3,47 @@ const { ERROR_CODES, ROLES } = require("../../constants");
 const AppError = require("../../utils/AppError");
 
 class StudentAttendanceService {
+  // [NEW] Validates that the attendance date is a valid school day (not Sunday or holiday)
+  async validateAttendanceDate(date, schoolId) {
+    const attendanceDate = new Date(date);
+    
+    // Check if Sunday (day 0)
+    if (attendanceDate.getDay() === 0) {
+      throw new AppError(
+        ERROR_CODES.SUNDAY_ATTENDANCE_NOT_ALLOWED,
+        "Attendance cannot be marked on Sundays",
+        400
+      );
+    }
+
+    // Check if holiday
+    const holidayQuery = `
+      SELECT description FROM holidays 
+      WHERE school_id = $1 AND holiday_date = $2::date
+    `;
+    const holidayResult = await pool.query(holidayQuery, [schoolId, date]);
+    
+    if (holidayResult.rows.length > 0) {
+      throw new AppError(
+        ERROR_CODES.NOT_A_SCHOOL_DAY,
+        `Attendance cannot be marked on holidays: ${holidayResult.rows[0].description}`,
+        400
+      );
+    }
+
+    return true;
+  }
+
+  /**
+   * Marks student attendance. [UPDATED]
+   * Rules: Accountant can mark any class. Teacher can only mark their incharge class.
+   * [NEW] Also validates that attendance date is not Sunday or holiday.
+   */
   async markAttendance(attendanceData, schoolId, userId, userRole) {
-    // Authorization check
+    // [UPDATED] Authorization check
     // Accountants can mark attendance for any class
     if (userRole !== ROLES.ACCOUNTANT) {
-      // Teachers: Must be class incharge
+      // Teachers: Must be class incharge to mark attendance for that class
       if (userRole === ROLES.TEACHER) {
         const classCheck = await pool.query(
           'SELECT incharge_id FROM classes WHERE id = $1 AND school_id = $2',
@@ -34,6 +70,9 @@ class StudentAttendanceService {
         );
       }
     }
+
+    // [NEW] Validate that attendance date is a valid school day (not Sunday or holiday)
+    await this.validateAttendanceDate(attendanceData.attendanceDate, schoolId);
 
     const client = await pool.connect();
 

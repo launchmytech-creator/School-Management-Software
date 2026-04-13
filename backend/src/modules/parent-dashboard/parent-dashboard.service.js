@@ -239,10 +239,10 @@ class ParentDashboardService {
       ),
       // Get recent announcements
       pool.query(
-        `SELECT id, title, content, priority, target_audience, created_at
+        `SELECT id, title, message, target_role, created_at
         FROM announcements
         WHERE school_id = $1
-          AND (target_audience = 'all' OR target_audience = 'parents')
+          AND (target_role = 'all' OR target_role = 'parent')
         ORDER BY created_at DESC
         LIMIT 5`,
         [schoolId],
@@ -254,9 +254,8 @@ class ParentDashboardService {
       recentAnnouncements: announcementsResult.rows.map((a) => ({
         id: a.id,
         title: a.title,
-        content: a.content,
-        priority: a.priority,
-        targetAudience: a.target_audience,
+        message: a.message,
+        targetRole: a.target_role,
         createdAt: a.created_at,
       })),
     };

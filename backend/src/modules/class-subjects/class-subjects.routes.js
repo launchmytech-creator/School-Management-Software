@@ -18,6 +18,7 @@ router.post(
   classSubjectsController.assignSubjectToClass,
 );
 
+// Get all class-subject assignments. [UPDATED] Added ACCOUNTANT, TEACHER roles
 router.get(
   "/",
   authenticate,
@@ -62,6 +63,7 @@ router.delete(
   classSubjectsController.removeSubjectFromClass,
 );
 
+// Assign a subject to multiple classes at once. [NEW] Roles: SCHOOL_ADMIN, ACCOUNTANT
 router.post(
   "/assign-multiple",
   authenticate,
@@ -69,6 +71,7 @@ router.post(
   classSubjectsController.assignSubjectToMultipleClasses,
 );
 
+// Check existing class-subject assignments. [NEW] Query: ?classIds=1,2&academicYearId=1
 router.get(
   "/check-existing",
   authenticate,

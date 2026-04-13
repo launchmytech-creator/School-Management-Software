@@ -30,6 +30,20 @@ class AuthController {
       next(error);
     }
   }
+
+  // [NEW] Update user profile
+  async updateProfile(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const data = req.body;
+
+      const result = await authService.updateProfile(userId, data);
+
+      return ApiResponse.success(res, result, "Profile updated successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new AuthController();

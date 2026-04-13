@@ -132,6 +132,7 @@ class SchoolsService {
     return result.rows[0];
   }
 
+  // [UPDATED] Allow school admin to update own school, added school existence check
   async updateSchool(schoolId, updateData) {
     const client = await pool.connect();
 
@@ -153,6 +154,14 @@ class SchoolsService {
           "SELECT subscription_plan_id FROM schools WHERE id = $1",
           [schoolId],
         );
+
+        if (!currentSchool.rows[0]) {
+          throw new AppError(
+            ERROR_CODES.SCHOOL_NOT_FOUND,
+            ERROR_MESSAGES[ERROR_CODES.SCHOOL_NOT_FOUND],
+            404,
+          );
+        }
 
         if (
           currentSchool.rows[0].subscription_plan_id !==
@@ -234,6 +243,23 @@ class SchoolsService {
       client.release();
     }
   }
+
+  // [NEW] Get all available subscription plans
+  async getAvailablePlans() {
+    const query = `
+      SELECT 
+        id,
+        name,
+        features,
+        created_at
+      FROM subscription_plans
+      ORDER BY id ASC
+    `;
+
+    const result = await pool.query(query);
+    return result.rows;
+  }
+
   async getSchoolAdmin(schoolId) {
     const result = await pool.query(
       `SELECT id, email, full_name, phone, role, school_id, is_active, created_at

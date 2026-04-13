@@ -21,7 +21,7 @@ const createClassValidation = [
   body("inchargeId")
     .optional()
     .isInt()
-    .withMessage("Incharge ID must be an integer"),
+    .withMessage("Incharge ID must be an integer"), // [UPDATED] Optional - teacher assigned as class incharge
 
   body("defaultFeeAmount")
     .optional()
@@ -40,6 +40,7 @@ const updateClassValidation = [
     .isLength({ max: 10 })
     .withMessage("Section must be at most 10 characters"),
 
+  // inchargeId validation for update. [NEW] Nullable - can be null to remove incharge
   body("inchargeId")
     .optional({ nullable: true })
     .custom((value) => {

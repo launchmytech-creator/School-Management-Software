@@ -3,7 +3,12 @@ const { ERROR_CODES } = require("../../constants");
 const AppError = require("../../utils/AppError");
 
 class SubjectsService {
+  /**
+   * Creates a new subject. [UPDATED]
+   * Checks if subject code already exists in school before creating.
+   */
   async createSubject(subjectData, schoolId) {
+    // [UPDATED] Check for duplicate subject code
     const existing = await pool.query(
       'SELECT id, name FROM subjects WHERE school_id = $1 AND code = $2',
       [schoolId, subjectData.code]
