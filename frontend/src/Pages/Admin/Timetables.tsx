@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { timetableService, type TimetableEntry } from '../../services/timetableService';
-import { useClasses, useSubjects } from '../../hooks/queries';
+import { useClasses, useSubjects, useTimetables } from '../../hooks/queries';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { Calendar, Plus, Clock, BookOpen, User } from 'lucide-react';
 import { BaseModal } from '../../components/common/BaseModal';
@@ -15,8 +16,7 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 
 const Timetables: React.FC = () => {
   const { showNotification } = useNotification();
-  const [loading, setLoading] = useState(true);
-  const [timetables, setTimetables] = useState<TimetableEntry[]>([]);
+  const queryClient = useQueryClient();
   const { allYears: academicYears } = useAcademicYear();
   const { data: classes = [] } = useClasses();
   const { data: subjects = [] } = useSubjects();
@@ -36,30 +36,12 @@ const Timetables: React.FC = () => {
     room: '',
   });
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const filters: { classId?: number; academicYearId?: number } = {};
-      if (selectedClass) filters.classId = parseInt(selectedClass);
-      if (selectedYear) filters.academicYearId = parseInt(selectedYear);
-      
-      const data = await timetableService.getTimetables(filters);
-      setTimetables(data);
-    } catch {
-      showNotification('Failed to fetch timetables', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedClass, selectedYear, showNotification]);
+  const filters = {
+    classId: selectedClass ? parseInt(selectedClass) : undefined,
+    academicYearId: selectedYear ? parseInt(selectedYear) : undefined,
+  };
 
-  useEffect(() => {
-    if (selectedClass || selectedYear) {
-      fetchData();
-    } else {
-      setTimetables([]);
-      setLoading(false);
-    }
-  }, [selectedClass, selectedYear, fetchData]);
+  const { data: timetables = [], isLoading } = useTimetables(filters);
 
   const handleOpenCreate = () => {
     setFormData({
@@ -82,7 +64,7 @@ const Timetables: React.FC = () => {
       await timetableService.createTimetable(formData);
       showNotification('Timetable entry created successfully', 'success');
       setShowModal(false);
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: ['timetables'] });
     } catch {
       showNotification('Failed to create timetable entry', 'error');
     } finally {
@@ -188,7 +170,7 @@ const Timetables: React.FC = () => {
             title="Select filters to view timetable"
             description="Choose a class and academic year to view the schedule"
           />
-        ) : loading ? (
+        ) : isLoading ? (
           <SkeletonTable columns={5} rows={5} />
         ) : Object.keys(groupedTimetables).length > 0 ? (
           <div className="space-y-6">
