@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
-import { useParentChildren } from "../../hooks/queries";
-import { examResultService } from "../../services/examResultService";
+import { useParentChildren, useStudentResults } from "../../hooks/queries";
 import type { LinkedStudent } from "../../types/parent";
 import type { StudentResult } from "../../services/examResultService";
 import {
@@ -135,7 +134,6 @@ const ParentExamResults: React.FC = () => {
   const children = childrenData || EMPTY_CHILDREN;
 
   const [selected, setSelected] = useState<LinkedStudent | null>(null);
-  const [results, setResults] = useState<StudentResult[]>([]);
   const [activeType, setActiveType] = useState("All");
   const [activeSubject, setActiveSubject] = useState("Mathematics");
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -149,22 +147,9 @@ const ParentExamResults: React.FC = () => {
     }
   }, [children, selected]);
 
-  // fetch results
-  const fetchResults = useCallback(async () => {
-    if (!selected) return;
-    try {
-      const data = await examResultService.getStudentResults(selected.id, {
-        academicYearId: selectedYear?.id ? Number(selectedYear.id) : undefined,
-      });
-      setResults(data);
-    } catch {
-      setResults([]);
-    }
-  }, [selected, selectedYear]);
-
-  useEffect(() => {
-    fetchResults();
-  }, [fetchResults]);
+  const { data: results = [] } = useStudentResults(selected?.id ? selected.id : 0, {
+    academicYearId: selectedYear?.id ? Number(selectedYear.id) : undefined,
+  });
 
   const scrollTabs = (direction: "left" | "right") => {
     if (tabsRef.current) {
