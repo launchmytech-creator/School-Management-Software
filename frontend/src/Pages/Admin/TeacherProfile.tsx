@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { 
   User, Mail, Phone, Calendar, 
@@ -7,9 +7,7 @@ import {
   Briefcase
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { teacherAttendanceService, type TeacherAttendance } from "../../services/teacherAttendanceService";
-import { useTeacherById, useTeacherAllocations } from "../../hooks/queries";
-import { holidayService, type Holiday } from "../../services/holidayService";
+import { useTeacherById, useTeacherAllocations, useTeacherAttendance, useHolidays } from "../../hooks/queries";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { getLocalDateString } from "../../lib/utils";
 import PageHeader from "../../components/common/PageHeader";
@@ -21,7 +19,7 @@ interface CalendarDay {
   dateStr: string;
   status: AttendanceStatus;
   isCurrentMonth: boolean;
-  holiday?: Holiday;
+  holiday?: { holidayDate: string; description: string };
 }
 
 const TeacherProfile: React.FC = () => {
@@ -38,50 +36,17 @@ const TeacherProfile: React.FC = () => {
 
   // Attendance state
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [attendanceRecords, setAttendanceRecords] = useState<TeacherAttendance[]>([]);
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
-  const [loadingAttendance, setLoadingAttendance] = useState(false);
 
-  const fetchAttendance = useCallback(async () => {
-    if (!id) return;
-    try {
-      setLoadingAttendance(true);
-      const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-      const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
-      
-      const data = await teacherAttendanceService.getAttendance({
-        teacherId: parseInt(id),
-        startDate: getLocalDateString(monthStart),
-        endDate: getLocalDateString(monthEnd)
-      });
-      
-      setAttendanceRecords(data);
-    } catch {
-      setAttendanceRecords([]);
-    } finally {
-      setLoadingAttendance(false);
-    }
-  }, [currentMonth, id]);
+  const monthStart = getLocalDateString(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1));
+  const monthEnd = getLocalDateString(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0));
 
-  const fetchHolidays = useCallback(async () => {
-    try {
-      const year = currentMonth.getFullYear();
-      const data = await holidayService.getHolidays(year);
-      setHolidays(data);
-    } catch {
-      setHolidays([]);
-    }
-  }, [currentMonth]);
+  const { data: attendanceRecords = [] } = useTeacherAttendance({
+    teacherId: teacherId,
+    startDate: monthStart,
+    endDate: monthEnd,
+  });
 
-  // Handle error cases using a simple effect or just rendering.
-  // We'll trust the error boundaries or just let it return null if fetching fails.
-
-  useEffect(() => {
-    if (activeTab === 'Attendance') {
-      fetchAttendance();
-      fetchHolidays();
-    }
-  }, [activeTab, fetchAttendance, fetchHolidays]);
+  const { data: holidays = [] } = useHolidays(currentMonth.getFullYear());
 
   const calendarDays = useMemo<CalendarDay[]>(() => {
     const year = currentMonth.getFullYear();
@@ -350,7 +315,7 @@ const TeacherProfile: React.FC = () => {
                     ))}
                   </div>
 
-                  {loadingAttendance ? (
+                  {false ? (
                     <div className="h-64 flex items-center justify-center">
                       <LoadingSpinner size="md" message="Loading attendance..." />
                     </div>
