@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
-import { teacherAttendanceService, type TeacherAttendance } from '../../services/teacherAttendanceService';
-import { teacherService } from '../../services/teacherService';
-import type { Teacher } from '../../types/teacher';
+import { teacherAttendanceService } from '../../services/teacherAttendanceService';
+import { useTeachers, useTeacherAttendanceByDate } from '../../hooks/queries';
 import { Users, CheckCircle, XCircle, Clock, CalendarCheck } from 'lucide-react';
 import { formatDate, getLocalDateString } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
@@ -12,48 +12,21 @@ import { Button } from '../../components/ui/button';
 
 const TeacherAttendancePage: React.FC = () => {
   const { showNotification } = useNotification();
-  const [loading, setLoading] = useState(true);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [attendance, setAttendance] = useState<TeacherAttendance[]>([]);
+  const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showMarkModal, setShowMarkModal] = useState(false);
   const [markingStatus, setMarkingStatus] = useState<Record<number, 'present' | 'absent' | 'late'>>({});
   const [saving, setSaving] = useState(false);
 
-  const fetchTeachers = useCallback(async () => {
-    try {
-      const data = await teacherService.getTeachers();
-      setTeachers(data);
+  const { data: teachers = [] } = useTeachers();
+  const { data: attendance = [], isLoading } = useTeacherAttendanceByDate(selectedDate);
 
-      const initialStatus: Record<number, 'present' | 'absent' | 'late'> = {};
-      data.forEach(t => { initialStatus[t.id] = 'present'; });
-      setMarkingStatus(initialStatus);
-    } catch {
-      showNotification('Failed to fetch teachers', 'error');
-    }
-  }, [showNotification]);
-
-  const fetchAttendance = useCallback(async () => {
-    if (!selectedDate) return;
-    try {
-      setLoading(true);
-      const data = await teacherAttendanceService.getAttendanceByDate(selectedDate);
-      setAttendance(data);
-    } catch {
-      setAttendance([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedDate]);
-
-  useEffect(() => {
-    fetchTeachers();
-  }, [fetchTeachers]);
-
-  useEffect(() => {
-    fetchAttendance();
-  }, [fetchAttendance]);
+  React.useEffect(() => {
+    const initialStatus: Record<number, 'present' | 'absent' | 'late'> = {};
+    teachers.forEach(t => { initialStatus[t.id] = 'present'; });
+    setMarkingStatus(initialStatus);
+  }, [teachers]);
 
   const monthYear = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
@@ -118,7 +91,7 @@ const TeacherAttendancePage: React.FC = () => {
       
       showNotification('Attendance marked successfully', 'success');
       setShowMarkModal(false);
-      fetchAttendance();
+      queryClient.invalidateQueries({ queryKey: ['teacher-attendance'] });
     } catch {
       showNotification('Failed to mark attendance', 'error');
     } finally {
@@ -272,7 +245,7 @@ const TeacherAttendancePage: React.FC = () => {
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
               />
 
-              {loading ? (
+              {isLoading ? (
                 <div className="py-8 flex justify-center">
                   <div className="animate-pulse text-slate-400">Loading...</div>
                 </div>
