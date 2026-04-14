@@ -15,13 +15,15 @@ import { accountantService } from '../../services/accountantService';
 import { useNotification } from '../../context/NotificationContext';
 import { getLocalDateString } from '../../lib/utils';
 import PageHeader from '../../components/common/PageHeader';
+import { useAccountantById } from '../../hooks/queries';
 
 const EditAccountant: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
+
+  const { data: accountant, isLoading } = useAccountantById(Number(id));
 
   // Form State
   const [formData, setFormData] = useState({
@@ -34,29 +36,17 @@ const EditAccountant: React.FC = () => {
   });
 
   useEffect(() => {
-    const fetchAccountant = async () => {
-      if (!id) return;
-      try {
-        const accountant = await accountantService.getAccountantById(parseInt(id));
-        setFormData({
-          fullName: accountant.fullName,
-          phone: accountant.phone || '',
-          dateOfBirth: accountant.dateOfBirth ? getLocalDateString(new Date(accountant.dateOfBirth)) : '',
-          gender: accountant.gender || 'Male',
-          address: accountant.address || '',
-          isActive: accountant.isActive
-        });
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Failed to fetch accountant details.';
-        showNotification(message, 'error');
-        navigate('/admin/accountants');
-      } finally {
-        setFetching(false);
-      }
-    };
-
-    fetchAccountant();
-  }, [id, navigate, showNotification]);
+    if (accountant) {
+      setFormData({
+        fullName: accountant.fullName,
+        phone: accountant.phone || '',
+        dateOfBirth: accountant.dateOfBirth ? getLocalDateString(new Date(accountant.dateOfBirth)) : '',
+        gender: accountant.gender || 'Male',
+        address: accountant.address || '',
+        isActive: accountant.isActive
+      });
+    }
+  }, [accountant]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target as HTMLInputElement;
@@ -87,7 +77,7 @@ const EditAccountant: React.FC = () => {
     }
   };
 
-  if (fetching) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="size-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>

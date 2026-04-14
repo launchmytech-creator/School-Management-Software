@@ -1,31 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  announcementService,
-  type Announcement,
-} from "../../services/announcementService";
+import React, { useState } from "react";
 import { Megaphone, Search, Calendar, User } from "lucide-react";
 import { formatDate } from "../../lib/utils";
+import { useAnnouncements } from "../../hooks/queries";
 
 const ParentAnnouncements: React.FC = () => {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: announcements = [], isLoading } = useAnnouncements();
   const [searchTerm, setSearchTerm] = useState("");
-
-  const fetchAnnouncements = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await announcementService.getAnnouncements();
-      setAnnouncements(data);
-    } catch {
-      // silently fail
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAnnouncements();
-  }, [fetchAnnouncements]);
 
   const filteredAnnouncements = announcements.filter(
     (a) =>
@@ -103,7 +83,7 @@ const ParentAnnouncements: React.FC = () => {
       </div>
 
       {/* Announcements List */}
-      {loading ? (
+      {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div

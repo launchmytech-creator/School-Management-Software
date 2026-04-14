@@ -148,6 +148,44 @@ export const queryKeys = {
     all: (schoolId: number | null) => ['teacher-attendance', { schoolId }] as const,
     byFilters: (schoolId: number | null, filters: Filters) =>
       ['teacher-attendance', { schoolId, ...filters }] as const,
+    byDate: (schoolId: number | null, date: string) =>
+      ['teacher-attendance', 'date', { schoolId, date }] as const,
+  },
+
+  // ── Exam Results ──────────────────────────────────────────
+  examResults: {
+    all: (schoolId: number | null) => ['exam-results', { schoolId }] as const,
+    byStudent: (schoolId: number | null, studentId: number, filters?: Filters) =>
+      ['exam-results', 'student', { schoolId, studentId, ...filters }] as const,
+    classComparison: (schoolId: number | null, classIds: number[], yearId?: number) =>
+      ['exam-results', 'comparison', { schoolId, classIds, yearId }] as const,
+    classSubjectComparison: (schoolId: number | null, classIds: number[], yearId?: number) =>
+      ['exam-results', 'subject-comparison', { schoolId, classIds, yearId }] as const,
+    classesForComparison: (schoolId: number | null, className: string, yearId?: number) =>
+      ['exam-results', 'classes-for-comparison', { schoolId, className, yearId }] as const,
+  },
+
+  // ── Reports ───────────────────────────────────────────────
+  reports: {
+    summary: (schoolId: number | null, filters?: Filters) =>
+      ['reports', 'summary', { schoolId, ...filters }] as const,
+    attendance: (schoolId: number | null, filters?: Filters) =>
+      ['reports', 'attendance', { schoolId, ...filters }] as const,
+    fees: (schoolId: number | null, filters?: Filters) =>
+      ['reports', 'fees', { schoolId, ...filters }] as const,
+    results: (schoolId: number | null, filters?: Filters) =>
+      ['reports', 'results', { schoolId, ...filters }] as const,
+  },
+
+  // ── Subscription Plans ─────────────────────────────────────
+  subscriptionPlans: {
+    all: (schoolId: number | null) => ['subscription-plans', { schoolId }] as const,
+  },
+
+  // ── Student History ────────────────────────────────────────
+  studentHistory: {
+    byStudent: (schoolId: number | null, studentId: number) =>
+      ['student-history', { schoolId, studentId }] as const,
   },
 } as const;
 

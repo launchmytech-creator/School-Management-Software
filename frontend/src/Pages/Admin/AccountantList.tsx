@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { 
   Search, Eye, Edit2, Trash2, 
   UserPlus, Loader2
@@ -7,6 +8,8 @@ import {
 import AccountantDetailsModal from "../../components/accountant/AccountantDetailsModal";
 import { accountantService, type Accountant } from "../../services/accountantService";
 import { useNotification } from "../../context/NotificationContext";
+import { useAccountants } from "../../hooks/queries";
+import { queryKeys } from "../../lib/queryKeys";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import StatusBadge from "../../components/common/StatusBadge";
@@ -16,9 +19,9 @@ import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 const AccountantList: React.FC = () => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+  const queryClient = useQueryClient();
   
-  const [accountants, setAccountants] = useState<Accountant[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: accountants = [], isLoading } = useAccountants();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [startDate, setStartDate] = useState("");
@@ -26,23 +29,6 @@ const AccountantList: React.FC = () => {
   const [selectedAccountant, _setSelectedAccountant] = useState<Accountant | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, accountantId: null as number | null });
-
-  const fetchAccountants = React.useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await accountantService.getAccountants();
-      setAccountants(data);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to fetch accountants.";
-      showNotification(message, "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [showNotification]);
-
-  useEffect(() => {
-    fetchAccountants();
-  }, [fetchAccountants]);
 
   const handleDelete = (id: number) => {
     setDeleteDialog({ isOpen: true, accountantId: id });
@@ -53,10 +39,7 @@ const AccountantList: React.FC = () => {
     try {
       await accountantService.deleteAccountant(deleteDialog.accountantId);
       showNotification("Accountant deactivated successfully", "success");
-      setAccountants(prev => prev.map(acc => 
-        acc.id === deleteDialog.accountantId ? { ...acc, isActive: false } : acc
-      ));
-      fetchAccountants();
+      queryClient.invalidateQueries({ queryKey: queryKeys.accountant.all(null) });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to deactivate accountant.";
       showNotification(message, "error");
@@ -154,7 +137,7 @@ const AccountantList: React.FC = () => {
         </FilterBar>
 
         <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden min-h-[400px] relative">
-           {loading ? (
+           {isLoading ? (
              <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px] z-10">
                <Loader2 className="size-10 text-blue-500 animate-spin" />
              </div>

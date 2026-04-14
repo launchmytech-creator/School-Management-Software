@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
@@ -11,11 +12,13 @@ import { BaseModal } from '../../components/common/BaseModal';
 import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
 import { SkeletonTable } from '../../components/common/Skeleton';
+import { useAnnouncements } from '../../hooks/queries';
+import { queryKeys } from '../../lib/queryKeys';
 
 const Announcements: React.FC = () => {
   const { showNotification } = useNotification();
-  const [loading, setLoading] = useState(true);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const queryClient = useQueryClient();
+  const { data: announcements = [], isLoading } = useAnnouncements();
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
@@ -27,22 +30,6 @@ const Announcements: React.FC = () => {
     targetRole: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const fetchAnnouncements = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await announcementService.getAnnouncements();
-      setAnnouncements(data);
-    } catch {
-      showNotification('Failed to fetch announcements', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [showNotification]);
-
-  useEffect(() => {
-    fetchAnnouncements();
-  }, [fetchAnnouncements]);
 
   const filteredAnnouncements = announcements.filter(a =>
     a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -141,7 +128,7 @@ const Announcements: React.FC = () => {
         showNotification('Announcement created successfully', 'success');
       }
       setShowModal(false);
-      fetchAnnouncements();
+      queryClient.invalidateQueries({ queryKey: queryKeys.announcements.all(null) });
     } catch (error) {
       console.error('Error creating announcement:', error);
       const message = error instanceof Error ? error.message : 'Failed to save announcement';
@@ -158,7 +145,7 @@ const Announcements: React.FC = () => {
       setDeleting(id);
       await announcementService.deleteAnnouncement(id);
       showNotification('Announcement deleted successfully', 'success');
-      fetchAnnouncements();
+      queryClient.invalidateQueries({ queryKey: queryKeys.announcements.all(null) });
     } catch {
       showNotification('Failed to delete announcement', 'error');
     } finally {
@@ -205,7 +192,7 @@ const Announcements: React.FC = () => {
           searchPlaceholder="Search announcements..."
         />
 
-        {loading ? (
+        {isLoading ? (
           <SkeletonTable columns={4} rows={5} />
         ) : filteredAnnouncements.length > 0 ? (
           <div className="space-y-4">

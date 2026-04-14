@@ -1,21 +1,23 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { 
   User, Mail, Phone, Calendar, 
   ChevronLeft, Loader2, Clock,
   MapPin
 } from "lucide-react";
-import { accountantService, type Accountant } from "../../services/accountantService";
+import { accountantService } from "../../services/accountantService";
 import { useNotification } from "../../context/NotificationContext";
+import { useAccountantById } from "../../hooks/queries";
+import { queryKeys } from "../../lib/queryKeys";
 
 const AccountantProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+  const queryClient = useQueryClient();
   
-  // Data state
-  const [accountant, setAccountant] = useState<Accountant | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: accountant, isLoading } = useAccountantById(Number(id));
   const [toggling, setToggling] = useState(false);
 
   const handleToggleStatus = async () => {
@@ -25,7 +27,7 @@ const AccountantProfile: React.FC = () => {
       await accountantService.updateAccountant(parseInt(id), { 
         isActive: !accountant.isActive 
       });
-      setAccountant(prev => prev ? { ...prev, isActive: !prev.isActive } : null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.accountant.byId(null, Number(id)) });
       showNotification(
         accountant.isActive ? 'Accountant deactivated successfully!' : 'Accountant activated successfully!',
         'success'
@@ -37,25 +39,7 @@ const AccountantProfile: React.FC = () => {
     }
   };
 
-  const fetchAccountantData = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    try {
-      const data = await accountantService.getAccountantById(Number(id));
-      setAccountant(data);
-    } catch {
-      showNotification("Failed to fetch accountant profile", "error");
-      navigate("/admin/accountants");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, navigate, showNotification]);
-
-  useEffect(() => {
-    fetchAccountantData();
-  }, [fetchAccountantData]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="h-[60vh] flex flex-col items-center justify-center gap-4 text-slate-400">
         <Loader2 className="size-12 animate-spin text-blue-500 opacity-50" />
