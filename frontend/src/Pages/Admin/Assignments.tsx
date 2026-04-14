@@ -1,15 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
-import { assignmentService, type Assignment, type CreateAssignmentDto } from '../../services/assignmentService';
-import { classService } from '../../services/classService';
-import { academicYearService } from '../../services/academicYearService';
-import { subjectService } from '../../services/subjectService';
-import type { Class } from '../../types/class';
-import type { AcademicYear } from '../../types/academicYear';
-import type { Subject } from '../../services/subjectService';
+import { useAssignments, useCreateAssignment, useDeleteAssignment } from '../../hooks/queries';
+import { useClasses, useSubjects } from '../../hooks/queries';
+import { useAcademicYears } from '../../hooks/queries';
+import type { CreateAssignmentDto } from '../../services/assignmentService';
 import { FileText, Plus, Trash2, Clock, CheckCircle, Users } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
@@ -19,17 +16,10 @@ import { SkeletonTable } from '../../components/common/Skeleton';
 
 const Assignments: React.FC = () => {
   const { showNotification } = useNotification();
-  const [loading, setLoading] = useState(true);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState<number | null>(null);
   const [formData, setFormData] = useState<CreateAssignmentDto>({
     classId: 0,
     subjectId: 0,
@@ -41,43 +31,18 @@ const Assignments: React.FC = () => {
     assignmentType: 'homework',
   });
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const filters: { classId?: number; academicYearId?: number } = {};
-      if (selectedClass) filters.classId = parseInt(selectedClass);
-      if (selectedYear) filters.academicYearId = parseInt(selectedYear);
-      
-      const data = await assignmentService.getAssignments(filters);
-      setAssignments(data);
-    } catch {
-      showNotification('Failed to fetch assignments', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedClass, selectedYear, showNotification]);
+  const filters = {
+    classId: selectedClass ? parseInt(selectedClass) : undefined,
+    academicYearId: selectedYear ? parseInt(selectedYear) : undefined,
+  };
 
-  useEffect(() => {
-    const fetchDropdowns = async () => {
-      try {
-        const [cls, yrs, subs] = await Promise.all([
-          classService.getClasses(),
-          academicYearService.getAllYears(),
-          subjectService.getSubjects(),
-        ]);
-        setClasses(cls);
-        setAcademicYears(yrs);
-        setSubjects(subs);
-      } catch {
-        showNotification('Failed to fetch data', 'error');
-      }
-    };
-    fetchDropdowns();
-  }, []);
+  const { data: assignments = [], isLoading } = useAssignments(filters);
+  const { data: classes = [] } = useClasses();
+  const { data: subjects = [] } = useSubjects();
+  const { data: academicYears = [] } = useAcademicYears();
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const createAssignment = useCreateAssignment();
+  const deleteAssignment = useDeleteAssignment();
 
   const filteredAssignments = assignments.filter(a =>
     a.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -115,31 +80,27 @@ const Assignments: React.FC = () => {
   };
 
   const handleSave = async () => {
-    try {
-      setSaving(true);
-      await assignmentService.createAssignment(formData);
-      showNotification('Assignment created successfully', 'success');
-      setShowModal(false);
-      fetchData();
-    } catch {
-      showNotification('Failed to create assignment', 'error');
-    } finally {
-      setSaving(false);
-    }
+    createAssignment.mutate(formData, {
+      onSuccess: () => {
+        showNotification('Assignment created successfully', 'success');
+        setShowModal(false);
+      },
+      onError: () => {
+        showNotification('Failed to create assignment', 'error');
+      },
+    });
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     if (!confirm('Are you sure you want to delete this assignment?')) return;
-    try {
-      setDeleting(id);
-      await assignmentService.deleteAssignment(id);
-      showNotification('Assignment deleted successfully', 'success');
-      fetchData();
-    } catch {
-      showNotification('Failed to delete assignment', 'error');
-    } finally {
-      setDeleting(null);
-    }
+    deleteAssignment.mutate(id, {
+      onSuccess: () => {
+        showNotification('Assignment deleted successfully', 'success');
+      },
+      onError: () => {
+        showNotification('Failed to delete assignment', 'error');
+      },
+    });
   };
 
   return (
@@ -234,7 +195,7 @@ const Assignments: React.FC = () => {
           searchPlaceholder="Search assignments..."
         />
 
-        {loading ? (
+        {isLoading ? (
           <SkeletonTable columns={4} rows={5} />
         ) : filteredAssignments.length > 0 ? (
           <div className="space-y-4">
@@ -280,7 +241,7 @@ const Assignments: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleDelete(assignment.id)}
-                      disabled={deleting === assignment.id}
+                      disabled={deleteAssignment.isPending}
                       className="p-2 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                     >
                       <Trash2 className="w-4 h-4 text-red-500" />
@@ -382,7 +343,7 @@ const Assignments: React.FC = () => {
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button>
-              <Button onClick={handleSave} loading={saving} className="flex-1">Create</Button>
+              <Button onClick={handleSave} loading={createAssignment.isPending} className="flex-1">Create</Button>
             </div>
           </div>
         </BaseModal>

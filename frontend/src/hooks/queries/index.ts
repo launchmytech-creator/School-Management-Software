@@ -24,3 +24,9 @@ export { useTeacherAttendance, useTeacherAttendanceByDate, useTeacherAttendanceS
 export { useStudentResults, useClassComparison, useClassSubjectComparison, useClassesForComparison } from './useExamResults';
 export { useAvailablePlans } from './useSubscriptionPlans';
 export { useStudentHistory } from './useStudentHistory';
+
+// Additional migration hooks
+export { useExams, useExamById, useCreateExam, useUpdateExam, useDeleteExam, useAddExamSubject } from './useExams';
+export { useTeacherAllocationsForSyllabus, useTeacherSubjectProgress, useSubjectChaptersDirect, useUpdateChapterStatus } from './useTeacherSyllabus';
+export { useStudentClass, useParentSubjects, useParentSubjectProgress } from './useParentSyllabus';
+export { useParentAttendance, useParentHolidays, useSchoolOpenDays } from './useParentAttendance';
