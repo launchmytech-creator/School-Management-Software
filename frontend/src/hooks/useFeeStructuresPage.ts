@@ -85,7 +85,7 @@ export interface UseFeeStructuresPageReturn {
   saving: boolean;
   handleOpenCreate: () => void;
   handleOpenEdit: (group: FeeStructureGroup, componentId: number) => void;
-  handleSave: () => Promise<void>;
+  handleSave: (data: { feeType: string; amount: number; classId?: number; academicYearId?: number; feeTerms?: number }) => Promise<void>;
   
   // Delete dialogs
   deleteComponentDialog: DeleteDialogState;
@@ -243,35 +243,27 @@ export const useFeeStructuresPage = (): UseFeeStructuresPageReturn => {
     setShowCreateModal(true);
   }, []);
 
-  const handleSave = useCallback(async () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.classId) newErrors.classId = "Class is required";
-    if (!formData.academicYearId)
-      newErrors.academicYearId = "Academic year is required";
-    if (!formData.feeType.trim()) newErrors.feeType = "Fee type is required";
-    if (!formData.amount || formData.amount <= 0)
-      newErrors.amount = "Amount must be greater than 0";
-    if (!formData.feeTerms) newErrors.feeTerms = "Fee terms is required";
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
+  const handleSave = useCallback(async (data: { feeType: string; amount: number; classId?: number; academicYearId?: number; feeTerms?: number }) => {
     try {
       setSaving(true);
       if (editingStructure) {
         await feeStructureService.updateFeeStructure(
           editingStructure.componentId,
           {
-            feeType: formData.feeType,
-            amount: formData.amount,
+            feeType: data.feeType,
+            amount: data.amount,
           },
         );
         showNotification("Fee component updated successfully", "success");
       } else {
-        await feeStructureService.createFeeStructure(formData);
-        showNotification(`${formData.feeType} fee added successfully`, "success");
+        await feeStructureService.createFeeStructure({
+          classId: data.classId!,
+          academicYearId: data.academicYearId!,
+          feeType: data.feeType,
+          amount: data.amount,
+          feeTerms: data.feeTerms!,
+        });
+        showNotification(`${data.feeType} fee added successfully`, "success");
       }
       setShowCreateModal(false);
       fetchFeeStructuresGrouped();

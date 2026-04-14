@@ -15,6 +15,9 @@ import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 interface SubjectFormItem {
   subjectId: number;
@@ -43,30 +46,49 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
   
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    classId: '',
-    examType: '',
-    startDate: '',
-    endDate: '',
-    weightage: '',
-  });
   const [classSubjects, setClassSubjects] = useState<ClassSubject[]>([]);
   const [selectedSubjects, setSelectedSubjects] = useState<SubjectFormItem[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, examId: null as number | null });
   
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState({
-    name: '',
-    examType: '',
-    startDate: '',
-    endDate: '',
-    weightage: '',
-  });
   const [editHasResults, setEditHasResults] = useState(false);
   const [checkingResults, setCheckingResults] = useState(false);
+
+  const createExamSchema = z.object({
+    name: z.string().min(1, 'Exam name is required'),
+    classId: z.string().min(1, 'Class is required'),
+    startDate: z.string().min(1, 'Start date is required'),
+    endDate: z.string().min(1, 'End date is required'),
+    examType: z.string().optional(),
+    weightage: z.string().optional(),
+  });
+
+  const editExamSchema = z.object({
+    name: z.string().min(1, 'Exam name is required'),
+    startDate: z.string().min(1, 'Start date is required'),
+    endDate: z.string().min(1, 'End date is required'),
+    examType: z.string().optional(),
+    weightage: z.string().optional(),
+  });
+
+  const {
+    register: registerCreate,
+    handleSubmit: handleCreateSubmit,
+    reset: resetCreate,
+    formState: { errors: createErrors },
+  } = useForm<z.infer<typeof createExamSchema>>({
+    resolver: zodResolver(createExamSchema),
+  });
+
+  const {
+    register: registerEdit,
+    handleSubmit: handleEditSubmit,
+    reset: resetEdit,
+    formState: { errors: editErrors },
+  } = useForm<z.infer<typeof editExamSchema>>({
+    resolver: zodResolver(editExamSchema),
+  });
 
   const { data: exams = [], isLoading } = useExams({ classId: selectedClass ? parseInt(selectedClass) : undefined });
   const { data: classes = [] } = useClasses(selectedYear?.id);
@@ -76,7 +98,6 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
   const deleteExam = useDeleteExam();
 
   const handleClassChange = async (classId: string) => {
-    setFormData({ ...formData, classId });
     setSelectedSubjects([]);
     if (classId) {
       try {
@@ -105,7 +126,7 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
         subjectId,
         subjectName: subject.subjectName,
         maxMarks: '100',
-        examDate: formData.startDate || '',
+        examDate: '',
       },
     ]);
   };
@@ -122,60 +143,31 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
     );
   };
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.name.trim()) newErrors.name = 'Exam name is required';
-    if (!formData.classId) newErrors.classId = 'Class is required';
-    if (!formData.startDate) newErrors.startDate = 'Start date is required';
-    if (!formData.endDate) newErrors.endDate = 'End date is required';
-    if (selectedSubjects.length === 0) newErrors.subjects = 'Add at least one subject';
-    if (!selectedYear?.id) newErrors.academicYear = 'Academic year is required';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const resetForm = () => {
+    resetCreate();
+    setSelectedSubjects([]);
+    setClassSubjects([]);
   };
 
-  const handleFieldChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
-  };
-
-  const handleCreateExam = async () => {
-    if (!validate()) {
-      return;
-    }
-
+  const onCreateExam = (data: z.infer<typeof createExamSchema>) => {
     if (!selectedYear?.id) {
       showNotification('Please select an academic year first', 'error');
       return;
     }
 
-    const classIdNum = parseInt(formData.classId);
-    const academicYearIdNum = parseInt(selectedYear.id);
-
-    if (isNaN(classIdNum)) {
-      showNotification('Invalid class selection', 'error');
-      return;
-    }
-
-    if (isNaN(academicYearIdNum)) {
-      showNotification('Invalid academic year selection', 'error');
+    if (selectedSubjects.length === 0) {
+      showNotification('Add at least one subject', 'error');
       return;
     }
 
     const examData = {
-      name: formData.name,
-      classId: classIdNum,
-      academicYearId: academicYearIdNum,
-      examType: formData.examType || undefined,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      weightage: formData.weightage ? parseInt(formData.weightage) : undefined,
+      name: data.name,
+      classId: parseInt(data.classId),
+      academicYearId: parseInt(selectedYear.id),
+      examType: data.examType || undefined,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      weightage: data.weightage ? parseInt(data.weightage) : undefined,
       subjects: selectedSubjects.map(s => ({
         subjectId: s.subjectId,
         maxMarks: parseFloat(s.maxMarks) || 100,
@@ -193,20 +185,6 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
         showNotification(error.message || 'Failed to create exam', 'error');
       },
     });
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      classId: '',
-      examType: '',
-      startDate: '',
-      endDate: '',
-      weightage: '',
-    });
-    setSelectedSubjects([]);
-    setClassSubjects([]);
-    setErrors({});
   };
 
   const handleDeleteExam = async () => {
@@ -233,7 +211,7 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
       setEditHasResults(hasResults);
       
       setEditingExam(exam);
-      setEditForm({
+      resetEdit({
         name: exam.name,
         examType: exam.examType || '',
         startDate: exam.startDate,
@@ -248,28 +226,18 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
     }
   };
 
-  const handleUpdateExam = async () => {
+  const onUpdateExam = (data: z.infer<typeof editExamSchema>) => {
     if (!editingExam) return;
-
-    const newErrors: Record<string, string> = {};
-    if (!editForm.name.trim()) newErrors.name = 'Exam name is required';
-    if (!editForm.startDate) newErrors.startDate = 'Start date is required';
-    if (!editForm.endDate) newErrors.endDate = 'End date is required';
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
 
     updateExam.mutate(
       {
         id: editingExam.id,
         data: {
-          name: editForm.name,
-          examType: editForm.examType || undefined,
-          startDate: editForm.startDate,
-          endDate: editForm.endDate,
-          weightage: editForm.weightage ? parseInt(editForm.weightage) : undefined,
+          name: data.name,
+          examType: data.examType || undefined,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          weightage: data.weightage ? parseInt(data.weightage) : undefined,
         },
       },
       {
@@ -277,24 +245,12 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
           showNotification('Exam updated successfully', 'success');
           setShowEditModal(false);
           setEditingExam(null);
-          setErrors({});
         },
         onError: (error: Error) => {
           showNotification(error.message || 'Failed to update exam', 'error');
         },
       }
     );
-  };
-
-  const handleEditFieldChange = (field: string, value: string) => {
-    setEditForm(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
   };
 
   const availableSubjects = classSubjects.filter(
@@ -440,28 +396,29 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
         title="Create New Exam"
         size="lg"
       >
-        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleCreateSubmit(onCreateExam)} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <InputField
                 label="Exam Name"
                 placeholder="e.g., Half Yearly Examination"
-                value={formData.name}
-                onChange={(e) => handleFieldChange('name', e.target.value)}
-                error={errors.name}
-                required
+                error={createErrors.name?.message}
+                {...registerCreate('name')}
               />
             </div>
 
             <div className="col-span-2">
               <div className="flex justify-between items-center px-1">
-                <label className={`block text-xs font-semibold ${errors.classId ? 'text-red-500' : 'text-slate-700'}`}>Class</label>
-                {errors.classId && <span className="text-[10px] font-bold text-red-500">{errors.classId}</span>}
+                <label className={`block text-xs font-semibold ${createErrors.classId ? 'text-red-500' : 'text-slate-700'}`}>Class</label>
+                {createErrors.classId && <span className="text-[10px] font-bold text-red-500">{createErrors.classId.message}</span>}
               </div>
               <select
-                value={formData.classId}
-                onChange={(e) => handleClassChange(e.target.value)}
-                className={`w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 ${errors.classId ? 'border-red-500 bg-red-50/30 focus:ring-red-500/10' : 'border-slate-200 focus:ring-blue-500'}`}
+                className={`w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 ${createErrors.classId ? 'border-red-500 bg-red-50/30 focus:ring-red-500/10' : 'border-slate-200 focus:ring-blue-500'}`}
+                {...registerCreate('classId')}
+                onChange={(e) => {
+                  registerCreate('classId').onChange(e);
+                  handleClassChange(e.target.value);
+                }}
               >
                 <option value="">Select Class</option>
                 {classes.map(cls => (
@@ -473,9 +430,8 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Exam Type</label>
               <select
-                value={formData.examType}
-                onChange={(e) => setFormData({ ...formData, examType: e.target.value })}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                {...registerCreate('examType')}
               >
                 <option value="">Select Type (Optional)</option>
                 {EXAM_TYPES.map(type => (
@@ -489,8 +445,7 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
                 label="Weightage (%)"
                 type="number"
                 placeholder="e.g., 50"
-                value={formData.weightage}
-                onChange={(e) => setFormData({ ...formData, weightage: e.target.value })}
+                {...registerCreate('weightage')}
               />
             </div>
 
@@ -498,10 +453,8 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
               <InputField
                 label="Start Date"
                 type="date"
-                value={formData.startDate}
-                onChange={(e) => handleFieldChange('startDate', e.target.value)}
-                error={errors.startDate}
-                required
+                error={createErrors.startDate?.message}
+                {...registerCreate('startDate')}
               />
             </div>
 
@@ -509,10 +462,8 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
               <InputField
                 label="End Date"
                 type="date"
-                value={formData.endDate}
-                onChange={(e) => handleFieldChange('endDate', e.target.value)}
-                error={errors.endDate}
-                required
+                error={createErrors.endDate?.message}
+                {...registerCreate('endDate')}
               />
             </div>
           </div>
@@ -523,41 +474,38 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
                 <label className="block text-sm font-bold text-slate-700">
                   Subjects <span className="text-red-500">*</span>
                 </label>
-                {errors.subjects && <span className="text-[10px] font-bold text-red-500">{errors.subjects}</span>}
               </div>
               <span className="text-xs text-slate-500">
                 {selectedSubjects.length} subject(s) added
               </span>
             </div>
 
-            {formData.classId && availableSubjects.length > 0 && (
-              <div className="flex gap-2 mb-4">
-                <select
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) handleAddSubject(parseInt(e.target.value));
-                  }}
-                  className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                >
-                  <option value="">Add a subject...</option>
-                  {availableSubjects.map(cs => (
-                    <option key={cs.subjectId} value={cs.subjectId}>
-                      {cs.subjectName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className="col-span-2">
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) handleAddSubject(parseInt(e.target.value));
+                }}
+                className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">Add a subject...</option>
+                {availableSubjects.map(cs => (
+                  <option key={cs.subjectId} value={cs.subjectId}>
+                    {cs.subjectName}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            {formData.classId && availableSubjects.length === 0 && selectedSubjects.length === 0 && (
-              <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 mb-4">
+            {availableSubjects.length === 0 && selectedSubjects.length === 0 && (
+              <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 mt-4">
                 <AlertCircle className="w-4 h-4" />
                 No subjects assigned to this class. Please assign subjects first.
               </div>
             )}
 
             {selectedSubjects.length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-3 mt-4">
                 <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                   Selected Subjects
                 </div>
@@ -607,30 +555,31 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
           <div className="flex gap-3 pt-4 border-t border-slate-200">
             <Button
               variant="outline"
+              type="button"
               onClick={() => { setShowCreateModal(false); resetForm(); }}
               className="flex-1"
             >
               Cancel
             </Button>
             <Button
-              onClick={handleCreateExam}
+              type="submit"
               loading={createExam.isPending}
               className="flex-1"
             >
               Create Exam
             </Button>
           </div>
-        </div>
+        </form>
       </BaseModal>
 
       {/* Edit Exam Modal */}
       <BaseModal
         isOpen={showEditModal}
-        onClose={() => { setShowEditModal(false); setEditingExam(null); setErrors({}); }}
+        onClose={() => { setShowEditModal(false); setEditingExam(null); }}
         title="Edit Exam"
         size="lg"
       >
-        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleEditSubmit(onUpdateExam)} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           {editHasResults && (
             <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 mb-4">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -643,19 +592,16 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
               <InputField
                 label="Exam Name"
                 placeholder="e.g., Half Yearly Examination"
-                value={editForm.name}
-                onChange={(e) => handleEditFieldChange('name', e.target.value)}
-                error={errors.name}
-                required
+                error={editErrors.name?.message}
+                {...registerEdit('name')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Exam Type</label>
               <select
-                value={editForm.examType}
-                onChange={(e) => setEditForm({ ...editForm, examType: e.target.value })}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                {...registerEdit('examType')}
               >
                 <option value="">Select Type (Optional)</option>
                 {EXAM_TYPES.map(type => (
@@ -669,8 +615,7 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
                 label="Weightage (%)"
                 type="number"
                 placeholder="e.g., 50"
-                value={editForm.weightage}
-                onChange={(e) => handleEditFieldChange('weightage', e.target.value)}
+                {...registerEdit('weightage')}
               />
             </div>
 
@@ -678,10 +623,8 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
               <InputField
                 label="Start Date"
                 type="date"
-                value={editForm.startDate}
-                onChange={(e) => handleEditFieldChange('startDate', e.target.value)}
-                error={errors.startDate}
-                required
+                error={editErrors.startDate?.message}
+                {...registerEdit('startDate')}
               />
             </div>
 
@@ -689,10 +632,8 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
               <InputField
                 label="End Date"
                 type="date"
-                value={editForm.endDate}
-                onChange={(e) => handleEditFieldChange('endDate', e.target.value)}
-                error={errors.endDate}
-                required
+                error={editErrors.endDate?.message}
+                {...registerEdit('endDate')}
               />
             </div>
 
@@ -707,20 +648,21 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
           <div className="flex gap-3 pt-4 border-t border-slate-200">
             <Button
               variant="outline"
-              onClick={() => { setShowEditModal(false); setEditingExam(null); setErrors({}); }}
+              type="button"
+              onClick={() => { setShowEditModal(false); setEditingExam(null); }}
               className="flex-1"
             >
               Cancel
             </Button>
             <Button
-              onClick={handleUpdateExam}
+              type="submit"
               loading={updateExam.isPending}
               className="flex-1"
             >
               Update Exam
             </Button>
           </div>
-        </div>
+        </form>
       </BaseModal>
 
       <ConfirmDialog

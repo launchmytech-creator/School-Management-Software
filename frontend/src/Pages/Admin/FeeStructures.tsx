@@ -29,10 +29,6 @@ const FeeStructures: React.FC = () => {
     showCreateModal,
     setShowCreateModal,
     editingStructure,
-    formData,
-    setFormData,
-    errors,
-    setErrors,
     saving,
     handleOpenCreate,
     handleOpenEdit,
@@ -152,10 +148,6 @@ const FeeStructures: React.FC = () => {
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           editingStructure={editingStructure}
-          formData={formData}
-          onFormDataChange={setFormData}
-          errors={errors}
-          onErrorsChange={setErrors}
           onSave={handleSave}
           saving={saving}
           classes={classes}

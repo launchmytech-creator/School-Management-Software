@@ -26,11 +26,27 @@ import { useAcademicYear } from '../../context/AcademicYearContext';
 import { getLocalDateString } from '../../lib/utils';
 import type { Class } from '../../types/class';
 import type { Parent } from '../../types/parent';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 interface StudentFormProps {
   layout: 'admin' | 'accountant';
   mode: 'create' | 'edit';
 }
+
+const studentFormSchema = z.object({
+  admissionNumber: z.string(),
+  fullName: z.string().min(1, 'Full name is required'),
+  dateOfBirth: z.string().min(1, 'Date of birth is required'),
+  gender: z.enum(['male', 'female', 'other']),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  admissionDate: z.string().min(1, 'Admission date is required'),
+  currentClassId: z.string(),
+  parentId: z.string(),
+  rollNumber: z.string().optional(),
+});
 
 const generateAdmissionNumber = () => {
   const year = new Date().getFullYear();
@@ -51,7 +67,6 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
   const [classes, setClasses] = useState<Class[]>([]);
   const [parents, setParents] = useState<Parent[]>([]);
 
-  // Parent mode state
   const [showNewParentForm, setShowNewParentForm] = useState(false);
   const [parentSearch, setParentSearch] = useState('');
   const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
@@ -66,17 +81,26 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
     address: ''
   });
 
-  const [formData, setFormData] = useState({
-    admissionNumber: '',
-    fullName: '',
-    dateOfBirth: '',
-    gender: 'male',
-    address: '',
-    phone: '',
-    admissionDate: getLocalDateString(),
-    currentClassId: '',
-    parentId: '',
-    rollNumber: ''
+  const {
+    register: registerStudent,
+    handleSubmit: handleStudentSubmit,
+    reset: resetStudent,
+    setValue: setStudentValue,
+    watch: watchStudent,
+  } = useForm<z.infer<typeof studentFormSchema>>({
+    resolver: zodResolver(studentFormSchema),
+    defaultValues: {
+      admissionNumber: '',
+      fullName: '',
+      dateOfBirth: '',
+      gender: 'male',
+      address: '',
+      phone: '',
+      admissionDate: getLocalDateString(),
+      currentClassId: '',
+      parentId: '',
+      rollNumber: '',
+    },
   });
 
   const isAdmin = layout === 'admin';
@@ -112,11 +136,8 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
   }, [selectedYear, showNotification]);
 
   useEffect(() => {
-    if (mode === 'create' && !formData.admissionNumber) {
-      setFormData(prev => ({
-        ...prev,
-        admissionNumber: generateAdmissionNumber()
-      }));
+    if (mode === 'create') {
+      resetStudent({ admissionNumber: generateAdmissionNumber(), fullName: '', dateOfBirth: '', gender: 'male', address: '', phone: '', admissionDate: getLocalDateString(), currentClassId: '', parentId: '', rollNumber: '' });
     }
   }, [mode]);
 
@@ -125,11 +146,11 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
       const fetchStudent = async () => {
         try {
           const data = await studentService.getStudentById(parseInt(id));
-          setFormData({
+          resetStudent({
             admissionNumber: data.admissionNumber || '',
             fullName: data.fullName || '',
             dateOfBirth: data.dateOfBirth || '',
-            gender: data.gender?.toLowerCase() || 'male',
+            gender: (data.gender?.toLowerCase() || 'male') as 'male' | 'female' | 'other',
             address: data.address || '',
             phone: data.phone || '',
             admissionDate: data.admissionDate || getLocalDateString(),
@@ -148,27 +169,22 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
     }
   }, [mode, id, basePath, navigate]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
   const handleParentSelect = (parentId: string) => {
     if (!parentId) {
       setSelectedParent(null);
-      setFormData(prev => ({ ...prev, parentId: '' }));
+      setStudentValue('parentId', '');
       return;
     }
     const parent = parents.find(p => p.id === parseInt(parentId));
     setSelectedParent(parent || null);
-    setFormData(prev => ({ ...prev, parentId }));
+    setStudentValue('parentId', parentId);
     setShowNewParentForm(false);
   };
 
   const handleAddNewParent = () => {
     setShowNewParentForm(true);
     setSelectedParent(null);
-    setFormData(prev => ({ ...prev, parentId: '' }));
+    setStudentValue('parentId', '');
   };
 
   const handleCancelNewParent = () => {
@@ -191,22 +207,15 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
 
   const handleClearSelectedParent = () => {
     setSelectedParent(null);
-    setFormData(prev => ({ ...prev, parentId: '' }));
+    setStudentValue('parentId', '');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmitStudent = async (data: z.infer<typeof studentFormSchema>) => {
     setLoading(true);
     try {
       let finalParentId: number | undefined;
 
       if (showNewParentForm) {
-        if (!newParentData.fullName || !newParentData.email || !newParentData.password) {
-          showNotification('Please fill all required fields for new parent (Full Name, Email, Password).', 'error');
-          setLoading(false);
-          return;
-        }
-        
         try {
           const newParent = await parentService.createParent({
             fullName: newParentData.fullName,
@@ -214,9 +223,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
             password: newParentData.password,
             phone: newParentData.phone || undefined,
             dateOfBirth: newParentData.dateOfBirth || undefined,
-            gender: newParentData.gender || undefined,
+            gender: newParentData.gender as any || undefined,
             address: newParentData.address || undefined,
-          });
+          } as any);
           
           finalParentId = newParent.id;
           showNotification('New parent created successfully!', 'success');
@@ -226,28 +235,28 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
           return;
         }
       } else {
-        finalParentId = formData.parentId ? parseInt(formData.parentId) : undefined;
+        finalParentId = data.parentId ? parseInt(data.parentId) : undefined;
       }
 
       const studentPayload: CreateStudentDto = {
-        admissionNumber: formData.admissionNumber,
-        fullName: formData.fullName,
-        dateOfBirth: formData.dateOfBirth || undefined,
-        gender: formData.gender.toLowerCase(),
-        address: formData.address || undefined,
-        phone: formData.phone || undefined,
-        admissionDate: formData.admissionDate,
-        currentClassId: formData.currentClassId ? parseInt(formData.currentClassId) : undefined,
+        admissionNumber: data.admissionNumber,
+        fullName: data.fullName,
+        dateOfBirth: data.dateOfBirth || undefined,
+        gender: data.gender,
+        address: data.address || undefined,
+        phone: data.phone || undefined,
+        admissionDate: data.admissionDate,
+        currentClassId: data.currentClassId ? parseInt(data.currentClassId) : undefined,
         parentId: finalParentId,
-        rollNumber: formData.rollNumber || undefined,
+        rollNumber: data.rollNumber || undefined,
       };
       
       await studentService.createStudent(studentPayload);
 
-      if (formData.currentClassId && selectedYear?.id) {
+      if (data.currentClassId && selectedYear?.id) {
         try {
           const result = await feeService.generateFeeTransactions({
-            classId: parseInt(formData.currentClassId),
+            classId: parseInt(data.currentClassId),
             academicYearId: Number(selectedYear.id),
           });
           
@@ -302,7 +311,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleStudentSubmit(onSubmitStudent)} className="space-y-8">
         <div className="bg-white rounded-3xl p-10 shadow-sm border border-slate-100">
           <div className="flex items-center gap-3 mb-10 pb-6 border-b border-slate-50">
             <div className="bg-blue-50 p-2 rounded-xl">
@@ -321,13 +330,11 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Admission Number</label>
                 <input 
                   type="text" 
-                  name="admissionNumber" 
-                  required 
-                  value={formData.admissionNumber} 
                   readOnly
                   disabled={mode === 'edit'}
                   placeholder="Auto-generated on load"
                   className="w-full bg-slate-50/50 border border-slate-100 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 outline-none transition-all placeholder:text-slate-300 disabled:opacity-50" 
+                  {...registerStudent('admissionNumber')}
                 />
                 {mode === 'create' && (
                   <p className="text-[10px] text-slate-400">
@@ -339,12 +346,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Full Name</label>
                 <input 
                   type="text" 
-                  name="fullName" 
-                  required 
-                  value={formData.fullName} 
-                  onChange={handleChange}
                   placeholder="e.g. John Doe"
                   className="w-full bg-slate-50/50 border border-slate-100 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-300" 
+                  {...registerStudent('fullName')}
                 />
               </div>
             </div>
@@ -354,25 +358,20 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Date of Birth</label>
                 <input 
                   type="date" 
-                  name="dateOfBirth" 
-                  required 
-                  value={formData.dateOfBirth} 
-                  onChange={handleChange}
                   className="w-full bg-slate-50/50 border border-slate-100 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all" 
+                  {...registerStudent('dateOfBirth')}
                 />
               </div>
               <div className="space-y-4 pt-2">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Gender</label>
                 <div className="flex gap-8">
-                  {['Male', 'Female', 'Other'].map((g) => (
+                  {(['male', 'female', 'other'] as const).map((g) => (
                     <label key={g} className="flex items-center gap-3 cursor-pointer group">
                       <input 
                         type="radio" 
-                        name="gender" 
-                        value={g.toLowerCase()} 
-                        checked={formData.gender === g.toLowerCase()} 
-                        onChange={handleChange}
+                        value={g}
                         className="size-5 border-2 border-slate-200 text-blue-500 focus:ring-blue-500/20 transition-all cursor-pointer" 
+                        {...registerStudent('gender')}
                       />
                       <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900 transition-colors uppercase tracking-tight">{g}</span>
                     </label>
@@ -395,12 +394,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
             <div className="space-y-2">
               <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Current Class</label>
               <select 
-                name="currentClassId" 
-                required 
-                value={formData.currentClassId} 
-                onChange={handleChange}
                 className="w-full bg-slate-50/50 border border-slate-100 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all appearance-none cursor-pointer disabled:opacity-50"
                 disabled={fetchingData || fetchingStudent}
+                {...registerStudent('currentClassId')}
               >
                 <option value="">Select a Class</option>
                 {classes.map(c => (
@@ -415,22 +411,17 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
               <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Admission Date</label>
               <input 
                 type="date" 
-                name="admissionDate" 
-                required 
-                value={formData.admissionDate} 
-                onChange={handleChange}
                 className="w-full bg-slate-50/50 border border-slate-100 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all"
+                {...registerStudent('admissionDate')}
               />
             </div>
             <div className="space-y-2">
               <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Roll Number</label>
               <input 
                 type="text" 
-                name="rollNumber" 
                 placeholder="e.g. 25" 
-                value={formData.rollNumber} 
-                onChange={handleChange}
                 className="w-full bg-slate-50/50 border border-slate-100 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all placeholder:text-slate-300"
+                {...registerStudent('rollNumber')}
               />
             </div>
           </div>
@@ -602,7 +593,6 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
                     <input
                       type="text"
                       name="fullName"
-                      required
                       value={newParentData.fullName}
                       onChange={handleNewParentChange}
                       placeholder="e.g. John Parent"
@@ -616,7 +606,6 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
                     <input
                       type="email"
                       name="email"
-                      required
                       value={newParentData.email}
                       onChange={handleNewParentChange}
                       placeholder="parent@example.com"
@@ -635,7 +624,6 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
                       <input
                         type="text"
                         name="password"
-                        required
                         value={newParentData.password}
                         onChange={handleNewParentChange}
                         placeholder="Enter password for parent login"
@@ -707,7 +695,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
           )}
 
           {/* Info message when nothing selected */}
-          {!showNewParentForm && !selectedParent && !formData.parentId && (
+          {!showNewParentForm && !selectedParent && !watchStudent('parentId') && (
             <div className="text-center py-4">
               <p className="text-sm text-slate-500">
                 Search for an existing parent or add a new parent
