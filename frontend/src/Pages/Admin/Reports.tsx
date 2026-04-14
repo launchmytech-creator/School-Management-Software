@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 
 import PageHeader from '../../components/common/PageHeader';
 import { useNotification } from '../../context/NotificationContext';
-import { reportService, type AttendanceReport, type FeesReport, type SummaryReport } from '../../services/reportService';
-import { useClasses } from '../../hooks/queries';
+import { useClasses, useSummaryReport, useAttendanceReport, useFeesReport } from '../../hooks/queries';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { BarChart3, Users, DollarSign, GraduationCap, Clock, Download } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
@@ -12,54 +11,19 @@ type ReportType = 'summary' | 'attendance' | 'fees';
 
 const Reports: React.FC = () => {
   const { showNotification } = useNotification();
-  const [_loading, setLoading] = useState(true);
   const [reportType, setReportType] = useState<ReportType>('summary');
   const { data: classes = [] } = useClasses();
   const { selectedYear } = useAcademicYear();
   const [selectedClass, setSelectedClass] = useState<string>('');
-  const [summary, setSummary] = useState<SummaryReport | null>(null);
-  const [attendanceData, setAttendanceData] = useState<AttendanceReport[]>([]);
-  const [feesData, setFeesData] = useState<FeesReport[]>([]);
 
+  const filters = {
+    classId: selectedClass ? parseInt(selectedClass) : undefined,
+    academicYearId: selectedYear?.id ? Number(selectedYear.id) : undefined,
+  };
 
-
-  const fetchReports = useCallback(async () => {
-    try {
-      setLoading(true);
-      const filters = {
-        classId: selectedClass ? parseInt(selectedClass) : undefined,
-        academicYearId: selectedYear?.id ? Number(selectedYear.id) : undefined,
-      };
-
-      switch (reportType) {
-        case 'summary': {
-          const summaryData = await reportService.getSummaryReport(filters);
-          setSummary(summaryData);
-          break;
-        }
-        case 'attendance': {
-          const attendanceReport = await reportService.getAttendanceReport(filters);
-          setAttendanceData(attendanceReport);
-          break;
-        }
-        case 'fees': {
-          const feesReport = await reportService.getFeesReport(filters);
-          setFeesData(feesReport);
-          break;
-        }
-      }
-    } catch {
-      showNotification('Failed to fetch report', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [reportType, selectedClass, selectedYear?.id, showNotification]);
-
-
-
-  useEffect(() => {
-    fetchReports();
-  }, [fetchReports]);
+  const { data: summary } = useSummaryReport(filters);
+  const { data: attendanceData = [] } = useAttendanceReport(filters);
+  const { data: feesData = [] } = useFeesReport(filters);
 
   return (
     <div className="space-y-6 pb-12">
