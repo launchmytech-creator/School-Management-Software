@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Loader2,
   ChevronDown,
   Filter,
 } from "lucide-react";
-import { teacherService } from "../../services/teacherService";
-import { classService } from "../../services/classService";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
-import type { TeacherAllocation as TeacherAllocationType, Teacher } from "../../types/teacher";
-import type { Class } from "../../types/class";
+import { useClasses, useTeachers, useAllAllocations } from "../../hooks/queries";
+import { classService } from "../../services/classService";
+import { teacherService } from "../../services/teacherService";
 import { Button } from "../../components/ui/button";
 import AllocateTeacherModal from "../../components/teacher/AllocateTeacherModal";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
@@ -31,21 +31,19 @@ type TabValue = "incharge" | "allocations";
 const TeacherAllocation: React.FC = () => {
   const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
+  const queryClient = useQueryClient();
 
-  // State
+  const { data: allocations = [], isLoading } = useAllAllocations();
+  const { data: classes = [] } = useClasses(selectedYear?.id);
+  const { data: teachers = [] } = useTeachers();
+
   const [activeTab, setActiveTab] = useState<TabValue>("incharge");
-  const [allocations, setAllocations] = useState<TeacherAllocationType[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [loading, setLoading] = useState(true);
   const [updatingIncharge, setUpdatingIncharge] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Filter State
   const [filterOption, setFilterOption] = useState<FilterOption>("all");
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
-  // Confirmation Dialog State
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     classId: string | null;
@@ -62,52 +60,13 @@ const TeacherAllocation: React.FC = () => {
     action: null,
   });
 
-  // Delete Dialog State
   const [deleteDialog, setDeleteDialog] = useState({
     isOpen: false,
     allocationId: null as number | null,
   });
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-
-  // Fetch Data
-  const fetchAllocations = useCallback(async () => {
-    try {
-      const aData = await teacherService.getAllocations();
-      setAllocations(aData);
-    } catch {
-      showNotification("Failed to fetch allocations", "error");
-    }
-  }, [showNotification]);
-
-  const fetchClasses = useCallback(async () => {
-    try {
-      const classData = await classService.getClasses(selectedYear?.id);
-      setClasses(classData);
-    } catch {
-      showNotification("Failed to fetch classes", "error");
-    }
-  }, [selectedYear, showNotification]);
-
-  const fetchTeachers = useCallback(async () => {
-    try {
-      const teacherData = await teacherService.getTeachers();
-      setTeachers(teacherData);
-    } catch {
-      showNotification("Failed to fetch teachers", "error");
-    }
-  }, [showNotification]);
-
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await Promise.all([fetchAllocations(), fetchClasses(), fetchTeachers()]);
-      setLoading(false);
-    };
-    loadData();
-  }, [fetchAllocations, fetchClasses, fetchTeachers]);
 
   // Filtering
   const filteredClasses = useMemo(() => {
@@ -141,7 +100,7 @@ const TeacherAllocation: React.FC = () => {
           : "Class incharge assigned successfully",
         "success"
       );
-      fetchClasses();
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
     } catch {
       showNotification("Failed to update class incharge", "error");
     } finally {
@@ -195,7 +154,7 @@ const TeacherAllocation: React.FC = () => {
     try {
       await teacherService.deleteAllocation(deleteDialog.allocationId);
       showNotification("Allocation removed", "success");
-      fetchAllocations();
+      queryClient.invalidateQueries({ queryKey: ['teacher-allocations'] });
     } catch {
       showNotification("Failed to delete allocation", "error");
     } finally {
@@ -341,7 +300,7 @@ const TeacherAllocation: React.FC = () => {
                 </div>
 
                 {/* Cards Grid */}
-                {loading ? (
+                {isLoading ? (
                   <div className="flex items-center justify-center py-16">
                     <Loader2 className="size-8 animate-spin text-blue-500 opacity-30" />
                   </div>
@@ -449,14 +408,14 @@ const TeacherAllocation: React.FC = () => {
                             </td>
                           </tr>
                         ))}
-                        {loading && (
+                        {isLoading && (
                           <tr>
                             <td colSpan={6} className="px-6 py-16 text-center">
                               <Loader2 className="size-10 animate-spin mx-auto text-blue-500 opacity-20" />
                             </td>
                           </tr>
                         )}
-                        {allocations.length === 0 && !loading && (
+                        {allocations.length === 0 && !isLoading && (
                           <tr>
                             <td colSpan={6} className="px-6 py-20 text-center">
                               <div className="flex flex-col items-center gap-3">
@@ -522,7 +481,7 @@ const TeacherAllocation: React.FC = () => {
       <AllocateTeacherModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={fetchAllocations}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['teacher-allocations'] })}
       />
 
       {/* Incharge Assignment Confirmation Dialog */}
