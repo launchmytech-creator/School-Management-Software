@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BaseModal } from '../common/BaseModal';
 import { Button } from '../ui/button';
 import InputField from '../ui/InputField';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { formatCurrency } from '../../lib/utils';
-import type { FeeTransaction, RecordPaymentDto } from '../../services/feeService';
+import type { RecordPaymentDto, FeeTransaction } from '../../services/feeService';
 
 const generateReceiptNumber = (): string => {
   const now = new Date();
@@ -29,6 +32,11 @@ const formatDisplayDate = (dateStr: string): string => {
   });
 };
 
+const recordPaymentSchema = z.object({
+  amountPaid: z.string().min(1, 'Amount is required'),
+  paymentMode: z.enum(['cash', 'card', 'upi', 'cheque', 'bank_transfer']),
+});
+
 interface TermGroup {
   id: string;
   termNumber: number | null;
@@ -52,30 +60,41 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
   term,
   onSubmit,
 }) => {
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [paymentMode, setPaymentMode] = useState<RecordPaymentDto['paymentMode']>('cash');
-  const [paymentDate] = useState(getTodayDate());
-  const [receiptNumber] = useState(generateReceiptNumber());
-  const [processing, setProcessing] = useState(false);
+  const [processing, setProcessing] = React.useState(false);
+  const [receiptNumber] = React.useState(generateReceiptNumber());
 
-  const handleSubmit = async () => {
-    if (!term || !paymentAmount) return;
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<{ amountPaid: string; paymentMode: RecordPaymentDto['paymentMode'] }>({
+    resolver: zodResolver(recordPaymentSchema),
+    defaultValues: {
+      amountPaid: '',
+      paymentMode: 'cash',
+    },
+  });
+
+  const paymentDate = getTodayDate();
+  const watchAmount = watch('amountPaid');
+
+  const handleFormSubmit = async (data: { amountPaid: string; paymentMode: RecordPaymentDto['paymentMode'] }) => {
+    if (!term) return;
 
     try {
       setProcessing(true);
-      const data: RecordPaymentDto = {
-        amountPaid: parseFloat(paymentAmount),
-        paymentMode,
+      const payload: RecordPaymentDto = {
+        amountPaid: parseFloat(data.amountPaid),
+        paymentMode: data.paymentMode,
       };
-      if (paymentDate) data.paymentDate = paymentDate;
-      if (receiptNumber) data.receiptNumber = receiptNumber;
+      payload.paymentDate = paymentDate;
+      payload.receiptNumber = receiptNumber;
 
-      await onSubmit(data);
-      
-      setPaymentAmount('');
-      setPaymentMode('cash');
+      await onSubmit(payload);
+      reset();
     } catch {
-      // Error handled by parent
     } finally {
       setProcessing(false);
     }
@@ -123,17 +142,16 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
         <InputField
           label="Payment Amount"
           type="number"
-          value={paymentAmount}
-          onChange={(e) => setPaymentAmount(e.target.value)}
           placeholder="Enter amount to collect"
+          error={errors.amountPaid?.message}
+          {...register('amountPaid')}
         />
 
         <div>
           <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Mode *</label>
           <select
-            value={paymentMode}
-            onChange={(e) => setPaymentMode(e.target.value as RecordPaymentDto['paymentMode'])}
             className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            {...register('paymentMode')}
           >
             <option value="cash">Cash</option>
             <option value="card">Card</option>
@@ -167,10 +185,10 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
             Cancel
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={handleSubmit(handleFormSubmit)}
             loading={processing}
             className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-            disabled={!paymentAmount}
+            disabled={!watchAmount}
           >
             Record Payment
           </Button>

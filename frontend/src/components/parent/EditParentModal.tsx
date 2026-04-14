@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { X } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '../ui/button';
-import InputField from '../ui/InputField';
+import FormField from '../ui/FormField';
+import FormSelect from '../ui/FormSelect';
 import { parentService } from '../../services/parentService';
 import { useNotification } from '../../context/NotificationContext';
-import type { Parent, UpdateParentDto } from '../../types/parent';
+import type { Parent } from '../../types/parent';
+import { editParentSchema, type EditParentFormData } from '../../schemas/staff.schema';
 
 interface EditParentModalProps {
   isOpen: boolean;
@@ -15,33 +19,38 @@ interface EditParentModalProps {
 
 const EditParentModal: React.FC<EditParentModalProps> = ({ isOpen, onClose, parent, onSuccess }) => {
   const { showNotification } = useNotification();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState<UpdateParentDto>({
-    fullName: '',
-    phone: '',
-    dateOfBirth: '',
-    gender: '',
-    address: '',
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<EditParentFormData>({
+    resolver: zodResolver(editParentSchema),
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (parent && isOpen) {
-      setFormData({
+      reset({
         fullName: parent.fullName || '',
         phone: parent.phone || '',
-        dateOfBirth: parent.dateOfBirth || '',
-        gender: parent.gender || '',
+        dob: parent.dateOfBirth || '',
+        gender: (parent.gender?.toLowerCase() as 'male' | 'female' | 'other') || '',
         address: parent.address || '',
       });
     }
-  }, [parent, isOpen]);
+  }, [parent, isOpen, reset]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: EditParentFormData) => {
     if (!parent) return;
-    setIsSubmitting(true);
     try {
-      await parentService.updateParent(parent.id, formData);
+      await parentService.updateParent(parent.id, {
+        fullName: data.fullName,
+        phone: data.phone,
+        dateOfBirth: data.dob,
+        gender: data.gender,
+        address: data.address,
+      });
       showNotification('Parent updated successfully!', 'success');
       onSuccess();
       onClose();
@@ -49,8 +58,6 @@ const EditParentModal: React.FC<EditParentModalProps> = ({ isOpen, onClose, pare
       const error = err as { response?: { data?: { message?: string } }; message?: string };
       const message = error.response?.data?.message || error.message || 'Failed to update parent';
       showNotification(message, 'error');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -71,59 +78,58 @@ const EditParentModal: React.FC<EditParentModalProps> = ({ isOpen, onClose, pare
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
-          <InputField
+        <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-5">
+          <FormField
             label="Full Name"
             placeholder="e.g. John Doe"
-            required
-            value={formData.fullName}
-            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+            registration={register('fullName')}
+            error={errors.fullName}
           />
-
-          <InputField
-            label="Email Address"
-            type="email"
-            value={parent.email}
-            disabled
-            className="bg-slate-100 cursor-not-allowed"
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
-              label="Phone Number"
-              placeholder="+1234567890"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            />
-            <InputField
-              label="Date of Birth"
-              type="date"
-              value={formData.dateOfBirth}
-              onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-            />
-          </div>
 
           <div>
             <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">
-              Gender
+              Email Address
             </label>
-            <select
-              value={formData.gender}
-              onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-              className="w-full bg-slate-50 border-none rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
-            >
-              <option value="">Select Gender</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
+            <input
+              type="email"
+              value={parent.email}
+              disabled
+              className="w-full bg-slate-100 border-none rounded-2xl px-4 py-4 text-sm font-bold text-slate-400 cursor-not-allowed"
+            />
           </div>
 
-          <InputField
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              label="Phone Number"
+              placeholder="+1234567890"
+              registration={register('phone')}
+              error={errors.phone}
+            />
+            <FormField
+              label="Date of Birth"
+              type="date"
+              registration={register('dob')}
+              error={errors.dob}
+            />
+          </div>
+
+          <FormSelect
+            label="Gender"
+            registration={register('gender')}
+            error={errors.gender}
+            options={[
+              { value: 'male', label: 'Male' },
+              { value: 'female', label: 'Female' },
+              { value: 'other', label: 'Other' },
+            ]}
+            placeholder="Select Gender"
+          />
+
+          <FormField
             label="Address"
             placeholder="Enter full address"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            registration={register('address')}
+            error={errors.address}
           />
 
           <div className="pt-4 flex gap-3">
@@ -137,15 +143,9 @@ const EditParentModal: React.FC<EditParentModalProps> = ({ isOpen, onClose, pare
             </Button>
             <Button 
               type="submit"
-              disabled={isSubmitting}
-              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-6 rounded-xl font-bold shadow-lg shadow-blue-500/20 disabled:opacity-70"
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-6 rounded-xl font-bold shadow-lg shadow-blue-500/20"
             >
-              {isSubmitting ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="size-4 animate-spin" />
-                  <span>Saving...</span>
-                </div>
-              ) : 'Save Changes'}
+              Save Changes
             </Button>
           </div>
         </form>

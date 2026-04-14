@@ -10,10 +10,13 @@ import { Megaphone, Plus, Edit2, Trash2 } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
 import { Button } from '../../components/ui/button';
-import InputField from '../../components/ui/InputField';
+import FormField from '../../components/ui/FormField';
 import { SkeletonTable } from '../../components/common/Skeleton';
 import { useAnnouncements } from '../../hooks/queries';
 import { queryKeys } from '../../lib/queryKeys';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { announcementSchema, type AnnouncementFormData } from '../../schemas/academic.schema';
 
 const Announcements: React.FC = () => {
   const { showNotification } = useNotification();
@@ -22,14 +25,16 @@ const Announcements: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
-  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
-  const [formData, setFormData] = useState<CreateAnnouncementDto>({
-    title: '',
-    message: '',
-    targetRole: '',
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<AnnouncementFormData>({
+    resolver: zodResolver(announcementSchema),
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const filteredAnnouncements = announcements.filter(a =>
     a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -56,69 +61,37 @@ const Announcements: React.FC = () => {
 
   const handleOpenCreate = () => {
     setEditingAnnouncement(null);
-    setFormData({
+    reset({
       title: '',
       message: '',
-      targetRole: '',
+      targetRole: undefined,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: undefined,
     });
-    setErrors({});
     setShowModal(true);
   };
 
   const handleOpenEdit = (announcement: Announcement) => {
     setEditingAnnouncement(announcement);
-    setFormData({
+    reset({
       title: announcement.title,
       message: announcement.message,
-      targetRole: announcement.targetRole || '',
+      targetRole: (announcement.targetRole as AnnouncementFormData['targetRole']) || undefined,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: undefined,
     });
-    setErrors({});
     setShowModal(true);
   };
 
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.title) {
-      newErrors.title = 'Title is required';
-    } else if (formData.title.length < 5) {
-      newErrors.title = 'Title must be at least 5 characters';
-    }
-    if (!formData.message) {
-      newErrors.message = 'Message is required';
-    } else if (formData.message.length < 10) {
-      newErrors.message = 'Message must be at least 10 characters';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleFieldChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
-
-  const handleSave = async () => {
-    if (!validate()) return;
-
+  const onSubmit = async (data: AnnouncementFormData) => {
     try {
-      setSaving(true);
-      
       const payload: CreateAnnouncementDto = {
-        title: formData.title,
-        message: formData.message,
+        title: data.title,
+        message: data.message,
       };
-
-      if (formData.targetRole) {
-        payload.targetRole = formData.targetRole;
+      if (data.targetRole) {
+        payload.targetRole = data.targetRole;
       }
-
-      // console.log('Payload sent:', JSON.stringify(payload, null, 2));
 
       if (editingAnnouncement) {
         await announcementService.updateAnnouncement(editingAnnouncement.id, payload);
@@ -130,11 +103,8 @@ const Announcements: React.FC = () => {
       setShowModal(false);
       queryClient.invalidateQueries({ queryKey: queryKeys.announcements.all(null) });
     } catch (error) {
-      console.error('Error creating announcement:', error);
       const message = error instanceof Error ? error.message : 'Failed to save announcement';
       showNotification(message, 'error');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -256,32 +226,27 @@ const Announcements: React.FC = () => {
           title={editingAnnouncement ? 'Edit Announcement' : 'New Announcement'}
           size="lg"
         >
-          <div className="p-6 space-y-4">
-            <InputField
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+            <FormField
               label="Title"
               placeholder="Enter announcement title"
-              value={formData.title || ''}
-              onChange={(e) => handleFieldChange('title', e.target.value)}
+              registration={register('title')}
               error={errors.title}
             />
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Message</label>
-              <div className="flex flex-col">
-                <textarea
-                  value={formData.message || ''}
-                  onChange={(e) => handleFieldChange('message', e.target.value)}
-                  placeholder="Enter announcement message"
-                  rows={5}
-                  className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${errors.message ? 'border-red-500' : 'border-slate-200'}`}
-                />
-                {errors.message && <span className="text-red-500 text-xs mt-1">{errors.message}</span>}
-              </div>
+              <textarea
+                {...register('message')}
+                placeholder="Enter announcement message"
+                rows={5}
+                className={`w-full px-4 py-2.5 bg-white border rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${errors.message ? 'border-red-500' : 'border-slate-200'}`}
+              />
+              {errors.message && <span className="text-red-500 text-xs mt-1">{errors.message.message}</span>}
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Target Role</label>
               <select
-                value={formData.targetRole || ''}
-                onChange={(e) => setFormData({ ...formData, targetRole: e.target.value })}
+                {...register('targetRole')}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">All Users</option>
@@ -292,17 +257,17 @@ const Announcements: React.FC = () => {
               <p className="text-xs text-slate-400 mt-1">Leave empty to broadcast to all users</p>
             </div>
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowModal(false)} className="flex-1">
+              <Button type="button" variant="outline" onClick={() => setShowModal(false)} className="flex-1">
                 Cancel
               </Button>
-              <Button onClick={handleSave} loading={saving} className="flex-1">
+              <Button type="submit" className="flex-1">
                 {editingAnnouncement ? 'Update' : 'Publish'}
               </Button>
             </div>
-          </div>
+          </form>
         </BaseModal>
       </div>
     );
-  };
+};
 
 export default Announcements;

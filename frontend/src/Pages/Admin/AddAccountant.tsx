@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { 
   UserPlus, 
   Mail, 
@@ -14,47 +16,35 @@ import {
 import { accountantService } from '../../services/accountantService';
 import { useNotification } from '../../context/NotificationContext';
 import PageHeader from '../../components/common/PageHeader';
+import { addAccountantSchema, type AddAccountantFormData } from '../../schemas/staff.schema';
 
 const AddAccountant: React.FC = () => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
-  const [loading, setLoading] = useState(false);
 
-  // Form State
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    phone: '',
-    dateOfBirth: '',
-    gender: 'Male',
-    address: ''
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<AddAccountantFormData>({
+    resolver: zodResolver(addAccountantSchema),
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const onSubmit = async (data: AddAccountantFormData) => {
     try {
-      const payload = {
-        ...formData,
-        phone: formData.phone || null,
-        dateOfBirth: formData.dateOfBirth || null,
-        address: formData.address || null,
-      };
-      
-      await accountantService.createAccountant(payload);
+      await accountantService.createAccountant({
+        fullName: data.fullName,
+        email: data.email,
+        password: data.password,
+        phone: data.phone || null,
+        dateOfBirth: data.dob || null,
+        address: data.address || null,
+      });
       showNotification('Accountant created successfully!', 'success');
       navigate('/admin/accountants');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to create accountant.';
       showNotification(message, 'error');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -72,8 +62,7 @@ const AddAccountant: React.FC = () => {
       />
 
       <div className="max-w-4xl mx-auto pb-20">
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Section 1: Personal Information */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           <div className="bg-white rounded-3xl p-10 shadow-sm border border-slate-100">
             <div className="flex items-center gap-3 mb-10 pb-6 border-b border-slate-50">
               <div className="bg-blue-50 p-2 rounded-xl">
@@ -89,22 +78,24 @@ const AddAccountant: React.FC = () => {
                   <div className="relative">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                     <input 
-                      type="text" name="fullName" required value={formData.fullName} onChange={handleChange}
+                      type="text" {...register('fullName')}
                       placeholder="e.g. John Accountant"
                       className="w-full bg-slate-50/50 border border-slate-100 rounded-xl pl-12 pr-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-300" 
                     />
                   </div>
+                  {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName.message}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">Phone Number</label>
                   <div className="relative">
                     <Phone className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                     <input 
-                      type="tel" name="phone" value={formData.phone} onChange={handleChange}
+                      type="tel" {...register('phone')}
                       placeholder="e.g. 1234567890"
                       className="w-full bg-slate-50/50 border border-slate-100 rounded-xl pl-12 pr-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-300" 
                     />
                   </div>
+                  {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
                 </div>
               </div>
 
@@ -114,24 +105,26 @@ const AddAccountant: React.FC = () => {
                   <div className="relative">
                     <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                     <input 
-                      type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange}
+                      type="date" {...register('dob')}
                       className="w-full bg-slate-50/50 border border-slate-100 rounded-xl pl-12 pr-5 py-3.5 text-sm font-bold text-slate-700 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all" 
                     />
                   </div>
+                  {errors.dob && <p className="text-red-500 text-xs mt-1">{errors.dob.message}</p>}
                 </div>
                 <div className="space-y-4 pt-2 px-1">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Gender</label>
                   <div className="flex gap-8">
-                    {['Male', 'Female', 'Other'].map((g) => (
+                    {(['male', 'female', 'other'] as const).map((g) => (
                       <label key={g} className="flex items-center gap-3 cursor-pointer group">
                         <input 
-                          type="radio" name="gender" value={g} checked={formData.gender === g} onChange={handleChange}
+                          type="radio" {...register('gender')} value={g}
                           className="size-5 border-2 border-slate-200 text-blue-500 focus:ring-blue-500/20 transition-all cursor-pointer" 
                         />
                         <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900 transition-colors uppercase tracking-tight">{g}</span>
                       </label>
                     ))}
                   </div>
+                  {errors.gender && <p className="text-red-500 text-xs mt-1">{errors.gender.message}</p>}
                 </div>
               </div>
 
@@ -140,15 +133,15 @@ const AddAccountant: React.FC = () => {
                 <div className="relative">
                   <MapPin className="absolute left-4 top-4 size-4 text-slate-400" />
                   <textarea 
-                    name="address" rows={3} placeholder="e.g. 456 Oak Avenue" value={formData.address} onChange={handleChange}
+                    {...register('address')} rows={3} placeholder="e.g. 456 Oak Avenue"
                     className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl pl-12 pr-5 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300 resize-none"
                   />
                 </div>
+                {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
               </div>
             </div>
           </div>
 
-          {/* Section 2: Account Security */}
           <div className="bg-white rounded-3xl p-10 shadow-sm border border-slate-100">
             <div className="flex items-center gap-3 mb-10 pb-6 border-b border-slate-50">
               <div className="bg-emerald-50 p-2 rounded-xl">
@@ -163,27 +156,28 @@ const AddAccountant: React.FC = () => {
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                   <input 
-                    type="email" name="email" required value={formData.email} onChange={handleChange}
+                    type="email" {...register('email')}
                     placeholder="accountant@school.com"
                     className="w-full bg-slate-50/50 border border-slate-100 rounded-xl pl-12 pr-5 py-3.5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all placeholder:text-slate-300"
                   />
                 </div>
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                   <input 
-                    type="password" name="password" required value={formData.password} onChange={handleChange}
+                    type="password" {...register('password')}
                     placeholder="••••••••"
                     className="w-full bg-slate-50/50 border border-slate-100 rounded-xl pl-12 pr-5 py-3.5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all placeholder:text-slate-300"
                   />
                 </div>
+                {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
               </div>
             </div>
           </div>
 
-          {/* Footer Actions */}
           <div className="flex items-center justify-end gap-4 pt-6">
             <button 
               type="button" onClick={() => navigate('/admin/accountants')}
@@ -193,15 +187,11 @@ const AddAccountant: React.FC = () => {
               Cancel
             </button>
             <button 
-              type="submit" disabled={loading}
-              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-10 py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-70 disabled:active:scale-100"
+              type="submit"
+              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-10 py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 active:scale-95"
             >
-              {loading ? (
-                <div className="size-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <Save className="size-5" />
-              )}
-              {loading ? 'Creating...' : 'Create Accountant'}
+              <Save className="size-5" />
+              Create Accountant
             </button>
         </div>
         </form>

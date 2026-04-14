@@ -16,10 +16,9 @@ export const holidaySchema = z.object({
 });
 
 export const academicYearSchema = z.object({
-  yearName: z.string().min(1, 'Year name is required'),
+  name: z.string().min(1, 'Year name is required'),
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().min(1, 'End date is required'),
-  isDefault: z.boolean().optional(),
 });
 
 export const assignmentSchema = z.object({

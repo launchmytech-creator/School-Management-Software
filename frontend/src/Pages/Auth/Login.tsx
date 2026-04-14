@@ -1,9 +1,12 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import AuthSidebar from "../../components/auth/AuthSidebar";
-import InputField from "../../components/ui/InputField";
+import FormField from "../../components/ui/FormField";
 import { useAuth } from "../../context/AuthContext";
 import { useNotification } from "../../context/NotificationContext";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema, type LoginFormData } from "../../schemas/auth.schema";
 
 interface LoginError {
   type: "network" | "unauthorized" | "validation" | "server" | "unknown";
@@ -17,42 +20,17 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<LoginError | null>(null);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.email) {
-      newErrors.email = "Required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Invalid email";
-    }
-    if (!formData.password) {
-      newErrors.password = "Required";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[name];
-        return next;
-      });
-    }
-    if (loginError) {
-      setLoginError(null);
-    }
-  };
-
-  const parseError = useCallback((error: unknown): LoginError => {
+  const parseError = (error: unknown): LoginError => {
     if (error instanceof Error) {
       const message = error.message.toLowerCase();
 
@@ -111,17 +89,14 @@ const Login: React.FC = () => {
       type: "unknown",
       message: "An unexpected error occurred. Please try again.",
     };
-  }, []);
+  };
 
-  const handleSubmit = async (e: React.SubmitEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: LoginFormData) => {
     setLoginError(null);
-
-    if (!validate()) return;
 
     try {
       setLoading(true);
-      const user = await login(formData);
+      const user = await login(data);
       showNotification("Welcome back! Login successful.", "success");
 
       const role = user.role;
@@ -139,7 +114,7 @@ const Login: React.FC = () => {
       setLoginError(parsedError);
 
       if (parsedError.type === "unauthorized") {
-        setFormData((prev) => ({ ...prev, password: "" }));
+        reset({ ...data, password: "" });
       }
 
       showNotification(parsedError.message, "error");
@@ -150,7 +125,7 @@ const Login: React.FC = () => {
 
   const handleRetry = () => {
     setLoginError(null);
-    handleSubmit(new Event("submit") as unknown as React.SubmitEvent);
+    document.querySelector("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
   };
 
   const getErrorStyles = () => {
@@ -169,15 +144,11 @@ const Login: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-white font-body overflow-hidden">
-      {/* SHARED SIDEBAR */}
       <AuthSidebar />
 
-      {/* RIGHT CONTENT - White Area */}
       <div className="flex-1 lg:w-[40%] flex flex-col px-8 md:px-16 py-6 overflow-hidden bg-white">
-        {/* Header Link */}
         <div className="flex justify-end mb-12"></div>
 
-        {/* Form Area */}
         <div className="max-w-[400px] mx-auto w-full flex-1 flex flex-col justify-center">
           <div className="mb-8">
             <h3 className="text-[#133257] text-4xl font-bold mb-2">
@@ -217,31 +188,25 @@ const Login: React.FC = () => {
             </div>
           )}
 
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            <InputField
+          <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+            <FormField
               label="Email Address"
               placeholder="Enter your email"
               type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              icon="alternate_email"
+              registration={register("email")}
               error={errors.email}
+              icon="alternate_email"
             />
 
             <div className="space-y-1.5">
-              <InputField
+              <FormField
                 label="Password"
                 placeholder="Enter your password"
                 type={showPassword ? "text" : "password"}
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
+                registration={register("password")}
+                error={errors.password}
                 icon="lock_open"
                 onToggleEye={() => setShowPassword(!showPassword)}
-                error={errors.password}
               />
               <div className="flex justify-end">
                 <Link
@@ -307,10 +272,8 @@ const Login: React.FC = () => {
             </button>
           </form>
 
-          {/* Copyright */}
           <div className="mt-auto pt-12 text-center">
             <p className="text-[#133257]/30 text-[10px] font-medium uppercase tracking-wider">
-              {/* © 2024 EduManage SMS */}
             </p>
           </div>
         </div>

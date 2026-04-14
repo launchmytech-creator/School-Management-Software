@@ -3,10 +3,13 @@ import PageHeader from '../../components/common/PageHeader';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { academicYearService } from '../../services/academicYearService';
 import { useNotification } from '../../context/NotificationContext';
-import type { AcademicYear, CreateAcademicYearDto } from '../../types/academicYear';
+import type { AcademicYear } from '../../types/academicYear';
 import { Plus, Edit2, Trash2, CheckCircle, Calendar, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { academicYearSchema, type AcademicYearFormData } from '../../schemas/academic.schema';
 import { cn, getCurrentAcademicYear } from '../../lib/utils';
 
 const AcademicYearsPage: React.FC = () => {
@@ -21,23 +24,26 @@ const AcademicYearsPage: React.FC = () => {
   const [yearToDelete, setYearToDelete] = useState<AcademicYear | null>(null);
   const [yearToSetCurrent, setYearToSetCurrent] = useState<AcademicYear | null>(null);
   
-  const [formData, setFormData] = useState<CreateAcademicYearDto>({
-    name: '',
-    startDate: '',
-    endDate: '',
-  });
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<AcademicYearFormData>({
+    resolver: zodResolver(academicYearSchema),
+  });
 
   const handleOpenCreateModal = () => {
     setEditingYear(null);
-    setFormData({ name: '', startDate: '', endDate: '' });
+    reset({ name: '', startDate: '', endDate: '' });
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (year: AcademicYear) => {
     setEditingYear(year);
-    setFormData({
+    reset({
       name: year.name,
       startDate: year.startDate.split('T')[0],
       endDate: year.endDate.split('T')[0],
@@ -45,15 +51,14 @@ const AcademicYearsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: AcademicYearFormData) => {
     setIsSubmitting(true);
     try {
       if (editingYear) {
-        await academicYearService.updateYear(editingYear.id, formData);
+        await academicYearService.updateYear(editingYear.id, data);
         showNotification('Academic year updated successfully', 'success');
       } else {
-        await academicYearService.createYear(formData);
+        await academicYearService.createYear(data);
         showNotification('Academic year created successfully', 'success');
       }
       await refreshYears();
@@ -227,29 +232,26 @@ const AcademicYearsPage: React.FC = () => {
                 <X className="size-5" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6">
               <InputField
                 label="Academic Year Name"
                 placeholder={`e.g. ${getCurrentAcademicYear()}`}
                 icon="calendar_today"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                error={errors.name?.message}
+                {...register('name')}
               />
               <div className="grid grid-cols-2 gap-4">
                 <InputField
                   label="Start Date"
                   type="date"
-                  required
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  error={errors.startDate?.message}
+                  {...register('startDate')}
                 />
                 <InputField
                   label="End Date"
                   type="date"
-                  required
-                  value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                  error={errors.endDate?.message}
+                  {...register('endDate')}
                 />
               </div>
               <div className="pt-4 flex gap-3">

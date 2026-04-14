@@ -8,6 +8,13 @@ export const feePaymentSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const recordPaymentSchema = z.object({
+  amountPaid: z.string().min(1, 'Amount is required'),
+  paymentMode: z.enum(['cash', 'card', 'upi', 'cheque', 'bank_transfer']),
+  paymentDate: z.string().min(1, 'Date is required'),
+  receiptNumber: z.string().optional(),
+});
+
 export const feeWaiverSchema = z.object({
   waiverAmount: z.string().min(1, 'Waiver amount is required'),
   waiverReason: z.string().min(1, 'Waiver reason is required'),

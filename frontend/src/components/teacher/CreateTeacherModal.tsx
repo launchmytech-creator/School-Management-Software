@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import React from 'react';
+import { X } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '../ui/button';
-import InputField from '../ui/InputField';
+import FormField from '../ui/FormField';
+import FormSelect from '../ui/FormSelect';
 import { teacherService } from '../../services/teacherService';
 import { useNotification } from '../../context/NotificationContext';
-import type { CreateTeacherDto, TeacherGender } from '../../types/teacher';
+import { createTeacherSchema, type CreateTeacherFormData } from '../../schemas/staff.schema';
 
 interface CreateTeacherModalProps {
   isOpen: boolean;
@@ -14,31 +17,35 @@ interface CreateTeacherModalProps {
 
 const CreateTeacherModal: React.FC<CreateTeacherModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { showNotification } = useNotification();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState<CreateTeacherDto>({
-    fullName: '',
-    email: '',
-    password: '',
-    phone: '',
-    dateOfBirth: '',
-    gender: 'Male' as TeacherGender,
-    address: '',
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CreateTeacherFormData>({
+    resolver: zodResolver(createTeacherSchema),
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const onSubmit = async (data: CreateTeacherFormData) => {
     try {
-      await teacherService.createTeacher(formData);
+      await teacherService.createTeacher({
+        fullName: data.fullName,
+        email: data.email,
+        password: data.password,
+        phone: data.phone,
+        dateOfBirth: data.dob,
+        gender: (data.gender.charAt(0).toUpperCase() + data.gender.slice(1)) as 'Male' | 'Female' | 'Other',
+        address: data.address,
+      });
       showNotification('Teacher created successfully!', 'success');
+      reset();
       onSuccess();
       onClose();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } }; message?: string };
       const message = error.response?.data?.message || error.message || 'Failed to create teacher';
       showNotification(message, 'error');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -59,70 +66,64 @@ const CreateTeacherModal: React.FC<CreateTeacherModalProps> = ({ isOpen, onClose
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
+            <FormField
               label="Full Name"
               placeholder="e.g. Dr. Robert Wilson"
-              required
-              value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+              registration={register('fullName')}
+              error={errors.fullName}
             />
-            <InputField
+            <FormField
               label="Email Address"
               type="email"
               placeholder="teacher@school.com"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              registration={register('email')}
+              error={errors.email}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
+            <FormField
               label="Password"
               type="password"
               placeholder="Minimum 8 characters"
-              required
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              registration={register('password')}
+              error={errors.password}
             />
-            <InputField
+            <FormField
               label="Phone Number"
               placeholder="+1234567890"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              registration={register('phone')}
+              error={errors.phone}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
+            <FormField
               label="Date of Birth"
               type="date"
-              value={formData.dateOfBirth}
-              onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+              registration={register('dob')}
+              error={errors.dob}
             />
-            <div>
-              <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">
-                Gender
-              </label>
-              <select
-                value={formData.gender}
-                onChange={(e) => setFormData({ ...formData, gender: e.target.value as TeacherGender })}
-                className="w-full bg-slate-50 border-none rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
-              >
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
+            <FormSelect
+              label="Gender"
+              registration={register('gender')}
+              error={errors.gender}
+              options={[
+                { value: 'male', label: 'Male' },
+                { value: 'female', label: 'Female' },
+                { value: 'other', label: 'Other' },
+              ]}
+              placeholder="Select Gender"
+            />
           </div>
 
-          <InputField
+          <FormField
             label="Address"
             placeholder="Enter full address"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            registration={register('address')}
+            error={errors.address}
           />
 
           <div className="pt-4 flex gap-3">
@@ -136,15 +137,9 @@ const CreateTeacherModal: React.FC<CreateTeacherModalProps> = ({ isOpen, onClose
             </Button>
             <Button 
               type="submit"
-              disabled={isSubmitting}
-              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-6 rounded-xl font-bold shadow-lg shadow-blue-500/20 disabled:opacity-70"
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-6 rounded-xl font-bold shadow-lg shadow-blue-500/20"
             >
-              {isSubmitting ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="size-4 animate-spin" />
-                  <span>Creating...</span>
-                </div>
-              ) : 'Create Teacher'}
+              Create Teacher
             </Button>
           </div>
         </form>

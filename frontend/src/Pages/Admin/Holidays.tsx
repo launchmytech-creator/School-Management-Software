@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useNotification } from "../../context/NotificationContext";
 import { holidayService, type Holiday } from "../../services/holidayService";
@@ -9,10 +11,11 @@ import { formatDate, getLocalDateString } from "../../lib/utils";
 import { BaseModal } from "../../components/common/BaseModal";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { Button } from "../../components/ui/button";
-import InputField from "../../components/ui/InputField";
+import FormField from "../../components/ui/FormField";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import PageHeader from "../../components/common/PageHeader";
 import { useHolidays } from "../../hooks/queries";
+import { holidaySchema, type HolidayFormData } from "../../schemas/academic.schema";
 
 interface CalendarDay {
   date: Date;
@@ -30,13 +33,8 @@ const Holidays: React.FC = () => {
   const [currentYearId, setCurrentYearId] = useState<number | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [formData, setFormData] = useState({
-    holidayDate: "",
-    description: "",
-  });
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [deleteDialog, setDeleteDialog] = useState({
     isOpen: false,
     holidayId: null as number | null,
@@ -44,7 +42,16 @@ const Holidays: React.FC = () => {
   });
   const [deleting, setDeleting] = useState(false);
 
-  React.useEffect(() => {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<HolidayFormData>({
+    resolver: zodResolver(holidaySchema),
+  });
+
+  useEffect(() => {
     const fetchCurrentYear = async () => {
       try {
         const year = await academicYearService.getCurrentYear();
@@ -58,17 +65,7 @@ const Holidays: React.FC = () => {
     fetchCurrentYear();
   }, []);
 
-  const handleCreateHoliday = async () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.holidayDate) newErrors.holidayDate = "Date is required";
-    if (!formData.description.trim())
-      newErrors.description = "Description is required";
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
+  const onSubmit = async (data: HolidayFormData) => {
     if (!currentYearId) {
       showNotification("No academic year selected", "error");
       return;
@@ -77,20 +74,24 @@ const Holidays: React.FC = () => {
     try {
       setCreating(true);
       await holidayService.createHoliday({
-        holidayDate: formData.holidayDate,
-        description: formData.description,
+        holidayDate: data.date,
+        description: data.name,
         academicYearId: currentYearId,
       });
       showNotification("Holiday created successfully", "success");
       setShowCreateModal(false);
-      setFormData({ holidayDate: "", description: "" });
-      setErrors({});
+      reset();
       queryClient.invalidateQueries({ queryKey: ['holidays'] });
     } catch {
       showNotification("Failed to create holiday", "error");
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleOpenCreate = () => {
+    reset();
+    setShowCreateModal(true);
   };
 
   const handleDeleteHoliday = (id: number, holidayName: string) => {
@@ -396,7 +397,7 @@ const Holidays: React.FC = () => {
             )}
 
             <Button
-              onClick={() => setShowCreateModal(true)}
+              onClick={handleOpenCreate}
               className="w-full mt-6 bg-blue-500 hover:bg-blue-600 flex items-center justify-center gap-2 shadow-lg"
             >
               <Plus className="w-5 h-5" /> Add Holiday
@@ -446,47 +447,47 @@ const Holidays: React.FC = () => {
                   <tr
                     key={holiday.id}
                     className={`${index % 2 === 0 ? "bg-white" : "bg-slate-50/50"} hover:bg-blue-50/50 transition-colors`}
-                  >
-                    <td className="px-6 py-4 text-sm font-semibold text-slate-900">
-                      {formatDate(holiday.holidayDate, {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700">
-                      {holiday.description}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full uppercase tracking-tighter">
-                        {holiday.academicYearName || "N/A"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() =>
-                          handleDeleteHoliday(holiday.id, holiday.description)
-                        }
-                        className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    >
+                      <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                        {formatDate(holiday.holidayDate, {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-700">
+                        {holiday.description}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full uppercase tracking-tighter">
+                          {holiday.academicYearName || "N/A"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() =>
+                            handleDeleteHoliday(holiday.id, holiday.description)
+                          }
+                          className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="px-6 py-12 text-center text-slate-400"
+                    >
+                      {searchQuery
+                        ? "No holidays match your search"
+                        : "No holidays found. Add your first holiday!"}
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="px-6 py-12 text-center text-slate-400"
-                  >
-                    {searchQuery
-                      ? "No holidays match your search"
-                      : "No holidays found. Add your first holiday!"}
-                  </td>
-                </tr>
-              )}
+                )}
             </tbody>
           </table>
         </div>
@@ -504,41 +505,22 @@ const Holidays: React.FC = () => {
         title="Add Holiday"
         size="md"
       >
-        <div className="p-6 space-y-4">
-          <InputField
+        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+          <FormField
             label="Date"
             type="date"
-            value={formData.holidayDate}
-            onChange={(e) => {
-              setFormData({ ...formData, holidayDate: e.target.value });
-              if (errors.holidayDate)
-                setErrors((prev) => {
-                  const next = { ...prev };
-                  delete next.holidayDate;
-                  return next;
-                });
-            }}
-            error={errors.holidayDate}
-            required
+            registration={register('date')}
+            error={errors.date}
           />
-          <InputField
+          <FormField
             label="Description"
             placeholder="e.g., Independence Day"
-            value={formData.description}
-            onChange={(e) => {
-              setFormData({ ...formData, description: e.target.value });
-              if (errors.description)
-                setErrors((prev) => {
-                  const next = { ...prev };
-                  delete next.description;
-                  return next;
-                });
-            }}
-            error={errors.description}
-            required
+            registration={register('name')}
+            error={errors.name}
           />
           <div className="flex gap-3 pt-4">
             <Button
+              type="button"
               variant="outline"
               onClick={() => setShowCreateModal(false)}
               className="flex-1"
@@ -546,14 +528,14 @@ const Holidays: React.FC = () => {
               Cancel
             </Button>
             <Button
-              onClick={handleCreateHoliday}
+              type="submit"
               loading={creating}
               className="flex-1"
             >
               Add Holiday
             </Button>
           </div>
-        </div>
+        </form>
       </BaseModal>
 
       <ConfirmDialog
