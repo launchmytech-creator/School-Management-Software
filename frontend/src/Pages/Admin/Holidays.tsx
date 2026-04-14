@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useNotification } from "../../context/NotificationContext";
 import { holidayService, type Holiday } from "../../services/holidayService";
@@ -11,6 +12,7 @@ import { Button } from "../../components/ui/button";
 import InputField from "../../components/ui/InputField";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import PageHeader from "../../components/common/PageHeader";
+import { useHolidays } from "../../hooks/queries";
 
 interface CalendarDay {
   date: Date;
@@ -22,8 +24,9 @@ interface CalendarDay {
 
 const Holidays: React.FC = () => {
   const { showNotification } = useNotification();
-  const [loading, setLoading] = useState(true);
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const queryClient = useQueryClient();
+  
+  const { data: holidays = [], isLoading } = useHolidays();
   const [currentYearId, setCurrentYearId] = useState<number | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -41,36 +44,19 @@ const Holidays: React.FC = () => {
   });
   const [deleting, setDeleting] = useState(false);
 
-  const fetchCurrentYear = useCallback(async () => {
-    try {
-      const year = await academicYearService.getCurrentYear();
-      if (year) {
-        setCurrentYearId(Number(year.id));
+  React.useEffect(() => {
+    const fetchCurrentYear = async () => {
+      try {
+        const year = await academicYearService.getCurrentYear();
+        if (year) {
+          setCurrentYearId(Number(year.id));
+        }
+      } catch {
+        // Ignore - year might not exist
       }
-    } catch {
-      // Ignore - year might not exist
-    }
-  }, []);
-
-  const fetchHolidays = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await holidayService.getHolidays();
-      setHolidays(data);
-    } catch {
-      showNotification("Failed to fetch holidays", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [showNotification]);
-
-  useEffect(() => {
+    };
     fetchCurrentYear();
-  }, [fetchCurrentYear]);
-
-  useEffect(() => {
-    fetchHolidays();
-  }, [fetchHolidays]);
+  }, []);
 
   const handleCreateHoliday = async () => {
     const newErrors: Record<string, string> = {};
@@ -99,7 +85,7 @@ const Holidays: React.FC = () => {
       setShowCreateModal(false);
       setFormData({ holidayDate: "", description: "" });
       setErrors({});
-      fetchHolidays();
+      queryClient.invalidateQueries({ queryKey: ['holidays'] });
     } catch {
       showNotification("Failed to create holiday", "error");
     } finally {
@@ -117,7 +103,7 @@ const Holidays: React.FC = () => {
     try {
       await holidayService.deleteHoliday(deleteDialog.holidayId);
       showNotification("Holiday deleted successfully", "success");
-      fetchHolidays();
+      queryClient.invalidateQueries({ queryKey: ['holidays'] });
     } catch {
       showNotification("Failed to delete holiday", "error");
     } finally {
@@ -267,7 +253,7 @@ const Holidays: React.FC = () => {
               )}
             </div>
 
-            {loading ? (
+            {isLoading ? (
               <div className="py-12 flex justify-center">
                 <LoadingSpinner size="md" message="Loading calendar..." />
               </div>
@@ -371,7 +357,7 @@ const Holidays: React.FC = () => {
               </span>
             </div>
 
-            {loading ? (
+            {isLoading ? (
               <div className="py-8 flex justify-center">
                 <LoadingSpinner size="sm" />
               </div>
