@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BaseModal } from '../common/BaseModal';
 import { Button } from '../ui/button';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { formatCurrency } from '../../lib/utils';
 import type { FeeTransaction } from '../../services/feeService';
+
+const dueDateSchema = z.object({
+  dueDate: z.string().min(1, 'Due date is required'),
+});
 
 interface FeeTransactionEditModalProps {
   isOpen: boolean;
@@ -17,24 +24,32 @@ export const FeeTransactionEditModal: React.FC<FeeTransactionEditModalProps> = (
   transaction,
   onSubmit,
 }) => {
-  const [dueDate, setDueDate] = useState('');
   const [processing, setProcessing] = useState(false);
 
-  React.useEffect(() => {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: {},
+  } = useForm<{ dueDate: string }>({
+    resolver: zodResolver(dueDateSchema),
+  });
+
+  const watchDueDate = watch('dueDate');
+
+  useEffect(() => {
     if (transaction) {
-      setDueDate(transaction.dueDate ? transaction.dueDate.split('T')[0] : '');
+      reset({ dueDate: transaction.dueDate ? transaction.dueDate.split('T')[0] : '' });
     }
-  }, [transaction]);
+  }, [transaction, reset]);
 
-  const handleSubmit = async () => {
-    if (!dueDate) return;
-
+  const onSubmitHandler = async (data: { dueDate: string }) => {
     try {
       setProcessing(true);
-      await onSubmit({ dueDate });
-      setDueDate('');
+      await onSubmit(data);
+      reset();
     } catch {
-      // Error handled by parent
     } finally {
       setProcessing(false);
     }
@@ -89,9 +104,8 @@ export const FeeTransactionEditModal: React.FC<FeeTransactionEditModalProps> = (
           </label>
           <input
             type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
             className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-300"
+            {...register('dueDate')}
           />
         </div>
 
@@ -104,10 +118,10 @@ export const FeeTransactionEditModal: React.FC<FeeTransactionEditModalProps> = (
             Cancel
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={handleSubmit(onSubmitHandler)}
             loading={processing}
             className="flex-1 bg-blue-600 hover:bg-blue-700"
-            disabled={!dueDate}
+            disabled={!watchDueDate}
           >
             Save Changes
           </Button>

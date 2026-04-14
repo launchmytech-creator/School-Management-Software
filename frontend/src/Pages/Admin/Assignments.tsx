@@ -6,13 +6,15 @@ import { useNotification } from '../../context/NotificationContext';
 import { useAssignments, useCreateAssignment, useDeleteAssignment } from '../../hooks/queries';
 import { useClasses, useSubjects } from '../../hooks/queries';
 import { useAcademicYears } from '../../hooks/queries';
-import type { CreateAssignmentDto } from '../../services/assignmentService';
 import { FileText, Plus, Trash2, Clock, CheckCircle, Users } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
 import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
 import { SkeletonTable } from '../../components/common/Skeleton';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { createAssignmentSchema, type CreateAssignmentFormData } from '../../schemas/academic.schema';
 
 const Assignments: React.FC = () => {
   const { showNotification } = useNotification();
@@ -20,15 +22,14 @@ const Assignments: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState<CreateAssignmentDto>({
-    classId: 0,
-    subjectId: 0,
-    academicYearId: 0,
-    title: '',
-    description: '',
-    dueDate: '',
-    maxMarks: 100,
-    assignmentType: 'homework',
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CreateAssignmentFormData>({
+    resolver: zodResolver(createAssignmentSchema),
   });
 
   const filters = {
@@ -66,7 +67,7 @@ const Assignments: React.FC = () => {
   };
 
   const handleOpenCreate = () => {
-    setFormData({
+    reset({
       classId: Number(selectedClass) || Number(classes[0]?.id) || 0,
       subjectId: subjects[0]?.id || 0,
       academicYearId: Number(selectedYear) || Number(academicYears[0]?.id) || 0,
@@ -79,8 +80,8 @@ const Assignments: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleSave = async () => {
-    createAssignment.mutate(formData, {
+  const onSubmit = (data: CreateAssignmentFormData) => {
+    createAssignment.mutate(data as any, {
       onSuccess: () => {
         showNotification('Assignment created successfully', 'success');
         setShowModal(false);
@@ -270,30 +271,28 @@ const Assignments: React.FC = () => {
           title="Create Assignment"
           size="md"
         >
-          <div className="p-6 space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
             <InputField
               label="Title"
               placeholder="Assignment title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              error={errors.title?.message}
+              {...register('title')}
             />
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
               <textarea
-                value={formData.description || ''}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Assignment description"
                 rows={3}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                {...register('description')}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Class</label>
               <select
-                value={formData.classId || ''}
-                onChange={(e) => setFormData({ ...formData, classId: parseInt(e.target.value) || 0 })}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                {...register('classId', { valueAsNumber: true })}
               >
                 {classes.map(cls => (
                   <option key={cls.id} value={cls.id}>{cls.name}</option>
@@ -303,9 +302,8 @@ const Assignments: React.FC = () => {
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Subject</label>
               <select
-                value={formData.subjectId || ''}
-                onChange={(e) => setFormData({ ...formData, subjectId: parseInt(e.target.value) || 0 })}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                {...register('subjectId', { valueAsNumber: true })}
               >
                 {subjects.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
@@ -317,22 +315,21 @@ const Assignments: React.FC = () => {
               <InputField
                 label="Due Date"
                 type="date"
-                value={formData.dueDate || ''}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                error={errors.dueDate?.message}
+                {...register('dueDate')}
               />
               <InputField
                 label="Max Marks"
                 type="number"
-                value={formData.maxMarks || ''}
-                onChange={(e) => setFormData({ ...formData, maxMarks: Number(e.target.value) })}
+                error={errors.maxMarks?.message}
+                {...register('maxMarks', { valueAsNumber: true })}
               />
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Type</label>
               <select
-                value={formData.assignmentType}
-                onChange={(e) => setFormData({ ...formData, assignmentType: e.target.value as any })}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                {...register('assignmentType')}
               >
                 <option value="homework">Homework</option>
                 <option value="classwork">Classwork</option>
@@ -342,10 +339,10 @@ const Assignments: React.FC = () => {
               </select>
             </div>
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button>
-              <Button onClick={handleSave} loading={createAssignment.isPending} className="flex-1">Create</Button>
+              <Button variant="outline" type="button" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button>
+              <Button type="submit" loading={createAssignment.isPending} className="flex-1">Create</Button>
             </div>
-          </div>
+          </form>
         </BaseModal>
     </div>
   );

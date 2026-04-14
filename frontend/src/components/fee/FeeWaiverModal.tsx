@@ -4,6 +4,9 @@ import { Button } from '../ui/button';
 import InputField from '../ui/InputField';
 import { formatCurrency } from '../../lib/utils';
 import type { FeeTransaction } from '../../services/feeService';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { feeWaiverSchema, type FeeWaiverFormData } from '../../schemas/fee.schema';
 
 interface FeeWaiverModalProps {
   isOpen: boolean;
@@ -18,20 +21,29 @@ export const FeeWaiverModal: React.FC<FeeWaiverModalProps> = ({
   transaction,
   onSubmit,
 }) => {
-  const [waiverAmount, setWaiverAmount] = useState('');
-  const [waiverReason, setWaiverReason] = useState('');
   const [processing, setProcessing] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!transaction || !waiverAmount || !waiverReason) return;
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<FeeWaiverFormData>({
+    resolver: zodResolver(feeWaiverSchema),
+  });
+
+  const watchAmount = watch('waiverAmount');
+  const watchReason = watch('waiverReason');
+
+  const onSubmitHandler = async (data: FeeWaiverFormData) => {
+    if (!transaction) return;
 
     try {
       setProcessing(true);
-      await onSubmit(parseFloat(waiverAmount), waiverReason);
-      setWaiverAmount('');
-      setWaiverReason('');
+      await onSubmit(parseFloat(data.waiverAmount), data.waiverReason);
+      reset();
     } catch {
-      // Error handled by parent
     } finally {
       setProcessing(false);
     }
@@ -79,19 +91,18 @@ export const FeeWaiverModal: React.FC<FeeWaiverModalProps> = ({
         <InputField
           label="Waiver Amount"
           type="number"
-          value={waiverAmount}
-          onChange={(e) => setWaiverAmount(e.target.value)}
           placeholder="Enter waiver amount"
+          error={errors.waiverAmount?.message}
+          {...register('waiverAmount')}
         />
         
         <div>
           <label className="block text-sm font-semibold text-slate-700 mb-2">Waiver Reason</label>
           <textarea
-            value={waiverReason}
-            onChange={(e) => setWaiverReason(e.target.value)}
             placeholder="Enter reason for waiver (e.g., scholarship, financial hardship, etc.)"
             rows={3}
             className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            {...register('waiverReason')}
           />
         </div>
 
@@ -104,10 +115,10 @@ export const FeeWaiverModal: React.FC<FeeWaiverModalProps> = ({
             Cancel
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={handleSubmit(onSubmitHandler)}
             loading={processing}
             className="flex-1 bg-amber-600 hover:bg-amber-700"
-            disabled={!waiverAmount || !waiverReason}
+            disabled={!watchAmount || !watchReason}
           >
             Apply Waiver
           </Button>

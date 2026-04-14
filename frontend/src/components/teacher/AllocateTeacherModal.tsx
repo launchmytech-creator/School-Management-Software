@@ -5,11 +5,13 @@ import { teacherService } from "../../services/teacherService";
 import { useNotification } from "../../context/NotificationContext";
 import type {
   Teacher,
-  CreateAllocationDto,
   SimpleSubject,
   SimpleClass,
 } from "../../types/teacher";
 import { Button } from "../ui/button";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { allocateTeacherSchema, type AllocateTeacherFormData } from "../../schemas/academic.schema";
 
 interface AllocateTeacherModalProps {
   isOpen: boolean;
@@ -32,12 +34,13 @@ const AllocateTeacherModal: React.FC<AllocateTeacherModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form State
-  const [form, setForm] = useState<CreateAllocationDto>({
-    teacherId: 0,
-    subjectId: 0,
-    classId: 0,
-    academicYearId: selectedYear ? Number(selectedYear.id) : 0,
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+  } = useForm<AllocateTeacherFormData>({
+    resolver: zodResolver(allocateTeacherSchema),
   });
 
   // Fetch Data
@@ -67,35 +70,18 @@ const AllocateTeacherModal: React.FC<AllocateTeacherModalProps> = ({
   // Sync with selectedYear
   useEffect(() => {
     if (selectedYear) {
-      setForm((prev) => ({ ...prev, academicYearId: Number(selectedYear.id) }));
+      setValue('academicYearId', Number(selectedYear.id));
     }
-  }, [selectedYear]);
+  }, [selectedYear, setValue]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (
-      !form.teacherId ||
-      !form.subjectId ||
-      !form.classId ||
-      !form.academicYearId
-    ) {
-      showNotification("Please fill all fields", "warning");
-      return;
-    }
-
+  const onSubmit = async (data: AllocateTeacherFormData) => {
     setIsSubmitting(true);
     try {
-      await teacherService.createAllocation(form);
+      await teacherService.createAllocation(data);
       showNotification("Teacher allocated successfully!", "success");
       onSuccess();
       onClose();
-      // Reset form (except year)
-      setForm((prev) => ({
-        ...prev,
-        teacherId: 0,
-        subjectId: 0,
-        classId: 0,
-      }));
+      reset({ teacherId: 0, subjectId: 0, classId: 0, academicYearId: Number(selectedYear?.id) || 0 });
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Failed to allocate teacher";
@@ -130,7 +116,7 @@ const AllocateTeacherModal: React.FC<AllocateTeacherModalProps> = ({
               <Loader2 className="size-10 animate-spin text-blue-500 opacity-50" />
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Teacher Selection */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-2 px-1">
@@ -139,10 +125,7 @@ const AllocateTeacherModal: React.FC<AllocateTeacherModalProps> = ({
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                   <select
-                    value={form.teacherId}
-                    onChange={(e) =>
-                      setForm({ ...form, teacherId: Number(e.target.value) })
-                    }
+                    {...register('teacherId', { valueAsNumber: true })}
                     className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-12 pr-10 py-3.5 text-sm font-medium text-slate-600 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
                   >
                     <option value={0}>Search teacher name...</option>
@@ -165,10 +148,7 @@ const AllocateTeacherModal: React.FC<AllocateTeacherModalProps> = ({
                 </label>
                 <div className="relative">
                   <select
-                    value={form.subjectId}
-                    onChange={(e) =>
-                      setForm({ ...form, subjectId: Number(e.target.value) })
-                    }
+                    {...register('subjectId', { valueAsNumber: true })}
                     className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm font-medium text-slate-600 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
                   >
                     <option value={0}>Select Subject</option>
@@ -191,10 +171,7 @@ const AllocateTeacherModal: React.FC<AllocateTeacherModalProps> = ({
                 </label>
                 <div className="relative">
                   <select
-                    value={form.classId}
-                    onChange={(e) =>
-                      setForm({ ...form, classId: Number(e.target.value) })
-                    }
+                    {...register('classId', { valueAsNumber: true })}
                     className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm font-medium text-slate-600 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
                   >
                     <option value={0}>Select Class</option>
@@ -217,13 +194,7 @@ const AllocateTeacherModal: React.FC<AllocateTeacherModalProps> = ({
                 </label>
                 <div className="relative">
                   <select
-                    value={form.academicYearId}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        academicYearId: Number(e.target.value),
-                      })
-                    }
+                    {...register('academicYearId', { valueAsNumber: true })}
                     className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 text-sm font-medium text-slate-600 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
                   >
                     {allYears.map((y) => (

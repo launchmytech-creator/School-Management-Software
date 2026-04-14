@@ -24,11 +24,11 @@ export const addAccountantSchema = z.object({
 
 export const editAccountantSchema = z.object({
   fullName: z.string().min(1, 'Full name is required'),
-  email: z.string().min(1, 'Email is required').email('Please enter a valid email'),
   phone: z.string().min(1, 'Phone number is required'),
   dob: z.string().min(1, 'Date of birth is required'),
   gender: z.enum(['male', 'female', 'other']),
-  address: z.string().min(1, 'Address is required'),
+  address: z.string().optional(),
+  isActive: z.boolean(),
 });
 
 export const createParentSchema = z.object({

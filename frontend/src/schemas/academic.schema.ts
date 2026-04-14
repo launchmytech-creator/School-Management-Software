@@ -29,14 +29,26 @@ export const assignmentSchema = z.object({
   dueDate: z.string().min(1, 'Due date is required'),
 });
 
+export const createAssignmentSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().min(1, 'Description is required'),
+  classId: z.number().min(1, 'Class is required'),
+  subjectId: z.number().min(1, 'Subject is required'),
+  academicYearId: z.number().min(1, 'Academic year is required'),
+  dueDate: z.string().min(1, 'Due date is required'),
+  maxMarks: z.number().min(1, 'Max marks is required'),
+  assignmentType: z.enum(['homework', 'classwork', 'project', 'quiz', 'test']),
+});
+
 export const timetableSchema = z.object({
   classId: z.number().min(1, 'Class is required'),
   subjectId: z.number().min(1, 'Subject is required'),
-  teacherId: z.number().min(1, 'Teacher is required'),
   dayOfWeek: z.number().min(0).max(6, 'Invalid day'),
-  period: z.number().min(1, 'Period is required'),
+  periodNumber: z.number().min(1, 'Period is required'),
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
+  academicYearId: z.number().min(1, 'Academic year is required'),
+  room: z.string().optional(),
 });
 
 export const createExamSchema = z.object({
@@ -57,21 +69,23 @@ export const editExamSchema = z.object({
 
 export const createClassSchema = z.object({
   name: z.string().min(1, 'Class name is required'),
-  section: z.string().min(1, 'Section is required'),
-  capacity: z.number().min(1, 'Capacity is required'),
-  classTeacherId: z.number().optional(),
+  section: z.string().optional(),
+  inchargeId: z.number().optional(),
+  defaultFeeAmount: z.number().optional(),
 });
 
 export const allocateTeacherSchema = z.object({
   classId: z.number().min(1, 'Class is required'),
   subjectId: z.number().min(1, 'Subject is required'),
   teacherId: z.number().min(1, 'Teacher is required'),
+  academicYearId: z.number().min(1, 'Academic year is required'),
 });
 
 export type AnnouncementFormData = z.infer<typeof announcementSchema>;
 export type HolidayFormData = z.infer<typeof holidaySchema>;
 export type AcademicYearFormData = z.infer<typeof academicYearSchema>;
 export type AssignmentFormData = z.infer<typeof assignmentSchema>;
+export type CreateAssignmentFormData = z.infer<typeof createAssignmentSchema>;
 export type TimetableFormData = z.infer<typeof timetableSchema>;
 export type CreateExamFormData = z.infer<typeof createExamSchema>;
 export type EditExamFormData = z.infer<typeof editExamSchema>;
