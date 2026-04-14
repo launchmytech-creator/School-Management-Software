@@ -1,44 +1,39 @@
 import { z } from 'zod';
 
-export const createSchoolSchema = z.object({
-  name: z.string().min(1, 'School name is required'),
-  email: z.string().min(1, 'Email is required').email('Please enter a valid email'),
-  phone: z.string().min(1, 'Phone number is required'),
+const baseSchoolFields = {
+  name: z.string().min(3, 'Min 3 characters'),
   address: z.string().min(1, 'Address is required'),
-  city: z.string().min(1, 'City is required'),
-  state: z.string().min(1, 'State is required'),
-  pincode: z.string().min(1, 'Pincode is required'),
-  board: z.string().min(1, 'Board is required'),
-  adminName: z.string().min(1, 'Admin name is required'),
-  adminEmail: z.string().min(1, 'Admin email is required').email('Please enter a valid email'),
-  adminPassword: z.string().min(6, 'Admin password must be at least 6 characters'),
-  adminPhone: z.string().min(1, 'Admin phone is required'),
-  subscriptionPlan: z.string().min(1, 'Subscription plan is required'),
+  phone: z.string().min(1, 'Phone is required'),
+  email: z.string().min(1, 'Email is required').email('Invalid email'),
+  subscriptionStatus: z.enum(['trial', 'active', 'suspended', 'expired']),
+  subscriptionEndDate: z.string().min(1, 'End date is required'),
+  academicYear: z.string().min(1, 'Academic year is required'),
+};
+
+const adminFields = {
+  adminFullName: z.string().min(3, 'Min 3 characters'),
+  adminEmail: z.string().min(1, 'Email is required').email('Invalid email'),
+  adminPassword: z.string().min(8, 'Min 8 characters'),
+  adminPhone: z.string().min(1, 'Phone is required'),
+};
+
+export const createSchoolSchema = z.object({
+  ...baseSchoolFields,
+  ...adminFields,
+  code: z.string().min(2, 'Min 2 characters'),
 });
 
-export const schoolInfoSchema = createSchoolSchema.pick({
-  name: true,
-  email: true,
-  phone: true,
-  address: true,
-  city: true,
-  state: true,
-  pincode: true,
-  board: true,
+export const editSchoolSchema = z.object({
+  ...baseSchoolFields,
+  adminFullName: z.string().optional(),
+  adminEmail: z.string().optional(),
+  adminPassword: z.string().optional(),
+  adminPhone: z.string().optional(),
 });
 
-export const adminInfoSchema = createSchoolSchema.pick({
-  adminName: true,
-  adminEmail: true,
-  adminPassword: true,
-  adminPhone: true,
-});
+export const createSchoolFormSchema = z.discriminatedUnion('isEditMode', [
+  createSchoolSchema.extend({ isEditMode: z.literal(false) }),
+  editSchoolSchema.extend({ isEditMode: z.literal(true) }),
+]);
 
-export const subscriptionSchema = createSchoolSchema.pick({
-  subscriptionPlan: true,
-});
-
-export type CreateSchoolFormData = z.infer<typeof createSchoolSchema>;
-export type SchoolInfoFormData = z.infer<typeof schoolInfoSchema>;
-export type AdminInfoFormData = z.infer<typeof adminInfoSchema>;
-export type SubscriptionFormData = z.infer<typeof subscriptionSchema>;
+export type CreateSchoolFormData = z.infer<typeof createSchoolFormSchema>;

@@ -6,19 +6,21 @@ import { useNotification } from '../../context/NotificationContext';
 import { useCreateSchool, useUpdateSchool } from '../../hooks/queries/useSchools';
 import { getCurrentAcademicYear, getLocalDateString } from '../../lib/utils';
 import { schoolService } from '../../services/schoolService';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { createSchoolFormSchema, type CreateSchoolFormData } from '../../schemas/school.schema';
+import SchoolInfoForm from '../../components/superAdmin/CreateSchool/SchoolInfoForm';
+import AdminInfoForm from '../../components/superAdmin/CreateSchool/AdminInfoForm';
+import SubscriptionSettingsForm from '../../components/superAdmin/CreateSchool/SubscriptionSettingsForm';
+import PlanSelection from '../../components/superAdmin/CreateSchool/PlanSelection';
+import FeeTermsSelection from '../../components/superAdmin/CreateSchool/FeeTermsSelection';
 
 const generateSchoolCode = (name: string): string => {
   const prefix = name.substring(0, 3).toUpperCase();
   const timestamp = Date.now().toString().slice(-4);
   return `${prefix}${timestamp}`;
 };
-
-// Sub-components
-import SchoolInfoForm from '../../components/superAdmin/CreateSchool/SchoolInfoForm';
-import AdminInfoForm from '../../components/superAdmin/CreateSchool/AdminInfoForm';
-import SubscriptionSettingsForm from '../../components/superAdmin/CreateSchool/SubscriptionSettingsForm';
-import PlanSelection from '../../components/superAdmin/CreateSchool/PlanSelection';
-import FeeTermsSelection from '../../components/superAdmin/CreateSchool/FeeTermsSelection';
 
 const CreateSchool: React.FC = () => {
   const navigate = useNavigate();
@@ -29,65 +31,52 @@ const CreateSchool: React.FC = () => {
   const editSchool = location.state?.school as School | undefined;
   const isEditMode = !!editSchool;
 
-  const [formData, setFormData] = useState({
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier>(editSchool?.plan || 'PREMIUM');
+  const [feeTerm, setFeeTerm] = useState<FeeTerm>(editSchool?.feeTerm || 'YEARLY');
+  const [schoolAdmin, setSchoolAdmin] = useState<SchoolAdmin | null>(null);
+
+  const defaultValues = isEditMode ? {
+    isEditMode: true as const,
     name: editSchool?.name || '',
     address: editSchool?.address || '',
     phone: editSchool?.phone || '',
     email: editSchool?.email || '',
-    code: editSchool?.code || '',
-    academicYear: editSchool?.academicYear || getCurrentAcademicYear(),
-    logo: editSchool?.logo || '',
-    // Admin details (only used for creation)
-    adminFullName: '',
-    adminEmail: '',
-    adminPassword: '',
-    adminPhone: '',
-    // Subscription details
-    subscriptionStatus: editSchool?.subscriptionStatus || 'active',
+    subscriptionStatus: (editSchool?.subscriptionStatus || 'active') as 'trial' | 'active' | 'suspended' | 'expired',
     subscriptionEndDate: (() => {
       const d = new Date();
       d.setFullYear(d.getFullYear() + 1);
       return getLocalDateString(d);
     })(),
-  });
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier>(editSchool?.plan || 'PREMIUM');
-  const [feeTerm, setFeeTerm] = useState<FeeTerm>(editSchool?.feeTerm || 'YEARLY');
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [schoolAdmin, setSchoolAdmin] = useState<SchoolAdmin | null>(null);
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    const emailRegex = /\S+@\S+\.\S+/;
-
-    // School Info
-    if (!formData.name || formData.name.length < 3) newErrors.name = 'Min 3 characters';
-    if (!formData.code || formData.code.length < 2) newErrors.code = 'Min 2 characters';
-    if (!formData.address) newErrors.address = 'Required';
-    if (!formData.phone) newErrors.phone = 'Required';
-    if (!formData.email || !emailRegex.test(formData.email)) newErrors.email = 'Invalid email';
-
-    // Admin Info (only if not editing)
-    if (!isEditMode) {
-      if (!formData.adminFullName || formData.adminFullName.length < 3) newErrors.adminFullName = 'Min 3 characters';
-      if (!formData.adminEmail || !emailRegex.test(formData.adminEmail)) newErrors.adminEmail = 'Invalid email';
-      if (!formData.adminPassword || formData.adminPassword.length < 8) newErrors.adminPassword = 'Min 8 characters';
-      if (!formData.adminPhone) newErrors.adminPhone = 'Required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    academicYear: editSchool?.academicYear || getCurrentAcademicYear(),
+  } : {
+    isEditMode: false as const,
+    name: '',
+    code: '',
+    address: '',
+    phone: '',
+    email: '',
+    subscriptionStatus: 'active' as const,
+    subscriptionEndDate: (() => {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 1);
+      return getLocalDateString(d);
+    })(),
+    academicYear: getCurrentAcademicYear(),
+    adminFullName: '',
+    adminEmail: '',
+    adminPassword: '',
+    adminPhone: '',
   };
+
+  const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof createSchoolFormSchema>>({
+    resolver: zodResolver(createSchoolFormSchema),
+    defaultValues,
+  });
 
   const fetchSchoolAdmin = async (id: string) => {
     try {
       const admin = await schoolService.getSchoolAdmin(id);
       setSchoolAdmin(admin);
-      setFormData(prev => ({
-        ...prev,
-        adminFullName: admin.fullName,
-        adminEmail: admin.email,
-        adminPhone: admin.phone,
-      }));
     } catch {
       // Handle silently
     }
@@ -112,75 +101,59 @@ const CreateSchool: React.FC = () => {
     { id: 'MONTHLY', numericId: 12 },
   ];
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors(prev => {
-        const next = { ...prev };
-        delete next[name];
-        return next;
-      });
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) {
-      showNotification('Please fix the errors in the form.', 'error');
-      return;
-    }
+  const onSubmit = async (data: z.infer<typeof createSchoolFormSchema>) => {
     try {
       const currentFeeTermObj = feeTermsNumeric.find(t => t.id === feeTerm);
       
-      if (isEditMode && editSchool) {
+      if (data.isEditMode && editSchool) {
         const payload: SchoolUpdateData = {
-          name: formData.name,
-          address: formData.address,
-          contactPhone: formData.phone,
-          contactEmail: formData.email,
+          name: data.name,
+          address: data.address,
+          contactPhone: data.phone,
+          contactEmail: data.email,
           subscriptionPlanId: planMapping[selectedPlan],
-          subscriptionStatus: formData.subscriptionStatus,
-          subscriptionEndDate: formData.subscriptionEndDate,
+          subscriptionStatus: data.subscriptionStatus,
+          subscriptionEndDate: data.subscriptionEndDate,
         };
         await updateMutation.mutateAsync({ id: editSchool.id, data: payload });
 
-        if (schoolAdmin) {
+        if (schoolAdmin && data.adminFullName) {
           const adminUpdates: UpdateSchoolAdminData = {};
-          if (formData.adminFullName !== schoolAdmin.fullName) {
-            adminUpdates.fullName = formData.adminFullName;
+          if (data.adminFullName !== schoolAdmin.fullName) {
+            adminUpdates.fullName = data.adminFullName;
           }
-          if (formData.adminEmail !== schoolAdmin.email) {
-            adminUpdates.email = formData.adminEmail;
+          if (data.adminEmail && data.adminEmail !== schoolAdmin.email) {
+            adminUpdates.email = data.adminEmail;
           }
-          if (formData.adminPhone !== schoolAdmin.phone) {
-            adminUpdates.phone = formData.adminPhone;
+          if (data.adminPhone && data.adminPhone !== schoolAdmin.phone) {
+            adminUpdates.phone = data.adminPhone;
           }
-          if (formData.adminPassword) {
-            adminUpdates.password = formData.adminPassword;
+          if (data.adminPassword) {
+            adminUpdates.password = data.adminPassword;
           }
           if (Object.keys(adminUpdates).length > 0) {
             await schoolService.updateSchoolAdmin(editSchool.id, adminUpdates);
           }
         }
       } else {
+        const createData = data as CreateSchoolFormData & { isEditMode: false };
         const payload: CreateSchoolRequest = {
           school: {
-            name: formData.name,
-            code: formData.code || generateSchoolCode(formData.name),
+            name: createData.name,
+            code: createData.code || generateSchoolCode(createData.name),
             subscriptionPlanId: planMapping[selectedPlan],
             feeTerms: currentFeeTermObj?.numericId || 1,
-            contactEmail: formData.email,
-            contactPhone: formData.phone,
-            address: formData.address,
-            subscriptionStatus: formData.subscriptionStatus as SchoolCreateData['subscriptionStatus'],
-            subscriptionEndDate: formData.subscriptionEndDate,
+            contactEmail: createData.email,
+            contactPhone: createData.phone,
+            address: createData.address,
+            subscriptionStatus: createData.subscriptionStatus as SchoolCreateData['subscriptionStatus'],
+            subscriptionEndDate: createData.subscriptionEndDate,
           },
           admin: {
-            email: formData.adminEmail,
-            password: formData.adminPassword,
-            fullName: formData.adminFullName,
-            phone: formData.adminPhone,
+            email: createData.adminEmail,
+            password: createData.adminPassword,
+            fullName: createData.adminFullName,
+            phone: createData.adminPhone,
           }
         };
         await createMutation.mutateAsync(payload);
@@ -207,21 +180,19 @@ const CreateSchool: React.FC = () => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-100 shadow-premium p-12 space-y-16">
-          <SchoolInfoForm formData={formData} handleChange={handleChange} errors={errors} />
+        <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-2xl border border-slate-100 shadow-premium p-12 space-y-16">
+          <SchoolInfoForm register={register} errors={errors} />
 
           <hr className="border-slate-50" />
           <AdminInfoForm 
-            formData={formData} 
-            handleChange={handleChange} 
+            register={register} 
             errors={errors}
             isEditMode={isEditMode}
           />
 
           <hr className="border-slate-50" />
           <SubscriptionSettingsForm 
-            formData={formData} 
-            handleChange={handleChange} 
+            register={register} 
             errors={errors}
             selectedPlan={selectedPlan}
             onPlanChange={setSelectedPlan}
@@ -234,7 +205,6 @@ const CreateSchool: React.FC = () => {
           <hr className="border-slate-50" />
           <FeeTermsSelection feeTerm={feeTerm} setFeeTerm={setFeeTerm} />
 
-          {/* Footer Actions */}
           <div className="flex justify-center items-center gap-6 pt-8">
                <button 
                  type="button"
