@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
-import { feeService, type FeeTransaction } from '../../services/feeService';
+import { useClasses, useFeeTransactions } from '../../hooks/queries';
 import { feeStructureService } from '../../services/feeStructureService';
-import { classService } from '../../services/classService';
-import type { Class } from '../../types/class';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -31,10 +29,7 @@ interface FeeSummary {
 const FinancialReports: React.FC = () => {
   const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
-  const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<FeeSummary | null>(null);
-  const [transactions, setTransactions] = useState<FeeTransaction[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
+  const { data: classes = [] } = useClasses();
   const [feeTypes, setFeeTypes] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [feeTypeFilter, setFeeTypeFilter] = useState<string>('');
@@ -42,7 +37,7 @@ const FinancialReports: React.FC = () => {
   const [dateTo, setDateTo] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchFeeTypes = async () => {
       try {
         const types = await feeStructureService.getUniqueFeeTypes();
@@ -54,55 +49,29 @@ const FinancialReports: React.FC = () => {
     fetchFeeTypes();
   }, []);
 
-  const fetchDropdowns = useCallback(async () => {
-    try {
-      const cls = await classService.getClasses();
-      setClasses(cls);
-    } catch {
-      showNotification('Failed to fetch classes', 'error');
-    }
-  }, [showNotification]);
+  const { data: transactions = [], isLoading } = useFeeTransactions({
+    classId: selectedClass ? parseInt(selectedClass) : undefined,
+    academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
+  });
 
-  const fetchReportData = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      const transactionsData = await feeService.getFeeTransactions({
-        classId: selectedClass ? parseInt(selectedClass) : undefined,
-        academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
-      });
-      
-      const uniqueStudents = new Set(transactionsData.map(t => t.studentId));
-      const totalAmount = transactionsData.reduce((sum, t) => sum + t.amountDue, 0);
-      const collectedAmount = transactionsData.reduce((sum, t) => sum + t.amountPaid, 0);
-      const pendingAmount = transactionsData.reduce((sum, t) => sum + (t.amountDue - t.amountPaid), 0);
-      const collectionPercentage = totalAmount > 0 ? Math.round((collectedAmount / totalAmount) * 100) : 0;
-      
-      const computedSummary: FeeSummary = {
-        totalStudents: uniqueStudents.size,
-        totalAmount,
-        collectedAmount,
-        pendingAmount,
-        collectionPercentage,
-        byStatus: [],
-      };
-      
-      setSummary(computedSummary);
-      setTransactions(transactionsData);
-    } catch {
-      showNotification('Failed to fetch report data', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedClass, selectedYear, feeTypeFilter, showNotification]);
-
-  useEffect(() => {
-    fetchDropdowns();
-  }, [fetchDropdowns]);
-
-  useEffect(() => {
-    fetchReportData();
-  }, [fetchReportData]);
+  const summary = useMemo((): FeeSummary | null => {
+    if (transactions.length === 0) return null;
+    
+    const uniqueStudents = new Set(transactions.map(t => t.studentId));
+    const totalAmount = transactions.reduce((sum, t) => sum + t.amountDue, 0);
+    const collectedAmount = transactions.reduce((sum, t) => sum + t.amountPaid, 0);
+    const pendingAmount = transactions.reduce((sum, t) => sum + (t.amountDue - t.amountPaid), 0);
+    const collectionPercentage = totalAmount > 0 ? Math.round((collectedAmount / totalAmount) * 100) : 0;
+    
+    return {
+      totalStudents: uniqueStudents.size,
+      totalAmount,
+      collectedAmount,
+      pendingAmount,
+      collectionPercentage,
+      byStatus: [],
+    };
+  }, [transactions]);
 
   const filteredTransactions = transactions.filter(t =>
     t.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -250,7 +219,7 @@ const FinancialReports: React.FC = () => {
           searchPlaceholder="Search by student name or admission number..."
         />
 
-        {loading ? (
+        {isLoading ? (
           <SkeletonTable columns={6} rows={8} />
         ) : filteredTransactions.length > 0 ? (
           <div className="bg-white rounded-card border border-slate-200 shadow-sm overflow-hidden">
