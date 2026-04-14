@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CreditCard,
   Check,
@@ -23,13 +24,14 @@ import {
 import type { SubscriptionPlan, SubscriptionTier } from "../../types/school";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import PageHeader from "../../components/common/PageHeader";
+import { useAvailablePlans } from "../../hooks/queries";
 
 const AdminProfile: React.FC = () => {
   const { user, refetchUser } = useAuth();
   const { showNotification } = useNotification();
+  const queryClient = useQueryClient();
 
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [loadingPlans, setLoadingPlans] = useState(true);
+  const { data: plans = [], isLoading: loadingPlans } = useAvailablePlans(String(user?.schoolId || ''));
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
     null,
   );
@@ -41,23 +43,6 @@ const AdminProfile: React.FC = () => {
 
   const currentPlanName = user?.subscriptionPlan as SubscriptionTier;
   const currentPlanId = user?.subscriptionPlanId;
-
-  useEffect(() => {
-    fetchPlans();
-  }, []);
-
-  const fetchPlans = async () => {
-    if (!user?.schoolId) return;
-    setLoadingPlans(true);
-    try {
-      const data = await schoolService.getAvailablePlans(String(user.schoolId));
-      setPlans(data);
-    } catch {
-      showNotification("Failed to load subscription plans", "error");
-    } finally {
-      setLoadingPlans(false);
-    }
-  };
 
   const handlePlanChange = async () => {
     if (!selectedPlan || !user?.schoolId) return;
@@ -73,7 +58,7 @@ const AdminProfile: React.FC = () => {
       );
       setConfirmDialog({ isOpen: false, planId: null });
       setSelectedPlan(null);
-      fetchPlans();
+      queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
     } catch (err: unknown) {
       const error = err as { 
         response?: { data?: { message?: string } }; 
