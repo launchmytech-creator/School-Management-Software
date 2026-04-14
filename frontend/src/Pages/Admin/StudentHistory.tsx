@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, User, GraduationCap, Calendar, 
   TrendingUp, DollarSign, BarChart3, 
@@ -9,80 +9,50 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import PageHeader from '../../components/common/PageHeader';
 import { useNotification } from '../../context/NotificationContext';
-import { studentService } from '../../services/studentService';
+import { useStudents, useStudentHistory } from '../../hooks/queries';
 import type { 
-  StudentHistory as StudentHistoryData, 
   AttendanceYearData, 
   ResultsYearData, 
   FeeYearData,
-  Student 
 } from '../../types/student';
 import { formatCurrency } from '../../lib/utils';
 
 const StudentHistory: React.FC = () => {
   const { showNotification } = useNotification();
   
-  // State
-  const [students, setStudents] = useState<Student[]>([]);
+  const { data: allStudents = [], isLoading: loadingStudents } = useStudents();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
-  const [loadingStudents, setLoadingStudents] = useState(true);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [history, setHistory] = useState<StudentHistoryData | null>(null);
   const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Fetch all students for search
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setLoadingStudents(true);
-        const data = await studentService.getStudents({});
-        setStudents(data);
-      } catch {
-        showNotification('Failed to load students', 'error');
-      } finally {
-        setLoadingStudents(false);
-      }
-    };
-    fetchStudents();
-  }, [showNotification]);
+  const { data: history, isLoading: loadingHistory, error } = useStudentHistory(selectedStudentId || 0);
 
-  // Fetch student history
-  const fetchHistory = useCallback(async () => {
-    if (!selectedStudentId) return;
-    try {
-      setLoadingHistory(true);
-      const data = await studentService.getStudentHistory(selectedStudentId);
-      setHistory(data);
-      // Only expand current academic year by default
+  useEffect(() => {
+    if (error) {
+      showNotification('Failed to load student history', 'error');
+    }
+  }, [error, showNotification]);
+
+  useEffect(() => {
+    if (history?.enrollments) {
       const currentYearIds = new Set(
-        data.enrollments.filter(e => e.is_current).map(e => e.academic_year_id)
+        history.enrollments.filter(e => e.is_current).map(e => e.academic_year_id)
       );
       setExpandedYears(currentYearIds);
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } }; message?: string };
-      showNotification(error.response?.data?.message || 'Failed to load student history', 'error');
-    } finally {
-      setLoadingHistory(false);
     }
-  }, [selectedStudentId, showNotification]);
-
-  useEffect(() => {
-    if (selectedStudentId) {
-      fetchHistory();
-    }
-  }, [selectedStudentId, fetchHistory]);
+  }, [history]);
 
   // Filter students by search term (name OR admission number)
   const filteredStudents = useMemo(() => {
-    if (!searchTerm) return students.slice(0, 20);
+    if (!searchTerm) return allStudents.slice(0, 20);
     const term = searchTerm.toLowerCase();
-    return students.filter(s => 
+    return allStudents.filter(s => 
       s.fullName.toLowerCase().includes(term) || 
       s.admissionNumber.toLowerCase().includes(term)
     ).slice(0, 20);
-  }, [students, searchTerm]);
+  }, [allStudents, searchTerm]);
 
   // Toggle year expansion
   const toggleYear = (yearId: number) => {
