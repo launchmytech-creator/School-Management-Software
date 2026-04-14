@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -10,13 +10,11 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import {
-  examResultService,
   type ClassSubjectComparisonData,
   type ClassSubjectComparisonSubject,
 } from "../../services/examResultService";
-import { classService } from "../../services/classService";
+import { useClasses, useClassesForComparison, useClassSubjectComparison } from "../../hooks/queries";
 import { useAcademicYear } from "../../context/AcademicYearContext";
-import { useNotification } from "../../context/NotificationContext";
 import { TrendingUp, Users, Award, Target, Loader2, BookOpen } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 
@@ -29,94 +27,36 @@ const CHART_COLORS = [
   "#EC4899",
 ];
 
-interface ClassSection {
-  id: number;
-  name: string;
-  section: string | null;
-}
-
 const ClassComparison: React.FC = () => {
-  const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
+  const { data: classesData = [] } = useClasses();
 
-  const [uniqueClassNames, setUniqueClassNames] = useState<string[]>([]);
+  const uniqueClassNames = useMemo(() => {
+    return [...new Set(classesData.map(c => c.name))].sort();
+  }, [classesData]);
+
   const [selectedClassName, setSelectedClassName] = useState<string>("");
-  const [sections, setSections] = useState<ClassSection[]>([]);
   const [subjectComparisonData, setSubjectComparisonData] = useState<ClassSubjectComparisonData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [loadingClasses, setLoadingClasses] = useState(true);
-  const [loadingSections, setLoadingSections] = useState(false);
 
-  const fetchClasses = useCallback(async () => {
-    try {
-      setLoadingClasses(true);
-      const data = await classService.getClasses(selectedYear?.id || undefined);
-      const uniqueNames = [...new Set(data.map(c => c.name))].sort();
-      setUniqueClassNames(uniqueNames);
-    } catch {
-      showNotification("Failed to fetch classes", "error");
-    } finally {
-      setLoadingClasses(false);
-    }
-  }, [selectedYear, showNotification]);
+  const { data: sections = [], isLoading: loadingSections } = useClassesForComparison(
+    selectedClassName,
+    selectedYear?.id ? parseInt(selectedYear.id) : undefined
+  );
 
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
+  const classIds = useMemo(() => sections.map(s => s.id), [sections]);
 
-  const fetchSections = useCallback(async (className: string) => {
-    if (!className) {
-      setSections([]);
-      return;
-    }
+  const { data: comparisonData, isLoading } = useClassSubjectComparison(
+    classIds.length > 0 ? classIds : [0],
+    selectedYear?.id ? parseInt(selectedYear.id) : undefined
+  );
 
-    setLoadingSections(true);
-    try {
-      const data = await examResultService.getClassesForComparison(
-        className,
-        selectedYear?.id ? parseInt(selectedYear.id) : undefined
-      );
-      setSections(data);
-    } catch {
-      showNotification("Failed to fetch class sections", "error");
-      setSections([]);
-    } finally {
-      setLoadingSections(false);
-    }
-  }, [selectedYear, showNotification]);
-
-  useEffect(() => {
-    fetchSections(selectedClassName);
-  }, [selectedClassName, fetchSections]);
-
-  const fetchSubjectComparison = useCallback(async () => {
-    if (sections.length === 0) return;
-
-    const classIds = sections.map(s => s.id);
-    setLoading(true);
-    try {
-      const data = await examResultService.getClassSubjectComparison(
-        classIds,
-        selectedYear?.id ? parseInt(selectedYear.id) : undefined
-      );
-      // console.log("Subject Comparison Data:", JSON.stringify(data, null, 2));
-      // console.log("Sections:", sections);
-      setSubjectComparisonData(data);
-    } catch (err) {
-      console.error("Failed to fetch comparison:", err);
-      showNotification("Failed to fetch comparison data", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [sections, selectedYear, showNotification]);
-
-  useEffect(() => {
-    if (sections.length > 0) {
-      fetchSubjectComparison();
+  React.useEffect(() => {
+    if (comparisonData) {
+      setSubjectComparisonData(comparisonData);
     } else {
       setSubjectComparisonData(null);
     }
-  }, [sections, fetchSubjectComparison]);
+  }, [comparisonData]);
 
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedClassName(e.target.value);
@@ -125,7 +65,6 @@ const ClassComparison: React.FC = () => {
 
   const handleClearSelection = () => {
     setSelectedClassName("");
-    setSections([]);
     setSubjectComparisonData(null);
   };
 
@@ -574,7 +513,7 @@ const ClassComparison: React.FC = () => {
             <select
               value={selectedClassName}
               onChange={handleClassChange}
-              disabled={loadingClasses}
+              disabled={false}
               className="w-full px-4 py-2.5 bg-white rounded-xl border border-slate-200 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             >
               <option value="">Select a class...</option>
@@ -634,7 +573,7 @@ const ClassComparison: React.FC = () => {
       </div>
 
       {/* Content */}
-      {loading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-10 h-10 animate-spin text-blue-500 opacity-30" />
         </div>
