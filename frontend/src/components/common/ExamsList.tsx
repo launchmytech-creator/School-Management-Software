@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { examService, type Exam } from '../../services/examService';
-import { classService } from '../../services/classService';
 import { subjectService, type ClassSubject } from '../../services/subjectService';
-import type { Class } from '../../types/class';
+import { useExams, useCreateExam, useUpdateExam, useDeleteExam } from '../../hooks/queries';
+import { useClasses } from '../../hooks/queries';
 import { Plus, Calendar, BookOpen, Trash2, Edit2, X, AlertCircle, GraduationCap } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
@@ -41,9 +41,6 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
   const isAdmin = layout === 'admin';
   const basePath = isAdmin ? '/admin' : '/accountant';
   
-  const [loading, setLoading] = useState(true);
-  const [exams, setExams] = useState<Exam[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -56,11 +53,9 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
   });
   const [classSubjects, setClassSubjects] = useState<ClassSubject[]>([]);
   const [selectedSubjects, setSelectedSubjects] = useState<SubjectFormItem[]>([]);
-  const [creating, setCreating] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, examId: null as number | null });
   
-  // Edit exam state
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -70,57 +65,26 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
     endDate: '',
     weightage: '',
   });
-  const [updating, setUpdating] = useState(false);
   const [editHasResults, setEditHasResults] = useState(false);
   const [checkingResults, setCheckingResults] = useState(false);
 
-  const fetchClasses = useCallback(async () => {
-    try {
-      const data = await classService.getClasses(selectedYear?.id);
-      setClasses(data);
-    } catch {
-      showNotification('Failed to fetch classes', 'error');
-    }
-  }, [selectedYear, showNotification]);
+  const { data: exams = [], isLoading } = useExams({ classId: selectedClass ? parseInt(selectedClass) : undefined });
+  const { data: classes = [] } = useClasses(selectedYear?.id);
 
-  const fetchExams = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await examService.getExams(selectedClass ? parseInt(selectedClass) : undefined);
-      setExams(data);
-    } catch {
-      showNotification('Failed to fetch exams', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedClass, showNotification]);
+  const createExam = useCreateExam();
+  const updateExam = useUpdateExam();
+  const deleteExam = useDeleteExam();
 
-  const fetchClassSubjects = useCallback(async (classId: string) => {
-    if (!classId) {
-      setClassSubjects([]);
-      return;
-    }
-    try {
-      const subjects = await subjectService.getSubjectsByClass(parseInt(classId));
-      setClassSubjects(subjects);
-    } catch {
-      setClassSubjects([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
-
-  useEffect(() => {
-    fetchExams();
-  }, [fetchExams]);
-
-  const handleClassChange = (classId: string) => {
+  const handleClassChange = async (classId: string) => {
     setFormData({ ...formData, classId });
     setSelectedSubjects([]);
     if (classId) {
-      fetchClassSubjects(classId);
+      try {
+        const subjects = await subjectService.getSubjectsByClass(parseInt(classId));
+        setClassSubjects(subjects);
+      } catch {
+        setClassSubjects([]);
+      }
     } else {
       setClassSubjects([]);
     }
@@ -219,19 +183,16 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
       })),
     };
 
-    try {
-      setCreating(true);
-      await examService.createExam(examData);
-      showNotification('Exam created successfully', 'success');
-      setShowCreateModal(false);
-      resetForm();
-      fetchExams();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create exam';
-      showNotification(errorMessage, 'error');
-    } finally {
-      setCreating(false);
-    }
+    createExam.mutate(examData, {
+      onSuccess: () => {
+        showNotification('Exam created successfully', 'success');
+        setShowCreateModal(false);
+        resetForm();
+      },
+      onError: (error: Error) => {
+        showNotification(error.message || 'Failed to create exam', 'error');
+      },
+    });
   };
 
   const resetForm = () => {
@@ -251,14 +212,17 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
   const handleDeleteExam = async () => {
     if (!deleteDialog.examId) return;
     
-    try {
-      await examService.deleteExam(deleteDialog.examId);
-      showNotification('Exam deleted successfully', 'success');
-      fetchExams();
-    } catch {
-      showNotification('Failed to delete exam', 'error');
-    }
-    setDeleteDialog({ isOpen: false, examId: null });
+    deleteExam.mutate(deleteDialog.examId, {
+      onSuccess: () => {
+        showNotification('Exam deleted successfully', 'success');
+      },
+      onError: () => {
+        showNotification('Failed to delete exam', 'error');
+      },
+      onSettled: () => {
+        setDeleteDialog({ isOpen: false, examId: null });
+      },
+    });
   };
 
   const handleEditExam = async (exam: Exam) => {
@@ -297,26 +261,29 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
       return;
     }
 
-    try {
-      setUpdating(true);
-      await examService.updateExam(editingExam.id, {
-        name: editForm.name,
-        examType: editForm.examType || undefined,
-        startDate: editForm.startDate,
-        endDate: editForm.endDate,
-        weightage: editForm.weightage ? parseInt(editForm.weightage) : undefined,
-      });
-      showNotification('Exam updated successfully', 'success');
-      setShowEditModal(false);
-      setEditingExam(null);
-      setErrors({});
-      fetchExams();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update exam';
-      showNotification(errorMessage, 'error');
-    } finally {
-      setUpdating(false);
-    }
+    updateExam.mutate(
+      {
+        id: editingExam.id,
+        data: {
+          name: editForm.name,
+          examType: editForm.examType || undefined,
+          startDate: editForm.startDate,
+          endDate: editForm.endDate,
+          weightage: editForm.weightage ? parseInt(editForm.weightage) : undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          showNotification('Exam updated successfully', 'success');
+          setShowEditModal(false);
+          setEditingExam(null);
+          setErrors({});
+        },
+        onError: (error: Error) => {
+          showNotification(error.message || 'Failed to update exam', 'error');
+        },
+      }
+    );
   };
 
   const handleEditFieldChange = (field: string, value: string) => {
@@ -379,7 +346,7 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
         </select>
       </FilterBar>
 
-      {loading ? (
+      {isLoading ? (
         <div className="bg-white rounded-2xl p-12 flex items-center justify-center">
           <LoadingSpinner size="lg" message="Loading exams..." />
         </div>
@@ -647,7 +614,7 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
             </Button>
             <Button
               onClick={handleCreateExam}
-              loading={creating}
+              loading={createExam.isPending}
               className="flex-1"
             >
               Create Exam
@@ -747,7 +714,7 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
             </Button>
             <Button
               onClick={handleUpdateExam}
-              loading={updating}
+              loading={updateExam.isPending}
               className="flex-1"
             >
               Update Exam
