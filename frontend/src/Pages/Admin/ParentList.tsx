@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { 
   Search, Eye, Edit2, Trash2, 
   UserPlus, Loader2, GraduationCap, 
@@ -9,6 +10,8 @@ import EditParentModal from "../../components/parent/EditParentModal";
 import { parentService } from "../../services/parentService";
 import type { Parent } from "../../types/parent";
 import { useNotification } from "../../context/NotificationContext";
+import { useParents } from "../../hooks/queries";
+import { queryKeys } from "../../lib/queryKeys";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import ViewToggle from "../../components/common/ViewToggle";
@@ -20,9 +23,9 @@ import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 
 const ParentList: React.FC = () => {
   const { showNotification } = useNotification();
+  const queryClient = useQueryClient();
   
-  const [parents, setParents] = useState<Parent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: parents = [], isLoading } = useParents();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -31,23 +34,6 @@ const ParentList: React.FC = () => {
   const [editingParent, setEditingParent] = useState<Parent | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, parentId: null as number | null });
-
-  const fetchParents = React.useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await parentService.getParents();
-      setParents(data);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to fetch parents.";
-      showNotification(message, "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [showNotification]);
-
-  useEffect(() => {
-    fetchParents();
-  }, [fetchParents]);
 
   const handleDelete = (id: number) => {
     setDeleteDialog({ isOpen: true, parentId: id });
@@ -58,7 +44,7 @@ const ParentList: React.FC = () => {
     try {
       await parentService.deleteParent(deleteDialog.parentId);
       showNotification("Parent deactivated successfully", "success");
-      fetchParents();
+      queryClient.invalidateQueries({ queryKey: queryKeys.parents.all(null) });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to deactivate parent.";
       showNotification(message, "error");
@@ -104,7 +90,7 @@ const ParentList: React.FC = () => {
           searchPlaceholder="Search by name, email, or phone..."
         />
 
-        {loading ? (
+        {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2rem] border border-dashed border-slate-200">
              <Loader2 className="size-10 text-blue-500 animate-spin mb-4" />
              <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Loading Parent Database...</p>
@@ -230,20 +216,20 @@ const ParentList: React.FC = () => {
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         parent={selectedParent}
-        onUpdate={fetchParents}
+        onUpdate={() => queryClient.invalidateQueries({ queryKey: queryKeys.parents.all(null) })}
       />
 
       <CreateParentModal 
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        onSuccess={fetchParents}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: queryKeys.parents.all(null) })}
       />
 
       <EditParentModal
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
         parent={editingParent}
-        onSuccess={fetchParents}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: queryKeys.parents.all(null) })}
       />
 
       <ConfirmDialog
