@@ -10,15 +10,7 @@ import {
   Award,
   DollarSign,
 } from "lucide-react";
-import { ResponsiveContainer } from "recharts";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from "recharts";
+import PerformanceTrendChart from "../../components/charts/PerformanceTrendChart";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { useStudentById } from "../../hooks/queries/useStudents";
 import { useAcademicYears } from "../../hooks/queries/useAcademicYears";
@@ -29,9 +21,6 @@ import { useStudentFees } from "../../hooks/queries/useFeeTransactions";
 import { type StudentResult } from "../../services/examResultService";
 import { type FeeTransaction } from "../../services/feeService";
 import { computeFeeSummary } from "../../lib/fee-utils";
-import {
-  subjectColor,
-} from "../../lib/subject-utils";
 import { useActivateStudent, useDeactivateStudent } from "../../hooks/mutations";
 import { useAuth } from "../../context/AuthContext";
 import type { Student } from "../../types/student";
@@ -558,7 +547,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                 </div>
               )}
 
-              {activeTab === "Performance" && (
+                  {activeTab === "Performance" && (
                 hasFeature("analytics") ? (
                 <div className="space-y-6">
                   {loadingMarks ? (
@@ -566,72 +555,12 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                       <LoadingSpinner size="md" message="Loading performance data..." />
                     </div>
                   ) : trendData.length > 0 ? (
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                      <h3 className="font-bold text-slate-900 mb-1">
-                        Performance Trend
-                      </h3>
-                      <p className="text-xs text-slate-400 mb-4">
-                        Academic progress over recent examinations
-                      </p>
-
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart
-                            data={trendData}
-                            margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
-                          >
-                            <CartesianGrid
-                              strokeDasharray="3 3"
-                              stroke="#f1f5f9"
-                            />
-                            <XAxis
-                              dataKey="name"
-                              tick={{ fontSize: 10, fill: "#94a3b8" }}
-                            />
-                            <YAxis
-                              domain={[0, 100]}
-                              tick={{ fontSize: 10, fill: "#94a3b8" }}
-                            />
-                            <Tooltip formatter={(val: number) => [`${val}%`]} />
-                            {allSubjects.map((sub) => (
-                              <Line
-                                key={sub}
-                                type="monotone"
-                                dataKey={sub}
-                                stroke={subjectColor(sub)}
-                                strokeWidth={activeSubject === sub ? 3 : 1.5}
-                                dot={{ r: activeSubject === sub ? 5 : 3 }}
-                              />
-                            ))}
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-
-                      <div className="flex items-center gap-4 mt-4 flex-wrap">
-                        {allSubjects.map((sub) => (
-                          <button
-                            key={sub}
-                            onClick={() => setActiveSubject(sub)}
-                            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all ${
-                              activeSubject === sub
-                                ? "text-white"
-                                : "text-slate-500 bg-slate-100"
-                            }`}
-                            style={
-                              activeSubject === sub
-                                ? { backgroundColor: subjectColor(sub) }
-                                : {}
-                            }
-                          >
-                            <span
-                              className="w-2 h-2 rounded-full"
-                              style={{ backgroundColor: subjectColor(sub) }}
-                            />
-                            {sub}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    <PerformanceTrendChart
+                      trendData={trendData}
+                      allSubjects={allSubjects}
+                      activeSubject={activeSubject}
+                      onSubjectChange={setActiveSubject}
+                    />
                   ) : (
                     <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center">
                       <Award
