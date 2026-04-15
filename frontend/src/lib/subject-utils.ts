@@ -1,4 +1,4 @@
-export const EXAM_TYPES = ["All", "Class Test", "Unit Test", "Half Yearly", "Final"] as const;
+export const EXAM_TYPES = ["All", "Class Test", "Unit Test", "Half Yearly", "Annual", "Final"] as const;
 export type ExamType = typeof EXAM_TYPES[number];
 
 export const EXAM_TYPE_OPTIONS = [

@@ -14,6 +14,8 @@ import { Button } from "../../components/ui/button";
 import FormField from "../../components/ui/FormField";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import PageHeader from "../../components/common/PageHeader";
+import { HolidayCard } from "../../components/common/HolidayCard";
+import { WorkingDaysSummary } from "../../components/common/WorkingDaysSummary";
 import { useHolidays } from "../../hooks/queries";
 import { holidaySchema, type HolidayFormData } from "../../schemas/academic.schema";
 
@@ -196,10 +198,6 @@ const Holidays: React.FC = () => {
     h.description.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const getMonthName = (date: Date) => {
-    return date.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
-  };
-
   return (
     <div className="max-w-[1200px] mx-auto">
       <PageHeader
@@ -314,40 +312,12 @@ const Holidays: React.FC = () => {
             <h3 className="font-bold text-lg text-slate-900 mb-4">
               Working Days Summary
             </h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
-                <span className="text-sm font-medium text-slate-500">
-                  Total Days
-                </span>
-                <span className="text-xl font-extrabold text-slate-900">
-                  {totalDays}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-red-50">
-                <span className="text-sm font-medium text-red-500">
-                  Holidays
-                </span>
-                <span className="text-xl font-extrabold text-red-600">
-                  {holidaysCount}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-orange-50">
-                <span className="text-sm font-medium text-orange-500">
-                  Sundays
-                </span>
-                <span className="text-xl font-extrabold text-orange-600">
-                  {sundaysCount}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50">
-                <span className="text-sm font-medium text-blue-600">
-                  Working Days
-                </span>
-                <span className="text-xl font-extrabold text-blue-600">
-                  {workingDays}
-                </span>
-              </div>
-            </div>
+            <WorkingDaysSummary
+              totalDays={totalDays}
+              holidaysCount={holidaysCount}
+              sundaysCount={sundaysCount}
+              workingDays={workingDays}
+            />
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex-1">
@@ -365,29 +335,7 @@ const Holidays: React.FC = () => {
             ) : upcomingHolidays.length > 0 ? (
               <div className="space-y-4 max-h-[280px] overflow-y-auto">
                 {upcomingHolidays.map((holiday) => (
-                  <div
-                    key={holiday.id}
-                    className="flex items-center gap-4 group"
-                  >
-                    <div className="w-12 h-12 rounded-lg bg-slate-100 flex flex-col items-center justify-center shrink-0">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">
-                        {getMonthName(new Date(holiday.holidayDate))}
-                      </span>
-                      <span className="text-lg font-bold text-slate-900 leading-none">
-                        {new Date(holiday.holidayDate).getDate()}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-slate-900">
-                        {holiday.description}
-                      </p>
-                      {holiday.academicYearName && (
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-green-100 text-green-700 font-bold uppercase tracking-tighter">
-                          {holiday.academicYearName}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  <HolidayCard key={holiday.id} holiday={holiday} />
                 ))}
               </div>
             ) : (

@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { SubjectCard } from "../../components/academic/SubjectCard";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useClasses } from "../../hooks/queries/useClasses";
@@ -16,7 +17,7 @@ import type { Subject, ClassSubject, Chapter } from "../../services/subjectServi
 import { BaseModal } from "../../components/common/BaseModal";
 import { Button } from "../../components/ui/button";
 import InputField from "../../components/ui/InputField";
-import { Plus, BookOpen, ChevronRight, Loader, Trash2, Check, X, AlertCircle, ChevronDown } from "lucide-react";
+import { Plus, BookOpen, Check, X, AlertCircle, ChevronDown } from "lucide-react";
 
 const subjectFormSchema = z.object({
   name: z.string().min(1, "Subject name is required"),
@@ -449,77 +450,17 @@ const Subjects: React.FC = () => {
                                       const isLoadingChapters = loadingChaptersMap[cs.id];
 
                                       return (
-                                        <div key={cs.id} className="bg-white rounded-xl overflow-hidden border border-slate-200">
-                                          <div
-                                            className="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50"
-                                            onClick={() => handleSubjectClick(cs.id, cs.subjectId)}
-                                          >
-                                            <div className="flex items-center gap-3 flex-1">
-                                              <BookOpen className="size-4 text-indigo-500" />
-                                              <span className="font-medium text-slate-700">{cs.subjectName}</span>
-                                              <span className="text-xs text-slate-400">({chapters.length} chapters)</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  openAddChapter(cs.id);
-                                                }}
-                                                className="p-1.5 hover:bg-slate-100 rounded-lg"
-                                                title="Add Chapter"
-                                              >
-                                                <Plus className="size-4 text-slate-400" />
-                                              </button>
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleDeleteSubject(cs.id, cs.subjectName);
-                                                }}
-                                                className="p-1.5 hover:bg-red-50 rounded-lg"
-                                                title="Delete Subject"
-                                              >
-                                                <Trash2 className="size-4 text-red-400" />
-                                              </button>
-                                              <ChevronRight
-                                                className={`size-4 text-slate-400 transition-transform ${isSubjectExpanded ? "rotate-90" : ""}`}
-                                              />
-                                            </div>
-                                          </div>
-
-                                          {isSubjectExpanded && (
-                                            <div className="border-t border-slate-100 p-3 bg-slate-50">
-                                              {isLoadingChapters ? (
-                                                <div className="text-center py-2">
-                                                  <Loader className="size-4 animate-spin mx-auto text-slate-400" />
-                                                </div>
-                                              ) : chapters.length > 0 ? (
-                                                <div className="space-y-1">
-                                                  {chapters.map((chapter) => (
-                                                    <div
-                                                      key={chapter.id}
-                                                      className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-100"
-                                                    >
-                                                      <div className="flex items-center gap-2">
-                                                        <div className="w-6 h-6 bg-slate-200 rounded flex items-center justify-center font-bold text-xs text-slate-600">
-                                                          {chapter.sequenceNumber}
-                                                        </div>
-                                                        <span className="text-sm text-slate-600">{chapter.name}</span>
-                                                      </div>
-                                                      <button
-                                                        onClick={() => handleDeleteChapter(chapter.id, cs.id, cs.subjectId)}
-                                                        className="p-1 hover:bg-red-50 rounded"
-                                                      >
-                                                        <Trash2 className="size-3 text-red-400" />
-                                                      </button>
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              ) : (
-                                                <p className="text-xs text-slate-400 text-center py-2">No chapters yet</p>
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
+                                        <SubjectCard
+                                          key={cs.id}
+                                          classSubject={cs}
+                                          isExpanded={isSubjectExpanded}
+                                          chapters={chapters}
+                                          isLoadingChapters={isLoadingChapters}
+                                          onToggle={() => handleSubjectClick(cs.id, cs.subjectId)}
+                                          onAddChapter={() => openAddChapter(cs.id)}
+                                          onDeleteSubject={() => handleDeleteSubject(cs.id, cs.subjectName)}
+                                          onDeleteChapter={(chapterId) => handleDeleteChapter(chapterId, cs.id, cs.subjectId)}
+                                        />
                                       );
                                     })
                                   ) : (

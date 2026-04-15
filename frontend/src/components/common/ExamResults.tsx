@@ -22,12 +22,11 @@ import {
 } from "lucide-react";
 import { SkeletonTable } from "../../components/common/Skeleton";
 import { QueryErrorFallback } from "../../components/error";
+import { EXAM_TYPES } from "../../lib/subject-utils";
 
 interface ExamResultsProps {
   layout?: "admin" | "accountant";
 }
-
-const EXAM_TYPES = ["All", "Unit Test", "Half Yearly", "Annual"];
 
 const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
   const { showNotification } = useNotification();
