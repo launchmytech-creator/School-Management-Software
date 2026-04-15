@@ -16,8 +16,8 @@ import {
 import { useAllStudents } from "../../hooks/queries/useStudents";
 import type { Class } from "../../types/class";
 import { Save, CheckCircle, XCircle, GraduationCap } from "lucide-react";
-import { BaseModal } from "../../components/common/BaseModal";
 import { Button } from "../../components/ui/button";
+import { MarksConfirmModal } from "./MarksConfirmModal";
 
 interface StudentMarks {
   studentId: number;
@@ -572,60 +572,13 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
         />
       )}
 
-      <BaseModal
+      <MarksConfirmModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
-        title="Confirm Save Marks"
-        size="md"
-      >
-        <div className="p-6 space-y-4">
-          <p className="text-slate-600">
-            Are you sure you want to save marks for{" "}
-            <span className="font-semibold">
-              {studentMarks.filter((s) => s.marksObtained || s.isAbsent).length}
-            </span>{" "}
-            students?
-          </p>
-          <div className="bg-slate-50 rounded-lg p-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Total Students:</span>
-              <span className="font-medium">{studentMarks.length}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Marks Entered:</span>
-              <span className="font-medium text-emerald-600">
-                {
-                  studentMarks.filter((s) => s.marksObtained && !s.isAbsent)
-                    .length
-                }
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Marked Absent:</span>
-              <span className="font-medium text-red-600">
-                {studentMarks.filter((s) => s.isAbsent).length}
-              </span>
-            </div>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowConfirmModal(false)}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveMarks}
-              loading={saving}
-              className="flex-1 gap-2"
-            >
-              <Save className="w-4 h-4" />
-              Save Marks
-            </Button>
-          </div>
-        </div>
-      </BaseModal>
+        onConfirm={handleSaveMarks}
+        studentMarks={studentMarks}
+        loading={saving}
+      />
     </>
   );
 
