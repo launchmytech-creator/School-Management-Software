@@ -1,53 +1,59 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-
+import React, { useState, useCallback, useMemo } from "react";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
-import {
-  subjectService,
-  type ClassSubject,
-  type Chapter,
-  type Subject,
-} from "../../services/subjectService";
-import { classService } from "../../services/classService";
+import { useClasses } from "../../hooks/queries/useClasses";
+import { useSubjects, useAllClassSubjects, useCheckExistingAssignments } from "../../hooks/queries/useSubjects";
+import { useCreateSubject, useAssignSubjectToClasses, useRemoveSubjectFromClass, useCreateChapter, useDeleteChapter } from "../../hooks/mutations/useSubjectMutations";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { createChapterSchema, type CreateChapterFormData } from "../../schemas/subject.schema";
 import type { Class } from "../../types/class";
+import type { Subject, ClassSubject, Chapter } from "../../services/subjectService";
 import { BaseModal } from "../../components/common/BaseModal";
 import { Button } from "../../components/ui/button";
 import InputField from "../../components/ui/InputField";
 import { Plus, BookOpen, ChevronRight, Loader, Trash2, Check, X, AlertCircle, ChevronDown } from "lucide-react";
 
+const subjectFormSchema = z.object({
+  name: z.string().min(1, "Subject name is required"),
+});
+
 const Subjects: React.FC = () => {
   const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
 
-  const [loading, setLoading] = useState(true);
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [allClassSubjects, setAllClassSubjects] = useState<ClassSubject[]>([]);
-  const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
+  const { data: classesData, isLoading: loadingClasses } = useClasses();
+  const classes = classesData || [];
+
+  const { data: allSubjectsData } = useSubjects();
+  const allSubjects = allSubjectsData || [];
+
+  const { data: allClassSubjectsData, isLoading: loadingClassSubjects, refetch: refetchClassSubjects } = useAllClassSubjects(
+    selectedYear?.id ? Number(selectedYear.id) : 0
+  );
+  const allClassSubjects = allClassSubjectsData || [];
+
   const [chaptersCache, setChaptersCache] = useState<Record<number, Chapter[]>>({});
+  const [loadingChaptersMap, setLoadingChaptersMap] = useState<Record<number, boolean>>({});
 
   const [expandedSection, setExpandedSection] = useState<number | null>(null);
   const [expandedSubject, setExpandedSubject] = useState<number | null>(null);
-  const [loadingChapters, setLoadingChapters] = useState<Set<number>>(new Set());
 
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
   const [showAddChapterModal, setShowAddChapterModal] = useState(false);
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
 
-  const [subjectForm, setSubjectForm] = useState({ name: "" });
   const [subjectCode, setSubjectCode] = useState("");
   const [codeEditedManually, setCodeEditedManually] = useState(false);
-  const [chapterForm, setChapterForm] = useState({ name: "", sequenceNumber: "" });
-  const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
-  const [existingAssignments, setExistingAssignments] = useState<ClassSubject[]>([]);
   const [showSubjectSuggestions, setShowSubjectSuggestions] = useState(false);
   const [isNewSubject, setIsNewSubject] = useState(true);
   const [selectedExistingSubject, setSelectedExistingSubject] = useState<Subject | null>(null);
+  const [classesError, setClassesError] = useState("");
 
   const [deleteConfirm, setDeleteConfirm] = useState<{
     isOpen: boolean;
@@ -55,73 +61,58 @@ const Subjects: React.FC = () => {
     subjectName: string;
   }>({ isOpen: false, classSubjectId: null, subjectName: "" });
 
-  const fetchClasses = useCallback(async () => {
-    try {
-      const data = await classService.getClasses();
-      setClasses(data);
-    } catch {
-      showNotification("Failed to fetch classes", "error");
-    }
-  }, [showNotification]);
+  const { data: checkAssignmentsData } = useCheckExistingAssignments(
+    selectedClasses.map((id) => parseInt(id)).filter((id) => !isNaN(id)),
+    selectedYear?.id ? Number(selectedYear.id) : 0
+  );
 
-  const fetchAllSubjects = useCallback(async () => {
-    try {
-      const data = await subjectService.getSubjects();
-      setAllSubjects(data);
-    } catch {
-      // Silently fail for subject list
-    }
-  }, []);
+  const createSubjectMutation = useCreateSubject();
+  const assignSubjectMutation = useAssignSubjectToClasses();
+  const removeSubjectMutation = useRemoveSubjectFromClass();
+  const createChapterMutation = useCreateChapter();
+  const deleteChapterMutation = useDeleteChapter();
 
-  const fetchAllClassSubjects = useCallback(async () => {
-    if (!selectedYear?.id) {
-      setAllClassSubjects([]);
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      const data = await subjectService.getAllClassSubjects(Number(selectedYear.id));
-      setAllClassSubjects(data);
-    } catch {
-      showNotification("Failed to fetch subjects", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedYear?.id, showNotification]);
+  const {
+    register: registerSubject,
+    handleSubmit: handleSubjectSubmit,
+    watch: watchSubject,
+    reset: resetSubjectForm,
+    setValue: setSubjectValue,
+    formState: { errors: subjectErrors },
+  } = useForm<z.infer<typeof subjectFormSchema>>({
+    resolver: zodResolver(subjectFormSchema),
+    defaultValues: { name: "" },
+  });
+
+  const {
+    register: registerChapter,
+    handleSubmit: handleChapterSubmit,
+    reset: resetChapterForm,
+    formState: { errors: chapterErrors },
+  } = useForm<CreateChapterFormData>({
+    resolver: zodResolver(createChapterSchema),
+    defaultValues: { name: "", sequenceNumber: "" },
+  });
 
   const fetchChapters = useCallback(
-    async (classSubjectId: number) => {
-      const classSubject = allClassSubjects.find((cs) => cs.id === classSubjectId);
-      if (!classSubject) return;
+    async (classSubjectId: number, subjectId: number) => {
       if (chaptersCache[classSubjectId]) return;
-      if (loadingChapters.has(classSubjectId)) return;
+      if (loadingChaptersMap[classSubjectId]) return;
 
-      setLoadingChapters((prev) => new Set(prev).add(classSubjectId));
+      setLoadingChaptersMap((prev) => ({ ...prev, [classSubjectId]: true }));
       try {
-        const data = await subjectService.getChaptersBySubject(classSubject.subjectId);
+        const { data } = await import("../../services/subjectService").then((m) =>
+          m.subjectService.getChaptersBySubject(subjectId).then((r) => ({ data: r }))
+        );
         setChaptersCache((prev) => ({ ...prev, [classSubjectId]: data }));
       } catch {
         showNotification("Failed to fetch chapters", "error");
       } finally {
-        setLoadingChapters((prev) => {
-          const next = new Set(prev);
-          next.delete(classSubjectId);
-          return next;
-        });
+        setLoadingChaptersMap((prev) => ({ ...prev, [classSubjectId]: false }));
       }
     },
-    [allClassSubjects, chaptersCache, loadingChapters, showNotification],
+    [chaptersCache, loadingChaptersMap, showNotification]
   );
-
-  useEffect(() => {
-    fetchClasses();
-    fetchAllSubjects();
-  }, [fetchClasses, fetchAllSubjects]);
-
-  useEffect(() => {
-    fetchAllClassSubjects();
-  }, [fetchAllClassSubjects]);
 
   const groupedByClass = useMemo(() => {
     const grouped: Record<string, Class[]> = {};
@@ -135,21 +126,24 @@ const Subjects: React.FC = () => {
     return grouped;
   }, [classes]);
 
-  const getSubjectsForClass = useCallback((classId: number): ClassSubject[] => {
-    return allClassSubjects.filter((cs) => cs.classId === Number(classId));
-  }, [allClassSubjects]);
+  const getSubjectsForClass = useCallback(
+    (classId: number): ClassSubject[] => {
+      return allClassSubjects.filter((cs) => cs.classId === Number(classId));
+    },
+    [allClassSubjects]
+  );
 
   const toggleSection = (classId: number) => {
     setExpandedSection((prev) => (prev === classId ? null : classId));
     setExpandedSubject(null);
   };
 
-  const handleSubjectClick = async (classSubjectId: number) => {
+  const handleSubjectClick = async (classSubjectId: number, subjectId: number) => {
     if (expandedSubject === classSubjectId) {
       setExpandedSubject(null);
     } else {
       setExpandedSubject(classSubjectId);
-      await fetchChapters(classSubjectId);
+      await fetchChapters(classSubjectId, subjectId);
     }
   };
 
@@ -162,49 +156,43 @@ const Subjects: React.FC = () => {
     return `${classNum}${section}-${subjectName.substring(0, 4).toUpperCase()}`;
   };
 
-  const handleCreateSubject = async () => {
-    if (!subjectForm.name.trim()) {
-      setErrors({ name: "Subject name is required" });
-      return;
-    }
+  const onSubmitSubject = async (data: z.infer<typeof subjectFormSchema>) => {
     if (selectedClasses.length === 0) {
-      setErrors({ classes: "Please select at least one class" });
+      setClassesError("Please select at least one class");
       return;
     }
     if (!selectedYear?.id) {
-      setErrors({ year: "No academic year selected. Please set an academic year first." });
-      return;
-    }
-    if (!subjectCode.trim()) {
-      setErrors({ code: "Subject code is required" });
+      showNotification("No academic year selected. Please set an academic year first.", "error");
       return;
     }
 
     try {
-      setSaving(true);
       let subjectId: number;
 
       if (isNewSubject) {
-        const subject = await subjectService.createSubject({
-          name: subjectForm.name,
+        if (!subjectCode.trim()) {
+          setClassesError("Subject code is required");
+          return;
+        }
+        const result = await createSubjectMutation.mutateAsync({
+          name: data.name,
           code: subjectCode,
         });
-        subjectId = subject.id;
+        subjectId = result.id;
       } else {
         subjectId = selectedExistingSubject!.id;
       }
 
-      const results = await subjectService.assignSubjectToMultipleClasses(
-        selectedClasses.map((id) => parseInt(id)).filter((id) => !isNaN(id)),
+      await assignSubjectMutation.mutateAsync({
+        classIds: selectedClasses.map((id) => parseInt(id)).filter((id) => !isNaN(id)),
         subjectId,
-        parseInt(selectedYear.id),
-      );
+        academicYearId: parseInt(selectedYear.id),
+      });
 
-      showNotification(`Subject assigned to ${results.length} class(es) successfully`, "success");
+      showNotification(`Subject assigned to ${selectedClasses.length} class(es) successfully`, "success");
       resetSubjectModal();
       setShowAddSubjectModal(false);
-      fetchAllClassSubjects();
-      fetchAllSubjects();
+      refetchClassSubjects();
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || "Failed to create subject";
       if (err?.response?.data?.errorCode === "SUBJECT_001") {
@@ -212,52 +200,43 @@ const Subjects: React.FC = () => {
       } else {
         showNotification(errorMessage, "error");
       }
-    } finally {
-      setSaving(false);
     }
   };
 
   const resetSubjectModal = () => {
-    setSubjectForm({ name: "" });
+    resetSubjectForm();
     setSubjectCode("");
     setCodeEditedManually(false);
-    setErrors({});
     setSelectedClasses([]);
-    setExistingAssignments([]);
     setShowSubjectSuggestions(false);
     setIsNewSubject(true);
     setSelectedExistingSubject(null);
+    setClassesError("");
   };
 
-  const handleCreateChapter = async () => {
-    if (!chapterForm.name.trim()) {
-      setErrors({ chapterName: "Chapter name is required" });
-      return;
-    }
+  const onSubmitChapter = async (data: CreateChapterFormData) => {
     if (!selectedSubjectId) return;
 
     const classSubject = allClassSubjects.find((cs) => cs.id === selectedSubjectId);
     if (!classSubject) return;
 
     try {
-      setSaving(true);
-      await subjectService.createChapter({
+      await createChapterMutation.mutateAsync({
         subjectId: classSubject.subjectId,
-        name: chapterForm.name,
-        sequenceNumber: chapterForm.sequenceNumber ? parseInt(chapterForm.sequenceNumber) : undefined,
+        name: data.name,
+        sequenceNumber: data.sequenceNumber ? parseInt(data.sequenceNumber) : undefined,
       });
 
       showNotification("Chapter created successfully", "success");
       setShowAddChapterModal(false);
-      setChapterForm({ name: "", sequenceNumber: "" });
-      setErrors({});
+      resetChapterForm();
 
-      const data = await subjectService.getChaptersBySubject(classSubject.subjectId);
-      setChaptersCache((prev) => ({ ...prev, [selectedSubjectId]: data }));
+      const { data: chapterData } = await import("../../services/subjectService").then((m) =>
+        m.subjectService.getChaptersBySubject(classSubject.subjectId).then((r) => ({ data: r }))
+      );
+      setChaptersCache((prev) => ({ ...prev, [selectedSubjectId]: chapterData }));
     } catch {
       showNotification("Failed to create chapter", "error");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -268,23 +247,25 @@ const Subjects: React.FC = () => {
   const confirmDeleteSubject = async () => {
     if (!deleteConfirm.classSubjectId) return;
     try {
-      await subjectService.removeSubjectFromClass(deleteConfirm.classSubjectId);
+      await removeSubjectMutation.mutateAsync(deleteConfirm.classSubjectId);
       showNotification("Subject removed successfully", "success");
       setDeleteConfirm({ isOpen: false, classSubjectId: null, subjectName: "" });
-      fetchAllClassSubjects();
+      refetchClassSubjects();
     } catch (error: any) {
       showNotification(error?.message || error?.response?.data?.message || "Failed to remove subject", "error");
     }
   };
 
-  const handleDeleteChapter = async (chapterId: number, classSubjectId: number) => {
+  const handleDeleteChapter = async (chapterId: number, classSubjectId: number, subjectId: number) => {
     try {
-      await subjectService.deleteChapter(chapterId);
+      await deleteChapterMutation.mutateAsync(chapterId);
       showNotification("Chapter deleted successfully", "success");
 
       const classSubject = allClassSubjects.find((cs) => cs.id === classSubjectId);
       if (classSubject) {
-        const data = await subjectService.getChaptersBySubject(classSubject.subjectId);
+        const { data } = await import("../../services/subjectService").then((m) =>
+          m.subjectService.getChaptersBySubject(subjectId).then((r) => ({ data: r }))
+        );
         setChaptersCache((prev) => ({ ...prev, [classSubjectId]: data }));
       }
     } catch {
@@ -294,49 +275,57 @@ const Subjects: React.FC = () => {
 
   const openAddSubjectModal = async () => {
     setSelectedClasses([]);
-    setErrors({});
-    setSubjectForm({ name: "" });
     setSubjectCode("");
     setCodeEditedManually(false);
     setIsNewSubject(true);
     setSelectedExistingSubject(null);
     setShowSubjectSuggestions(false);
-
-    if (selectedYear?.id) {
-      try {
-        const numericClassIds = classes.map((c) => parseInt(c.id)).filter((id) => !isNaN(id));
-        const assignments = await subjectService.checkExistingAssignments(numericClassIds, parseInt(selectedYear.id));
-        setExistingAssignments(assignments);
-      } catch {
-        setExistingAssignments([]);
-      }
-    }
-
+    setClassesError("");
+    resetSubjectForm();
     setShowAddSubjectModal(true);
   };
 
   const openAddChapter = (classSubjectId: number) => {
     setSelectedSubjectId(classSubjectId);
     setShowAddChapterModal(true);
-    setErrors({});
-    setChapterForm({ name: "", sequenceNumber: "" });
+    resetChapterForm();
   };
 
+  const watchedSubjectName = watchSubject("name");
+
   const getSubjectSuggestions = useCallback(() => {
-    if (!subjectForm.name.trim()) return [];
-    return allSubjects.filter((s) => s.name.toLowerCase().includes(subjectForm.name.toLowerCase().trim())).slice(0, 5);
-  }, [subjectForm.name, allSubjects]);
+    if (!watchedSubjectName?.trim()) return [];
+    return allSubjects
+      .filter((s) => s.name.toLowerCase().includes(watchedSubjectName.toLowerCase().trim()))
+      .slice(0, 5);
+  }, [watchedSubjectName, allSubjects]);
 
   const selectExistingSubject = (subject: Subject) => {
     setSelectedExistingSubject(subject);
-    setSubjectForm({ name: subject.name });
+    setSubjectValue("name", subject.name);
     setSubjectCode(subject.code);
     setCodeEditedManually(true);
     setIsNewSubject(false);
     setShowSubjectSuggestions(false);
-    setErrors({});
-    const assignedClassIds = existingAssignments.filter((a) => a.subjectId === subject.id).map((a) => String(a.classId));
-    setSelectedClasses(assignedClassIds);
+    setClassesError("");
+    if (checkAssignmentsData) {
+      const assignedClassIds = checkAssignmentsData
+        .filter((a) => a.subjectId === subject.id)
+        .map((a) => String(a.classId));
+      setSelectedClasses(assignedClassIds);
+    }
+  };
+
+  const handleSubjectNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setSubjectValue("name", newName);
+    setShowSubjectSuggestions(true);
+    setIsNewSubject(true);
+    setSelectedExistingSubject(null);
+    if (!codeEditedManually && selectedClasses.length > 0) {
+      const generated = generateSubjectCode(newName, String(selectedClasses[0]));
+      setSubjectCode(generated);
+    }
   };
 
   const toggleClassSelection = (classId: string) => {
@@ -344,12 +333,12 @@ const Subjects: React.FC = () => {
       if (prev.includes(classId)) return prev.filter((id) => id !== classId);
       return [...prev, classId];
     });
-    setErrors({ classes: "" });
+    setClassesError("");
   };
 
   const selectAllClasses = () => {
     setSelectedClasses(classes.map((c) => c.id));
-    setErrors({ classes: "" });
+    setClassesError("");
   };
 
   const clearAllClasses = () => setSelectedClasses([]);
@@ -357,8 +346,14 @@ const Subjects: React.FC = () => {
   const isClassAssigned = (classId: string): boolean => {
     if (isNewSubject) return false;
     const numericClassId = parseInt(classId);
-    return existingAssignments.some((a) => a.classId === numericClassId && a.subjectId === selectedExistingSubject?.id);
+    return (checkAssignmentsData || []).some(
+      (a) => a.classId === numericClassId && a.subjectId === selectedExistingSubject?.id
+    );
   };
+
+  const isLoading = loadingClasses || loadingClassSubjects;
+  const isSaving = createSubjectMutation.isPending || assignSubjectMutation.isPending;
+  const isChapterSaving = createChapterMutation.isPending;
 
   return (
     <div className="space-y-6 pb-12">
@@ -373,7 +368,7 @@ const Subjects: React.FC = () => {
             ],
           }}
         />
-        {selectedYear?.id && !loading && classes.length > 0 && (
+        {selectedYear?.id && !isLoading && classes.length > 0 && (
           <Button onClick={openAddSubjectModal} className="gap-2">
             <Plus className="size-4" />
             Add Subject
@@ -385,7 +380,7 @@ const Subjects: React.FC = () => {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
           <p className="text-amber-700 font-medium">Please set an academic year first to manage subjects.</p>
         </div>
-      ) : loading ? (
+      ) : isLoading ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 flex items-center justify-center">
           <div className="animate-pulse text-slate-400">Loading subjects...</div>
         </div>
@@ -418,9 +413,8 @@ const Subjects: React.FC = () => {
                       const isExpanded = expandedSection === Number(section.id);
 
                       return (
-                        <>
+                        <React.Fragment key={section.id}>
                           <tr
-                            key={section.id}
                             className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
                             onClick={() => toggleSection(Number(section.id))}
                           >
@@ -452,13 +446,13 @@ const Subjects: React.FC = () => {
                                     sectionSubjects.map((cs) => {
                                       const isSubjectExpanded = expandedSubject === cs.id;
                                       const chapters = chaptersCache[cs.id] || [];
-                                      const isLoadingChapters = loadingChapters.has(cs.id);
+                                      const isLoadingChapters = loadingChaptersMap[cs.id];
 
                                       return (
                                         <div key={cs.id} className="bg-white rounded-xl overflow-hidden border border-slate-200">
                                           <div
                                             className="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50"
-                                            onClick={() => handleSubjectClick(cs.id)}
+                                            onClick={() => handleSubjectClick(cs.id, cs.subjectId)}
                                           >
                                             <div className="flex items-center gap-3 flex-1">
                                               <BookOpen className="size-4 text-indigo-500" />
@@ -467,14 +461,20 @@ const Subjects: React.FC = () => {
                                             </div>
                                             <div className="flex items-center gap-2">
                                               <button
-                                                onClick={(e) => { e.stopPropagation(); openAddChapter(cs.id); }}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  openAddChapter(cs.id);
+                                                }}
                                                 className="p-1.5 hover:bg-slate-100 rounded-lg"
                                                 title="Add Chapter"
                                               >
                                                 <Plus className="size-4 text-slate-400" />
                                               </button>
                                               <button
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteSubject(cs.id, cs.subjectName); }}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleDeleteSubject(cs.id, cs.subjectName);
+                                                }}
                                                 className="p-1.5 hover:bg-red-50 rounded-lg"
                                                 title="Delete Subject"
                                               >
@@ -495,7 +495,10 @@ const Subjects: React.FC = () => {
                                               ) : chapters.length > 0 ? (
                                                 <div className="space-y-1">
                                                   {chapters.map((chapter) => (
-                                                    <div key={chapter.id} className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-100">
+                                                    <div
+                                                      key={chapter.id}
+                                                      className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-100"
+                                                    >
                                                       <div className="flex items-center gap-2">
                                                         <div className="w-6 h-6 bg-slate-200 rounded flex items-center justify-center font-bold text-xs text-slate-600">
                                                           {chapter.sequenceNumber}
@@ -503,7 +506,7 @@ const Subjects: React.FC = () => {
                                                         <span className="text-sm text-slate-600">{chapter.name}</span>
                                                       </div>
                                                       <button
-                                                        onClick={() => handleDeleteChapter(chapter.id, cs.id)}
+                                                        onClick={() => handleDeleteChapter(chapter.id, cs.id, cs.subjectId)}
                                                         className="p-1 hover:bg-red-50 rounded"
                                                       >
                                                         <Trash2 className="size-3 text-red-400" />
@@ -528,7 +531,7 @@ const Subjects: React.FC = () => {
                               </td>
                             </tr>
                           )}
-                        </>
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
@@ -541,34 +544,26 @@ const Subjects: React.FC = () => {
 
       <BaseModal
         isOpen={showAddSubjectModal}
-        onClose={() => { setShowAddSubjectModal(false); resetSubjectModal(); }}
+        onClose={() => {
+          setShowAddSubjectModal(false);
+          resetSubjectModal();
+        }}
         title="Add Subject to Classes"
         size="lg"
       >
-        <div className="p-6 space-y-5">
+        <form onSubmit={handleSubjectSubmit(onSubmitSubject)} className="p-6 space-y-5">
           <div className="relative">
             <InputField
               label="Subject Name"
               placeholder="Type to search or create new subject..."
-              value={subjectForm.name}
-              onChange={(e) => {
-                const newName = e.target.value;
-                setSubjectForm({ name: newName });
-                setShowSubjectSuggestions(true);
-                setIsNewSubject(true);
-                setSelectedExistingSubject(null);
-                if (!codeEditedManually && selectedClasses.length > 0) {
-                  const generated = generateSubjectCode(newName, String(selectedClasses[0]));
-                  setSubjectCode(generated);
-                }
-                setErrors((prev) => ({ ...prev, name: "" }));
-              }}
+              {...registerSubject("name")}
+              onChange={handleSubjectNameChange}
               onFocus={() => setShowSubjectSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSubjectSuggestions(false), 200)}
-              error={errors.name}
+              error={subjectErrors.name?.message}
             />
 
-            {showSubjectSuggestions && subjectForm.name.trim() && (
+            {showSubjectSuggestions && watchedSubjectName?.trim() && (
               <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-auto">
                 {getSubjectSuggestions().length > 0 && (
                   <div className="p-2">
@@ -576,7 +571,11 @@ const Subjects: React.FC = () => {
                     {getSubjectSuggestions().map((subject) => (
                       <button
                         key={subject.id}
-                        onMouseDown={(e) => { e.preventDefault(); selectExistingSubject(subject); }}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          selectExistingSubject(subject);
+                        }}
                         className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded-lg flex items-center justify-between"
                       >
                         <div>
@@ -598,7 +597,15 @@ const Subjects: React.FC = () => {
                 <Check className="w-4 h-4 text-blue-500" />
                 <span className="text-sm font-medium text-blue-700">Using existing: {selectedExistingSubject.name}</span>
               </div>
-              <button onClick={() => { setSelectedExistingSubject(null); setSubjectForm({ name: "" }); setIsNewSubject(true); }} className="p-1 hover:bg-blue-100 rounded">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedExistingSubject(null);
+                  setSubjectValue("name", "");
+                  setIsNewSubject(true);
+                }}
+                className="p-1 hover:bg-blue-100 rounded"
+              >
                 <X className="w-4 h-4 text-blue-500" />
               </button>
             </div>
@@ -608,17 +615,24 @@ const Subjects: React.FC = () => {
             label="Subject Code"
             placeholder="e.g., 10A-MATH"
             value={subjectCode}
-            onChange={(e) => { setSubjectCode(e.target.value.toUpperCase()); setCodeEditedManually(true); setErrors((prev) => ({ ...prev, code: "" })); }}
-            error={errors.code}
+            onChange={(e) => {
+              setSubjectCode(e.target.value.toUpperCase());
+              setCodeEditedManually(true);
+            }}
+            error={classesError && !subjectCode.trim() && isNewSubject ? undefined : undefined}
           />
 
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-semibold text-slate-700">Assign to Classes</label>
               <div className="flex gap-2">
-                <button type="button" onClick={selectAllClasses} className="text-xs text-blue-600 hover:text-blue-700">Select All</button>
+                <button type="button" onClick={selectAllClasses} className="text-xs text-blue-600 hover:text-blue-700">
+                  Select All
+                </button>
                 <span className="text-slate-300">|</span>
-                <button type="button" onClick={clearAllClasses} className="text-xs text-slate-500 hover:text-slate-600">Clear</button>
+                <button type="button" onClick={clearAllClasses} className="text-xs text-slate-500 hover:text-slate-600">
+                  Clear
+                </button>
               </div>
             </div>
 
@@ -635,9 +649,11 @@ const Subjects: React.FC = () => {
                       isAssigned ? "bg-slate-50 cursor-not-allowed" : isSelected ? "bg-blue-50" : "hover:bg-slate-50"
                     }`}
                   >
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                      isAssigned ? "border-slate-300 bg-slate-200" : isSelected ? "border-blue-500 bg-blue-500" : "border-slate-300"
-                    }`}>
+                    <div
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                        isAssigned ? "border-slate-300 bg-slate-200" : isSelected ? "border-blue-500 bg-blue-500" : "border-slate-300"
+                      }`}
+                    >
                       {isSelected && <Check className="w-3 h-3 text-white" />}
                     </div>
                     <div className="flex-1">
@@ -651,10 +667,10 @@ const Subjects: React.FC = () => {
               })}
             </div>
 
-            {selectedClasses.length === 0 && errors.classes && (
+            {selectedClasses.length === 0 && classesError && (
               <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
-                {errors.classes}
+                {classesError}
               </p>
             )}
 
@@ -663,49 +679,49 @@ const Subjects: React.FC = () => {
             </p>
           </div>
 
-          {errors.year && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              {errors.year}
-            </div>
-          )}
-
           <div className="flex gap-3 pt-4">
-            <Button variant="outline" onClick={() => { setShowAddSubjectModal(false); resetSubjectModal(); }} className="flex-1">Cancel</Button>
-            <Button onClick={handleCreateSubject} loading={saving} className="flex-1">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowAddSubjectModal(false);
+                resetSubjectModal();
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={isSaving} className="flex-1">
               {isNewSubject ? "Create & Assign" : "Assign to Classes"}
             </Button>
           </div>
-        </div>
+        </form>
       </BaseModal>
 
-      <BaseModal
-        isOpen={showAddChapterModal}
-        onClose={() => setShowAddChapterModal(false)}
-        title="Add New Chapter"
-        size="md"
-      >
-        <div className="p-6 space-y-4">
+      <BaseModal isOpen={showAddChapterModal} onClose={() => setShowAddChapterModal(false)} title="Add New Chapter" size="md">
+        <form onSubmit={handleChapterSubmit(onSubmitChapter)} className="p-6 space-y-4">
           <InputField
             label="Chapter Name"
             placeholder="e.g., Chapter 1 - Introduction"
-            value={chapterForm.name}
-            onChange={(e) => { setChapterForm({ ...chapterForm, name: e.target.value }); setErrors((prev) => ({ ...prev, chapterName: "" })); }}
-            error={errors.chapterName}
+            {...registerChapter("name")}
+            error={chapterErrors.name?.message}
           />
           <InputField
             label="Sequence Number (optional)"
             type="number"
             placeholder="e.g., 1"
-            value={chapterForm.sequenceNumber}
-            onChange={(e) => setChapterForm({ ...chapterForm, sequenceNumber: e.target.value })}
+            {...registerChapter("sequenceNumber")}
           />
 
           <div className="flex gap-3 pt-4">
-            <Button variant="outline" onClick={() => setShowAddChapterModal(false)} className="flex-1">Cancel</Button>
-            <Button onClick={handleCreateChapter} loading={saving} className="flex-1">Add Chapter</Button>
+            <Button type="button" variant="outline" onClick={() => setShowAddChapterModal(false)} className="flex-1">
+              Cancel
+            </Button>
+            <Button type="submit" loading={isChapterSaving} className="flex-1">
+              Add Chapter
+            </Button>
           </div>
-        </div>
+        </form>
       </BaseModal>
 
       <ConfirmDialog
