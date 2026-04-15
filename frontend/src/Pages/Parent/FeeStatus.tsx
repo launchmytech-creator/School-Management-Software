@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useParentChildren } from '../../hooks/queries';
-import { feeService } from '../../services/feeService';
+import { useStudentFees } from '../../hooks/queries/useFeeTransactions';
+import { useQuery } from '@tanstack/react-query';
 import { schoolSettingsService } from '../../services/schoolSettingsService';
 import type { LinkedStudent } from '../../types/parent';
-import type { FeeTransaction, StudentFeeSummary } from '../../services/feeService';
+import type { FeeTransaction } from '../../services/feeService';
 import type { SchoolSettings } from '../../services/schoolSettingsService';
 
 const fmt = (n: number) =>
@@ -34,9 +35,6 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
-// ── Print helpers ─────────────────────────────────────────────────────────────
-
-/** Print only the content inside a ref'd element */
 const printElement = (el: HTMLElement, title: string) => {
   const win = window.open('', '_blank', 'width=800,height=600');
   if (!win) return;
@@ -76,8 +74,6 @@ const printElement = (el: HTMLElement, title: string) => {
   setTimeout(() => { win.print(); win.close(); }, 300);
 };
 
-// ── Main ──────────────────────────────────────────────────────────────────────
-
 const EMPTY_CHILDREN: LinkedStudent[] = [];
 
 const ParentFeeStatus: React.FC = () => {
@@ -85,49 +81,36 @@ const ParentFeeStatus: React.FC = () => {
 
   const { data: childrenData, isLoading: childrenLoading } = useParentChildren(Number(user?.id));
   const children = childrenData || EMPTY_CHILDREN;
-  const [selected, setSelected]     = useState<LinkedStudent | null>(null);
-  const [transactions, setTxns]     = useState<FeeTransaction[]>([]);
-  const [feeSummary, setFeeSummary] = useState<StudentFeeSummary | null>(null);
-  const [settings, setSettings]     = useState<SchoolSettings | null>(null);
-  const [settingsLoading, setSettingsLoading] = useState(true);
-  const [txLoading, setTxLoading]   = useState(false);
+  const [selected, setSelected] = useState<LinkedStudent | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   const statementRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const { data: settings } = useQuery<SchoolSettings>({
+    queryKey: ['school-settings'],
+    queryFn: () => schoolSettingsService.getSettings(),
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const { data: transactions = [], isLoading: txLoading } = useStudentFees(selected?.id ?? 0);
+
+  const feeSummary = React.useMemo(() => {
+    if (transactions.length === 0) return null;
+    const totalAmount = transactions.reduce((sum, t) => sum + (t.amountDue || 0), 0);
+    const totalPaid = transactions.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
+    const totalPending = transactions.reduce((sum, t) => sum + (t.amountPending || 0), 0);
+    return { totalAmount, totalPaid, totalPending };
+  }, [transactions]);
+
+  React.useEffect(() => {
     if (children.length > 0 && !selected) {
       setSelected(children[0]);
     }
   }, [children, selected]);
 
-  useEffect(() => {
-    schoolSettingsService.getSettings().catch(() => null)
-      .then(sch => setSettings(sch))
-      .finally(() => setSettingsLoading(false));
-  }, []);
-
-  const fetchTxns = useCallback(async () => {
-    if (!selected) return;
-    setTxLoading(true);
-    try {
-      const data = await feeService.getStudentFeeTransactions(selected.id);
-      setTxns(data);
-      const [summary] = feeService.aggregateByStudent(data);
-      setFeeSummary(summary ?? null);
-    } catch {
-      setTxns([]);
-      setFeeSummary(null);
-    } finally {
-      setTxLoading(false);
-    }
-  }, [selected]);
-
-  useEffect(() => { fetchTxns(); }, [fetchTxns]);
-
-  useEffect(() => {
+  React.useEffect(() => {
     const updateScrollState = () => {
       if (tabsRef.current) {
         const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
@@ -156,19 +139,17 @@ const ParentFeeStatus: React.FC = () => {
     }
   };
 
-  const urgentTx   = transactions.find(t => t.status === 'pending' || t.status === 'partial');
-  const totalAnnual = feeSummary?.totalAmount  ?? 0;
-  const totalPaid   = feeSummary?.totalPaid    ?? 0;
-  const totalDue    = feeSummary?.totalPending ?? 0;
-  const paidPct     = totalAnnual > 0 ? Math.round((totalPaid / totalAnnual) * 100) : 0;
+  const urgentTx = transactions.find(t => t.status === 'pending' || t.status === 'partial');
+  const totalAnnual = feeSummary?.totalAmount ?? 0;
+  const totalPaid = feeSummary?.totalPaid ?? 0;
+  const totalDue = feeSummary?.totalPending ?? 0;
+  const paidPct = totalAnnual > 0 ? Math.round((totalPaid / totalAnnual) * 100) : 0;
 
-  /** Print the full statement (table only) */
   const handlePrintStatement = () => {
     if (!statementRef.current) return;
     printElement(statementRef.current, `Fee Statement – ${selected?.fullName ?? ''}`);
   };
 
-  /** Print a single receipt row */
   const handlePrintReceipt = (tx: FeeTransaction) => {
     const schoolName = settings?.schoolName ?? 'School';
     const el = document.createElement('div');
@@ -202,7 +183,7 @@ const ParentFeeStatus: React.FC = () => {
     printElement(el, `Receipt – ${txLabel(tx)}`);
   };
 
-  if (childrenLoading || settingsLoading) {
+  if (childrenLoading) {
     return (
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="w-10 h-10 border-4 border-[#4A9FD4] border-t-transparent rounded-full animate-spin" />
@@ -213,7 +194,6 @@ const ParentFeeStatus: React.FC = () => {
   return (
       <div className="p-8 max-w-5xl mx-auto space-y-6 pb-10">
 
-        {/* School header */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-[#4A9FD4] rounded-xl flex items-center justify-center flex-shrink-0">
             <span className="material-symbols-outlined text-white text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
@@ -223,7 +203,6 @@ const ParentFeeStatus: React.FC = () => {
           </span>
         </div>
 
-        {/* Child tabs */}
         {children.length > 0 && (
           <div className="relative">
             <div ref={tabsRef} className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto scrollbar-hide px-10">
@@ -262,7 +241,6 @@ const ParentFeeStatus: React.FC = () => {
 
         <h1 className="text-2xl font-black text-slate-900">Fee Status</h1>
 
-        {/* Summary cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Total Annual Fee</p>
@@ -288,7 +266,6 @@ const ParentFeeStatus: React.FC = () => {
           </div>
         </div>
 
-        {/* Due alert */}
         {urgentTx && (
           <div className="flex items-center gap-3 bg-amber-400 text-white rounded-2xl px-5 py-4 shadow-sm">
             <span className="material-symbols-outlined text-[20px] flex-shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
@@ -300,7 +277,6 @@ const ParentFeeStatus: React.FC = () => {
           </div>
         )}
 
-        {/* Payment breakdown table */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <h2 className="font-black text-slate-900 text-base">Payment Breakdown</h2>
@@ -313,9 +289,7 @@ const ParentFeeStatus: React.FC = () => {
             </button>
           </div>
 
-          {/* This div is what gets printed for "Full Statement" */}
           <div ref={statementRef}>
-            {/* Print-only header (hidden on screen via print styles) */}
             <div className="hidden" id="print-header">
               <h1>{settings?.schoolName ?? 'School'}</h1>
               <h2>Fee Statement – {selected?.fullName}</h2>
@@ -392,7 +366,6 @@ const ParentFeeStatus: React.FC = () => {
           </div>
         </div>
 
-        {/* Help card */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-5 flex items-center gap-5 flex-wrap">
           <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
             <span className="material-symbols-outlined text-slate-400 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>support_agent</span>

@@ -3,6 +3,8 @@ import { syllabusService, type ChapterWithStatus } from '../../services/syllabus
 import { subjectService } from '../../services/subjectService';
 import { studentService } from '../../services/studentService';
 import { QUERY_STALE_TIME } from '../../lib/constants';
+import { useAuth } from '../../context/AuthContext';
+import { queryKeys } from '../../lib/queryKeys';
 
 export interface ParentSubjectProgress {
   classSubjectId: number;
@@ -16,8 +18,10 @@ export interface ParentSubjectProgress {
 }
 
 export const useStudentClass = (studentId: number) => {
+  const { user } = useAuth();
+
   return useQuery({
-    queryKey: ['student', studentId, 'class'],
+    queryKey: queryKeys.students.byId(user?.schoolId ?? null, studentId),
     queryFn: () => studentService.getStudentById(studentId),
     staleTime: QUERY_STALE_TIME.REFERENCE,
     enabled: !!studentId,
@@ -25,8 +29,10 @@ export const useStudentClass = (studentId: number) => {
 };
 
 export const useParentSubjects = (classId: number, academicYearId: number) => {
+  const { user } = useAuth();
+
   return useQuery({
-    queryKey: ['parent', 'syllabus', 'subjects', classId, academicYearId],
+    queryKey: queryKeys.classSubjects.byClass(user?.schoolId ?? null, String(classId)),
     queryFn: async () => {
       const rawSubjects = await subjectService.getSubjectsByClass(classId);
       return rawSubjects;
@@ -37,8 +43,10 @@ export const useParentSubjects = (classId: number, academicYearId: number) => {
 };
 
 export const useParentSubjectProgress = (classId: number, subjectId: number, academicYearId: number) => {
+  const { user } = useAuth();
+
   return useQuery<ChapterWithStatus[]>({
-    queryKey: ['parent', 'syllabus', 'progress', classId, subjectId, academicYearId],
+    queryKey: ['parent', 'syllabus', 'progress', { schoolId: user?.schoolId ?? null, classId, subjectId, academicYearId }],
     queryFn: () => syllabusService.getChaptersWithStatusDirect(classId, subjectId, academicYearId),
     staleTime: QUERY_STALE_TIME.REFERENCE,
     enabled: !!classId && !!subjectId && !!academicYearId,

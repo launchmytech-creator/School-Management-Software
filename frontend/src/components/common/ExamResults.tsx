@@ -1,17 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import EmptyState from "../../components/common/EmptyState";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
-import {
-  examResultService,
-  type ExamResult,
-  type ClassPerformance,
-} from "../../services/examResultService";
-import { classService } from "../../services/classService";
-import type { Class } from "../../types/class";
+import { useClasses } from "../../hooks/queries/useClasses";
+import { useExamResults, useExamResultsPerformance } from "../../hooks/queries/useExamResults";
+import type { ExamResult } from "../../services/examResultService";
 import {
   GraduationCap,
   TrendingUp,
@@ -36,10 +32,7 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
   const { showNotification } = useNotification();
   const { allYears: academicYears, selectedYear } = useAcademicYear();
   const [searchParams] = useSearchParams();
-  const [loading, setLoading] = useState(true);
-  const [results, setResults] = useState<ExamResult[]>([]);
-  const [performance, setPerformance] = useState<ClassPerformance[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
+  
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>(
     selectedYear?.id?.toString() || "",
@@ -54,69 +47,30 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
     ? parseInt(selectedAcademicYear)
     : undefined;
 
-  const fetchClasses = useCallback(async () => {
-    try {
-      const data = await classService.getClasses();
-      setClasses(data);
-    } catch {
-      showNotification("Failed to fetch classes", "error");
-    }
-  }, [showNotification]);
+  const selectedClassId = selectedClass ? parseInt(selectedClass) : undefined;
 
-  const fetchResults = useCallback(
-    async (classId?: number, academicYearId?: number) => {
-      try {
-        setLoading(true);
-        const filters: { classId?: number; academicYearId?: number } = {};
-        if (classId) filters.classId = classId;
-        if (academicYearId) filters.academicYearId = academicYearId;
+  const { data: allClasses = [] } = useClasses();
+  
+  const { data: results = [], isLoading } = useExamResults({
+    classId: selectedClassId,
+    academicYearId: selectedAcademicYearId,
+  });
 
-        const resultsData = await examResultService.getResults(filters);
-        setResults(resultsData);
+  const uniqueExamIds = useMemo(() => {
+    return [...new Set(results.map((r) => r.examId).filter(Boolean))];
+  }, [results]);
 
-        let perfData: ClassPerformance[] = [];
-        if (resultsData.length > 0) {
-          const uniqueExamIds = [
-            ...new Set(resultsData.map((r) => r.examId).filter(Boolean)),
-          ];
-          const perfPromises = uniqueExamIds.map((eId) =>
-            examResultService
-              .getClassPerformance(eId!, academicYearId)
-              .catch(() => []),
-          );
-          const perfResults = await Promise.allSettled(perfPromises);
-          perfData = perfResults
-            .filter((r) => r.status === "fulfilled")
-            .flatMap((r) => r.value);
-        }
-
-        setPerformance(Array.isArray(perfData) ? perfData : []);
-      } catch {
-        showNotification("Failed to fetch results", "error");
-        setResults([]);
-        setPerformance([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [showNotification],
+  const { data: performanceData = [] } = useExamResultsPerformance(
+    uniqueExamIds[0] || 0,
+    selectedAcademicYearId
   );
 
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
-
-  useEffect(() => {
+  React.useEffect(() => {
     const classIdParam = searchParams.get("classId");
     if (classIdParam) {
       setSelectedClass(classIdParam);
     }
   }, [searchParams]);
-
-  useEffect(() => {
-    const classId = selectedClass ? parseInt(selectedClass) : undefined;
-    fetchResults(classId, selectedAcademicYearId);
-  }, [selectedClass, selectedAcademicYearId, fetchResults]);
 
   const handleClassChange = (classId: string) => {
     setSelectedClass(classId);
@@ -318,7 +272,7 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
           disabled={!selectedAcademicYear}
         >
           <option value="">All Classes</option>
-          {classes.map((cls) => (
+          {allClasses.map((cls) => (
             <option key={cls.id} value={cls.id}>
               {cls.name} - Section {cls.section || "A"}
             </option>
@@ -337,7 +291,7 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
         </select>
       </FilterBar>
 
-      {loading ? (
+      {isLoading ? (
         <SkeletonTable columns={6} rows={10} />
       ) : filteredResults.length > 0 ? (
         <div className="space-y-4">
@@ -352,7 +306,7 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
                 ? `${firstResult.className} - ${firstResult.classSection}`
                 : firstResult?.className || '';
 
-              const perf = performance.find(
+              const perf = performanceData.find(
                 (p) => p.subjectName === actualSubjectName,
               );
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
@@ -24,13 +24,13 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
-import { studentService } from "../../services/studentService";
-import { classService } from "../../services/classService";
-import { feeService } from "../../services/feeService";
-import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useAuth } from "../../context/AuthContext";
+import { useClasses } from "../../hooks/queries/useClasses";
+import { useAllStudents } from "../../hooks/queries/useStudents";
 import { useTeacherAllocations } from "../../hooks/queries/useTeachers";
+import { useFeeTransactions } from "../../hooks/queries/useFeeTransactions";
+import { useDeleteStudent } from "../../hooks/mutations";
 import type { Student, FeeStatus } from "../../types/student";
 import type { Class } from "../../types/class";
 
@@ -55,26 +55,38 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedYear } = useAcademicYear();
-  const { showNotification } = useNotification();
 
   const isAdmin = layout === "admin";
   const isAccountant = layout === "accountant";
   const isTeacher = layout === "teacher";
 
   const teacherId = user?.id as number;
-  const { data: allocations } = useTeacherAllocations(
+  
+  const { data: allocations = [] } = useTeacherAllocations(
     teacherId,
     selectedYear?.id ? Number(selectedYear?.id) : undefined,
   );
 
   const teacherClassIds = useMemo(() => {
-    if (!allocations) return new Set<string>();
     return new Set<string>(allocations.map((a) => String(a.classId)));
   }, [allocations]);
 
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [allStudents, setAllStudents] = useState<EnrichedStudent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: allClassesData = [] } = useClasses(selectedYear?.id);
+  
+  const classes = useMemo(() => {
+    if (isTeacher) {
+      return allClassesData.filter((c) => teacherClassIds.has(c.id));
+    }
+    return allClassesData;
+  }, [allClassesData, isTeacher, teacherClassIds]);
+
+  const { data: studentsData = [], isLoading: loadingStudents } = useAllStudents();
+  const { data: feeTransactions = [] } = useFeeTransactions({
+    academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined
+  });
+  
+  const deleteStudent = useDeleteStudent();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(
     new Set(),
@@ -90,149 +102,90 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
     studentId: null as number | null,
   });
 
-  const fetchClasses = useCallback(async () => {
-    try {
-      const data = await classService.getClasses();
-      if (isTeacher) {
-        const filteredClasses = data.filter((c) => teacherClassIds.has(c.id));
-        setClasses(filteredClasses);
-      } else {
-        setClasses(data);
-      }
-    } catch {
-      showNotification("Failed to fetch classes", "error");
-    }
-  }, [showNotification, isTeacher, teacherClassIds]);
-
-  const fetchAllStudents = useCallback(async () => {
-    if (!selectedYear?.id) {
-      setAllStudents([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const studentsData = await studentService.getStudents({
-        academicYear: selectedYear.id,
-      });
-
-      if (isAdmin) {
-        const feeStatusMap: Record<number, FeeStatus> = {};
-        try {
-          const transactions = await feeService.getFeeTransactions({
-            academicYearId: parseInt(selectedYear.id),
-          });
-          const byStudent = new Map<
-            number,
-            { total: number; paid: number; partial: number }
-          >();
-          for (const t of transactions) {
-            const existing = byStudent.get(t.studentId) || {
-              total: 0,
-              paid: 0,
-              partial: 0,
-            };
-            existing.total += 1;
-            if (t.status === "paid") existing.paid += 1;
-            else if (t.status === "partial") existing.partial += 1;
-            byStudent.set(t.studentId, existing);
-          }
-          for (const [studentId, counts] of byStudent) {
-            if (counts.paid === counts.total) {
-              feeStatusMap[studentId] = "Paid";
-            } else if (counts.paid > 0 || counts.partial > 0) {
-              feeStatusMap[studentId] = "Partial";
-            } else {
-              feeStatusMap[studentId] = "Pending";
-            }
-          }
-        } catch {
-          // Fee data unavailable
+  const allStudents = useMemo(() => {
+    if (isAdmin) {
+      const feeStatusMap: Record<number, FeeStatus> = {};
+      try {
+        const byStudent = new Map<
+          number,
+          { total: number; paid: number; partial: number }
+        >();
+        for (const t of feeTransactions) {
+          const existing = byStudent.get(t.studentId) || {
+            total: 0,
+            paid: 0,
+            partial: 0,
+          };
+          existing.total += 1;
+          if (t.status === "paid") existing.paid += 1;
+          else if (t.status === "partial") existing.partial += 1;
+          byStudent.set(t.studentId, existing);
         }
+        for (const [studentId, counts] of byStudent) {
+          if (counts.paid === counts.total) {
+            feeStatusMap[studentId] = "Paid";
+          } else if (counts.paid > 0 || counts.partial > 0) {
+            feeStatusMap[studentId] = "Partial";
+          } else {
+            feeStatusMap[studentId] = "Pending";
+          }
+        }
+      } catch {
+        // Fee data unavailable
+      }
 
-        const enrichedData: EnrichedStudent[] = studentsData.map((s) => ({
-          ...s,
-          parentName: s.parentName || "—",
-          feeStatus: feeStatusMap[s.id] || ("N/A" as FeeStatus),
-        }));
+      const enrichedData: EnrichedStudent[] = studentsData.map((s) => ({
+        ...s,
+        parentName: s.parentName || "—",
+        feeStatus: feeStatusMap[s.id] || ("N/A" as FeeStatus),
+      }));
 
-        setAllStudents(enrichedData);
-      } else if (isAccountant) {
-        // Accountant: Fetch fee data for each student individually
-        const enrichedData: EnrichedStudent[] = await Promise.all(
-          studentsData.map(async (s) => {
-            try {
-              const transactions = await feeService.getStudentFeeTransactions(
-                s.id,
-              );
-              const totalDue = transactions.reduce(
-                (sum, t) => sum + (t.amountDue || 0),
-                0,
-              );
-              const totalPaid = transactions.reduce(
-                (sum, t) => sum + (t.amountPaid || 0),
-                0,
-              );
-              const balance = totalDue - totalPaid;
+      return enrichedData;
+    } else if (isAccountant) {
+      const byStudent = new Map<number, { totalDue: number; totalPaid: number }>();
+      for (const t of feeTransactions) {
+        const existing = byStudent.get(t.studentId) || {
+          totalDue: 0,
+          totalPaid: 0,
+        };
+        existing.totalDue += t.amountDue || 0;
+        existing.totalPaid += t.amountPaid || 0;
+        byStudent.set(t.studentId, existing);
+      }
 
-              let feeStatusLocal: "paid" | "pending" | "partial" = "pending";
-              if (balance <= 0) feeStatusLocal = "paid";
-              else if (totalPaid > 0) feeStatusLocal = "partial";
+      const enrichedData: EnrichedStudent[] = studentsData.map((s) => {
+        const feeData = byStudent.get(s.id) || { totalDue: 0, totalPaid: 0 };
+        const balance = feeData.totalDue - feeData.totalPaid;
+        let feeStatusLocal: "paid" | "pending" | "partial" = "pending";
+        if (balance <= 0) feeStatusLocal = "paid";
+        else if (feeData.totalPaid > 0) feeStatusLocal = "partial";
 
-              return {
-                ...s,
-                parentName: s.parentName || "—",
-                parentPhone: s.parentPhone || "",
-                totalDue,
-                totalPaid,
-                balance,
-                feeStatusLocal,
-              };
-            } catch {
-              return {
-                ...s,
-                parentName: s.parentName || "—",
-                totalDue: 0,
-                totalPaid: 0,
-                balance: 0,
-                feeStatusLocal: "pending" as const,
-              };
-            }
-          }),
-        );
-
-        setAllStudents(enrichedData);
-      } else {
-        // Teacher: Just return students without fee data
-        const enrichedData: EnrichedStudent[] = studentsData.map((s) => ({
+        return {
           ...s,
           parentName: s.parentName || "—",
           parentPhone: s.parentPhone || "",
-          totalDue: 0,
-          totalPaid: 0,
-          balance: 0,
-          feeStatusLocal: "pending" as const,
-        }));
+          totalDue: feeData.totalDue,
+          totalPaid: feeData.totalPaid,
+          balance,
+          feeStatusLocal,
+        };
+      });
 
-        setAllStudents(enrichedData);
-      }
-    } catch {
-      showNotification("Failed to fetch students", "error");
-    } finally {
-      setLoading(false);
+      return enrichedData;
+    } else {
+      const enrichedData: EnrichedStudent[] = studentsData.map((s) => ({
+        ...s,
+        parentName: s.parentName || "—",
+        parentPhone: s.parentPhone || "",
+        totalDue: 0,
+        totalPaid: 0,
+        balance: 0,
+        feeStatusLocal: "pending" as const,
+      }));
+
+      return enrichedData;
     }
-  }, [selectedYear, isAdmin, isAccountant, showNotification]);
-
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
-
-  useEffect(() => {
-    if (selectedYear?.id) {
-      fetchAllStudents();
-    }
-  }, [selectedYear, fetchAllStudents]);
+  }, [studentsData, isAdmin, isAccountant, feeTransactions]);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -349,7 +302,7 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
       });
   }, [searchTerm, allStudents, classGroups]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (matchingClassIds.length > 0) {
       setExpandedClasses(new Set(matchingClassIds));
     }
@@ -584,14 +537,14 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
   const handleDeleteStudent = async () => {
     if (!deleteDialog.studentId) return;
     try {
-      await studentService.deleteStudent(deleteDialog.studentId);
-      showNotification("Student deleted successfully!", "success");
-      setAllStudents((prev) => prev.filter((s) => s.id !== deleteDialog.studentId));
+      await deleteStudent.mutateAsync(deleteDialog.studentId);
+      setDeleteDialog({ isOpen: false, studentId: null });
     } catch {
-      showNotification("Failed to delete student", "error");
+      // Error handled by mutation hook
     }
-    setDeleteDialog({ isOpen: false, studentId: null });
   };
+
+  const loading = loadingStudents;
 
   const renderContent = () => (
     <div className="space-y-6 pb-12">
@@ -629,7 +582,7 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-purple-600">
-                  {allocations?.length || 0}
+                  {allocations.length || 0}
                 </p>
                 <p className="text-sm text-slate-500">Subject Allocations</p>
               </div>

@@ -1,7 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { syllabusService, type ChapterWithStatus } from '../../services/syllabusService';
 import { teacherService } from '../../services/teacherService';
 import { QUERY_STALE_TIME } from '../../lib/constants';
+import { useAuth } from '../../context/AuthContext';
+import { queryKeys } from '../../lib/queryKeys';
 
 export interface TeacherSubjectProgress {
   allocationId: number;
@@ -18,8 +20,10 @@ export interface TeacherSubjectProgress {
 }
 
 export const useTeacherAllocationsForSyllabus = (teacherId: number, academicYearId?: number) => {
+  const { user } = useAuth();
+
   return useQuery({
-    queryKey: ['teacher', teacherId, 'allocations', academicYearId],
+    queryKey: queryKeys.teachers.allocations(user?.schoolId ?? null, teacherId, academicYearId || 0),
     queryFn: () => teacherService.getAllocationsByTeacher(teacherId, academicYearId!),
     staleTime: QUERY_STALE_TIME.LISTS,
     enabled: !!teacherId && !!academicYearId,
@@ -27,8 +31,10 @@ export const useTeacherAllocationsForSyllabus = (teacherId: number, academicYear
 };
 
 export const useTeacherSubjectProgress = (classId: number, subjectId: number, academicYearId: number) => {
+  const { user } = useAuth();
+
   return useQuery<TeacherSubjectProgress[]>({
-    queryKey: ['teacher', 'syllabus', 'progress', classId, subjectId, academicYearId],
+    queryKey: ['teacher', 'syllabus', 'progress', { schoolId: user?.schoolId ?? null, classId, subjectId, academicYearId }],
     queryFn: async () => {
       const chapters = await syllabusService.getChaptersWithStatusDirect(classId, subjectId, academicYearId);
       const completedChapters = chapters.filter(c => c.status === 'completed').length;
@@ -57,28 +63,12 @@ export const useTeacherSubjectProgress = (classId: number, subjectId: number, ac
 };
 
 export const useSubjectChaptersDirect = (classId: number, subjectId: number, academicYearId: number) => {
+  const { user } = useAuth();
+
   return useQuery<ChapterWithStatus[]>({
-    queryKey: ['syllabus', 'chapters', 'direct', classId, subjectId, academicYearId],
+    queryKey: ['syllabus', 'chapters', 'direct', { schoolId: user?.schoolId ?? null, classId, subjectId, academicYearId }],
     queryFn: () => syllabusService.getChaptersWithStatusDirect(classId, subjectId, academicYearId),
     staleTime: QUERY_STALE_TIME.REFERENCE,
     enabled: !!classId && !!subjectId && !!academicYearId,
-  });
-};
-
-export const useUpdateChapterStatus = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ classId, subjectId, chapterId, academicYearId, status }: {
-      classId: number;
-      subjectId: number;
-      chapterId: number;
-      academicYearId: number;
-      status: 'pending' | 'in-progress' | 'completed';
-    }) => syllabusService.markCompletionDirect(classId, subjectId, chapterId, status, academicYearId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['syllabus', 'chapters', 'direct', variables.classId, variables.subjectId] });
-      queryClient.invalidateQueries({ queryKey: ['teacher', 'syllabus', 'progress'] });
-    },
   });
 };

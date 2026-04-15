@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
-import { teacherService } from '../../services/teacherService';
-import { syllabusService, type ChapterWithStatus } from '../../services/syllabusService';
+import { useTeacherAllocations } from '../../hooks/queries/useTeachers';
+import { useUpdateChapterStatus } from '../../hooks/mutations/useSubjectMutations';
 import { type TeacherAllocation } from '../../types/teacher';
+import { type ChapterWithStatus } from '../../services/syllabusService';
 import { BookOpen, CheckCircle, Clock, BookMarked, Users, Circle, Loader } from 'lucide-react';
 
 interface TeacherSubjectProgress {
@@ -23,12 +24,6 @@ interface TeacherSubjectProgress {
   progressPercentage: number;
 }
 
-interface ClassSubjectCache {
-  [classId: number]: {
-    [subjectId: number]: number;
-  };
-}
-
 interface TeacherSyllabusProps {
   customTitle?: string;
   isEditable?: boolean;
@@ -42,118 +37,29 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
   const { showNotification } = useNotification();
   const { user } = useAuth();
   const { selectedYear } = useAcademicYear();
-  const [loading, setLoading] = useState(true);
-  const [allocations, setAllocations] = useState<TeacherAllocation[]>([]);
-  const [subjectProgress, setSubjectProgress] = useState<TeacherSubjectProgress[]>([]);
+
+  const { data: allocationsData, isLoading: loadingAllocations } = useTeacherAllocations(
+    user?.id ? Number(user.id) : 0,
+    selectedYear?.id ? Number(selectedYear.id) : undefined
+  );
+  const allocations = allocationsData || [];
+
   const [chapterProgress, setChapterProgress] = useState<Record<number, ChapterWithStatus[]>>({});
   const [chapterLoading, setChapterLoading] = useState<Set<number>>(new Set());
-  const [classSubjectCache, setClassSubjectCache] = useState<ClassSubjectCache>({});
-  const [cacheLoading, setCacheLoading] = useState<Set<number>>(new Set());
   const [expandedClass, setExpandedClass] = useState<number | null>(null);
   const [expandedSubject, setExpandedSubject] = useState<number | null>(null);
   const [updatingChapter, setUpdatingChapter] = useState<number | null>(null);
 
-  const fetchAllocations = useCallback(async () => {
-    if (!user?.id || !selectedYear?.id) return;
-    try {
-      setLoading(true);
-      const data = await teacherService.getAllocationsByTeacher(user.id as number, Number(selectedYear.id));
-      setAllocations(data);
-      
-      const uniqueClassIds = [...new Set(data.map(a => a.classId))];
-      uniqueClassIds.forEach(classId => fetchClassSubjectCache(classId));
-    } catch {
-      showNotification('Failed to fetch your allocations', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id, selectedYear?.id, showNotification]);
+  const updateChapterStatusMutation = useUpdateChapterStatus();
 
-  const fetchClassSubjectCache = async (classId: number) => {
-    if (classSubjectCache[classId] || cacheLoading.has(classId)) return;
-    
-    setCacheLoading(prev => new Set(prev).add(classId));
-    try {
-      const classSubjects = await syllabusService.getClassSubjectsByClass(classId, Number(selectedYear!.id));
-      const newCache: ClassSubjectCache = {};
-      classSubjects.forEach(cs => {
-        if (!newCache[cs.classId]) {
-          newCache[cs.classId] = {};
-        }
-        newCache[cs.classId][cs.subjectId] = cs.id;
-      });
-      setClassSubjectCache(prev => ({ ...prev, ...newCache }));
-    } catch {
-      showNotification('Failed to fetch class subjects', 'error');
-    } finally {
-      setCacheLoading(prev => {
-        const next = new Set(prev);
-        next.delete(classId);
-        return next;
-      });
-    }
-  };
-
-  const fetchSubjectProgress = useCallback(async () => {
-    if (allocations.length === 0) return;
-
-    try {
-      const progressPromises = allocations.map(async (allocation) => {
-        try {
-          // Use direct method: classId + subjectId + academicYearId
-          const chapters = await syllabusService.getChaptersWithStatusDirect(
-            allocation.classId,
-            allocation.subjectId,
-            Number(selectedYear!.id),
-          );
-          // console.log('[Syllabus] getChaptersWithStatusDirect chapters:', chapters);
-
-          const completedChapters = chapters.filter(c => c.status === 'completed').length;
-          const inProgressChapters = chapters.filter(c => c.status === 'in-progress').length;
-          const totalChapters = chapters.length;
-          const progressPercentage = totalChapters > 0 
-            ? Math.round((completedChapters / totalChapters) * 100) 
-            : 0;
-
-          return {
-            allocationId: allocation.id,
-            classId: allocation.classId,
-            className: allocation.className,
-            classSection: allocation.classSection,
-            subjectId: allocation.subjectId,
-            subjectName: allocation.subjectName,
-            totalChapters,
-            completedChapters,
-            inProgressChapters,
-            pendingChapters: totalChapters - completedChapters - inProgressChapters,
-            progressPercentage,
-          } as TeacherSubjectProgress;
-        } catch {
-          return null;
-        }
-      });
-
-      const results = await Promise.all(progressPromises);
-      const validProgress = results.filter((p): p is TeacherSubjectProgress => p !== null);
-      setSubjectProgress(validProgress);
-    } catch {
-      showNotification('Failed to fetch syllabus progress', 'error');
-    }
-  }, [allocations, classSubjectCache]);
-
-  const fetchChapters = async (subjectId: number, classId: number) => {
+  const fetchChapters = useCallback(async (subjectId: number, classId: number, academicYearId: number) => {
     if (chapterProgress[subjectId]) return;
     
     setChapterLoading(prev => new Set(prev).add(subjectId));
     try {
-      // Use direct method: classId + subjectId + academicYearId
-      const chapters = await syllabusService.getChaptersWithStatusDirect(
-        classId,
-        subjectId,
-        Number(selectedYear!.id),
+      const chapters = await import('../../services/syllabusService').then(m => 
+        m.syllabusService.getChaptersWithStatusDirect(classId, subjectId, academicYearId)
       );
-      // console.log('[Syllabus fetchChapters] chapters:', chapters);
-      
       setChapterProgress(prev => ({ ...prev, [subjectId]: chapters }));
     } catch {
       showNotification('Failed to fetch chapters', 'error');
@@ -165,7 +71,7 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
         return next;
       });
     }
-  };
+  }, [chapterProgress, showNotification]);
 
   const updateChapterStatus = async (
     subjectId: number,
@@ -175,13 +81,13 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
   ) => {
     setUpdatingChapter(chapterId);
     try {
-      await syllabusService.markCompletionDirect(
+      await updateChapterStatusMutation.mutateAsync({
         classId,
         subjectId,
         chapterId,
         status,
-        Number(selectedYear!.id),
-      );
+        academicYearId: Number(selectedYear!.id),
+      });
 
       setChapterProgress(prev => {
         const chapters = prev[subjectId] || [];
@@ -211,13 +117,13 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
     setUpdatingChapter(-1);
     try {
       for (const chapter of pendingChapters) {
-        await syllabusService.markCompletionDirect(
+        await updateChapterStatusMutation.mutateAsync({
           classId,
           subjectId,
-          chapter.chapterId,
-          'completed',
-          Number(selectedYear!.id),
-        );
+          chapterId: chapter.chapterId,
+          status: 'completed',
+          academicYearId: Number(selectedYear!.id),
+        });
       }
 
       setChapterProgress(prev => {
@@ -236,16 +142,6 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
     }
   };
 
-  useEffect(() => {
-    fetchAllocations();
-  }, [fetchAllocations]);
-
-  useEffect(() => {
-    if (allocations.length > 0 && Object.keys(classSubjectCache).length > 0) {
-      fetchSubjectProgress();
-    }
-  }, [allocations, classSubjectCache]);
-
   const toggleClass = (classId: number) => {
     setExpandedClass(expandedClass === classId ? null : classId);
     setExpandedSubject(null);
@@ -257,8 +153,34 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
       return;
     }
     setExpandedSubject(subjectId);
-    await fetchChapters(subjectId, classId);
+    await fetchChapters(subjectId, classId, Number(selectedYear?.id));
   };
+
+  const subjectProgress = useMemo(() => {
+    return allocations.map((allocation) => {
+      const chapters = chapterProgress[allocation.subjectId] || [];
+      const completedChapters = chapters.filter(c => c.status === 'completed').length;
+      const inProgressChapters = chapters.filter(c => c.status === 'in-progress').length;
+      const totalChapters = chapters.length;
+      const progressPercentage = totalChapters > 0 
+        ? Math.round((completedChapters / totalChapters) * 100) 
+        : 0;
+
+      return {
+        allocationId: allocation.id,
+        classId: allocation.classId,
+        className: allocation.className,
+        classSection: allocation.classSection,
+        subjectId: allocation.subjectId,
+        subjectName: allocation.subjectName,
+        totalChapters,
+        completedChapters,
+        inProgressChapters,
+        pendingChapters: totalChapters - completedChapters - inProgressChapters,
+        progressPercentage,
+      } as TeacherSubjectProgress;
+    });
+  }, [allocations, chapterProgress]);
 
   const getProgressColor = (percentage: number) => {
     if (percentage >= 80) return 'text-emerald-600 bg-emerald-50 border-emerald-200';
@@ -337,7 +259,7 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
     return acc;
   }, {} as Record<string, ClassGroup>);
 
-  if (loading) {
+  if (loadingAllocations) {
     return (
         <div className="flex items-center justify-center h-96">
           <div className="animate-pulse text-slate-400">Loading syllabus data...</div>

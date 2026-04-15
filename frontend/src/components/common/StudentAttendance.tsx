@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import AttendanceStatsGrid from '../../components/common/AttendanceStatsGrid';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { useAuth } from '../../context/AuthContext';
-import { attendanceService, type AttendanceRecord, type MarkAttendanceDto } from '../../services/attendanceService';
-import { holidayService, type Holiday } from '../../services/holidayService';
-import { classService } from '../../services/classService';
-import { type Class } from '../../types/class';
+import { useClasses } from '../../hooks/queries/useClasses';
+import { useTeacherAllocations } from '../../hooks/queries/useTeachers';
 import { useAllStudents } from '../../hooks/queries/useStudents';
-import { type Student } from '../../types/student';
+import { useClassAttendance, useMarkAttendance } from '../../hooks/queries/useAttendance';
+import { useHolidays } from '../../hooks/queries/useHolidays';
+import { type Class } from '../../types/class';
+import { type MarkAttendanceDto } from '../../services/attendanceService';
 import { Users, CheckCircle, XCircle, AlertCircle, CalendarCheck, Loader2, ShieldOff } from 'lucide-react';
 import { formatDate, getLocalDateString } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
@@ -26,137 +27,77 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
   
-  const [saving, setSaving] = useState(false);
-  const [inchargeClasses, setInchargeClasses] = useState<Class[]>([]);
-  const [allClasses, setAllClasses] = useState<Class[]>([]);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
-  const [students, setStudents] = useState<Student[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<Map<number, AttendanceStatus>>(new Map());
-  const [existingAttendance, setExistingAttendance] = useState<AttendanceRecord[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [loadingClasses, setLoadingClasses] = useState(false);
   
-  // [NEW] Holidays state for validating attendance dates
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
-
   const teacherId = user?.id as number;
   const isTeacher = layout === 'teacher';
 
+  const { data: allocations = [] } = useTeacherAllocations(
+    teacherId,
+    selectedYear?.id ? Number(selectedYear?.id) : undefined
+  );
+  
+  const inchargeClasses = useMemo(() => {
+    const classIds = [...new Set(allocations.map(a => a.classId))];
+    return classIds.map(id => {
+      const allocation = allocations.find(a => a.classId === id);
+      return {
+        id: String(id),
+        name: allocation?.className || 'Unknown',
+        section: allocation?.classSection || null,
+      } as Class;
+    });
+  }, [allocations]);
+
+  const { data: allClasses = [] } = useClasses(selectedYear?.id);
   const { data: allStudents = [] } = useAllStudents();
+  const { data: existingAttendance = [] } = useClassAttendance(
+    selectedClass ? parseInt(selectedClass.id) : 0,
+    selectedDate
+  );
+  const { data: holidays = [] } = useHolidays(
+    selectedYear?.id ? Number(selectedYear.id) : undefined
+  );
+  
+  const markAttendance = useMarkAttendance();
 
   const classStudents = useMemo(() => {
-    let classId: number | undefined;
-    
-    if (selectedClass) {
-      classId = parseInt(selectedClass.id);
-    }
-    
-    if (!classId) return [];
+    if (!selectedClass) return [];
+    const classId = parseInt(selectedClass.id);
     return allStudents.filter(s => s.currentClassId === classId);
   }, [allStudents, selectedClass]);
 
-  useEffect(() => {
-    if (classStudents.length > 0) {
-      setStudents(classStudents);
-      
+  const students = classStudents;
+
+  React.useEffect(() => {
+    if (existingAttendance.length > 0) {
+      const records = new Map<number, AttendanceStatus>();
+      existingAttendance.forEach(record => {
+        if (record.status === 'present' || record.status === 'absent') {
+          records.set(record.studentId, record.status);
+        }
+      });
+      setAttendanceRecords(records);
+      setHasChanges(false);
+    } else if (existingAttendance.length === 0 && classStudents.length > 0 && !hasChanges) {
       const initialRecords = new Map<number, AttendanceStatus>();
       classStudents.forEach(s => {
         initialRecords.set(s.id, 'present');
       });
       setAttendanceRecords(initialRecords);
-      setHasChanges(false);
-    } else if (!selectedClass) {
-      setStudents([]);
     }
-  }, [classStudents, selectedClass]);
+  }, [existingAttendance, classStudents]);
 
-  const fetchInchargeClasses = useCallback(async () => {
-    if (!teacherId || !isTeacher) return;
-    setLoadingClasses(true);
-    try {
-      const data = await classService.getClassesByIncharge(teacherId, selectedYear?.id);
-      setInchargeClasses(data);
-    } catch {
-      showNotification('Failed to fetch your classes', 'error');
-    } finally {
-      setLoadingClasses(false);
-    }
-  }, [teacherId, isTeacher, selectedYear, showNotification]);
-
-  const fetchAllClasses = useCallback(async () => {
-    if (isTeacher) return;
-    setLoadingClasses(true);
-    try {
-      const data = await classService.getClasses(selectedYear?.id);
-      setAllClasses(data);
-    } catch {
-      showNotification('Failed to fetch classes', 'error');
-    } finally {
-      setLoadingClasses(false);
-    }
-  }, [isTeacher, selectedYear, showNotification]);
-
-  const fetchExistingAttendance = useCallback(async () => {
-    if (!selectedClass || !selectedDate) return;
-    
-    try {
-      const data = await attendanceService.getClassAttendanceByDate(
-        parseInt(selectedClass.id),
-        selectedDate
-      );
-      setExistingAttendance(data);
-      
-      if (data.length > 0) {
-        const records = new Map<number, AttendanceStatus>();
-        data.forEach(record => {
-          if (record.status === 'present' || record.status === 'absent') {
-            records.set(record.studentId, record.status);
-          }
-        });
-        setAttendanceRecords(records);
-      }
-    } catch {
-      showNotification('Failed to fetch existing attendance', 'error');
-    }
-  }, [selectedClass, selectedDate, showNotification]);
-
-  useEffect(() => {
-    if (isTeacher) {
-      fetchInchargeClasses();
-    } else {
-      fetchAllClasses();
-    }
-  }, [isTeacher, fetchInchargeClasses, fetchAllClasses]);
-
-  useEffect(() => {
+  React.useEffect(() => {
     if (isTeacher && inchargeClasses.length === 1 && !selectedClass) {
       setSelectedClass(inchargeClasses[0]);
     }
   }, [inchargeClasses, selectedClass, isTeacher]);
 
-  useEffect(() => {
-    if (selectedClass && selectedDate) {
-      fetchExistingAttendance();
-    }
-  }, [selectedClass, selectedDate, fetchExistingAttendance]);
-
-  // [NEW] Fetch holidays when academic year changes
-  useEffect(() => {
-    const fetchHolidays = async () => {
-      if (!selectedYear?.id) return;
-      try {
-        const data = await holidayService.getHolidays(Number(selectedYear.id));
-        setHolidays(data);
-      } catch {
-        // Silently fail - don't block attendance marking
-      }
-    };
-    fetchHolidays();
-  }, [selectedYear]);
-
-  // [NEW] Helper functions to check if selected date is a holiday or Sunday
   const isHoliday = (date: string) => holidays.some(h => h.holidayDate === date);
   const isSunday = (date: string) => new Date(date).getDay() === 0;
   const getHolidayInfo = (date: string) => holidays.find(h => h.holidayDate === date);
@@ -165,6 +106,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
     const classId = e.target.value;
     const selected = inchargeClasses.find(c => c.id === classId) || allClasses.find(c => c.id === classId) || null;
     setSelectedClass(selected);
+    setHasChanges(false);
   };
 
   const handleStatusChange = (studentId: number, status: AttendanceStatus) => {
@@ -210,44 +152,31 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   const handleSaveAttendance = async () => {
     if (!selectedClass || !selectedDate) return;
     
-    setSaving(true);
+    const records = students.map(s => ({
+      studentId: s.id,
+      status: attendanceRecords.get(s.id) || 'present',
+    }));
+
+    const data: MarkAttendanceDto = {
+      classId: parseInt(selectedClass.id),
+      attendanceDate: selectedDate,
+      records,
+    };
+
     try {
-      const records = students.map(s => ({
-        studentId: s.id,
-        status: attendanceRecords.get(s.id) || 'present',
-      }));
-
-      const data: MarkAttendanceDto = {
-        classId: parseInt(selectedClass.id),
-        attendanceDate: selectedDate,
-        records,
-      };
-
-      await attendanceService.markAttendance(data);
+      await markAttendance.mutateAsync(data);
       showNotification('Attendance marked successfully!', 'success');
       setHasChanges(false);
       setShowConfirmModal(false);
-      setExistingAttendance(records.map((r, i) => ({
-        id: Date.now() + i,
-        studentId: r.studentId,
-        studentName: students.find(s => s.id === r.studentId)?.fullName || '',
-        classId: parseInt(selectedClass.id),
-        className: selectedClass.name,
-        attendanceDate: selectedDate,
-        status: r.status,
-      })));
     } catch (error: any) {
       if (error.response?.status === 403) {
         showNotification(error.response?.data?.message || 'You are not authorized to mark attendance for this class', 'error');
       } else {
         showNotification('Failed to mark attendance', 'error');
       }
-    } finally {
-      setSaving(false);
     }
   };
 
-  // [NEW] Validation checks for attendance date
   const isDateInFuture = selectedDate > getLocalDateString();
   const isHolidayDate = isHoliday(selectedDate);
   const isSundayDate = isSunday(selectedDate);
@@ -256,6 +185,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   const basePath = isTeacher ? '/teacher' : '/accountant';
   const currentClassName = selectedClass?.name;
   const hasSelectedClass = !!selectedClass;
+  const loadingClasses = false;
 
   const renderContent = () => (
     <div className="space-y-6 pb-12">
@@ -301,7 +231,6 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
         />
       )}
 
-      {/* [NEW] Warning banners for holidays and Sundays */}
       {isHolidayDate && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
           <span className="material-symbols-outlined text-amber-500">celebration</span>
@@ -357,7 +286,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
               </div>
             )}
 
-            {inchargeClasses.length === 0 && !loadingClasses && (
+            {inchargeClasses.length === 0 && (
               <div className="bg-white rounded-xl border border-slate-200 p-5 md:col-span-2">
                 <div className="flex items-center gap-3 text-amber-600">
                   <ShieldOff className="w-5 h-5" />
@@ -497,14 +426,14 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
               </button>
               <button
                 onClick={() => setShowConfirmModal(true)}
-                disabled={!hasChanges || isDateInFuture || cannotMarkAttendance || saving}
+                disabled={!hasChanges || isDateInFuture || cannotMarkAttendance || markAttendance.isPending}
                 className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${
                   hasChanges && !isDateInFuture && !cannotMarkAttendance
                     ? 'bg-blue-600 text-white hover:bg-blue-700' 
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
               >
-                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                {markAttendance.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                 {existingAttendance.length > 0 ? 'Update Attendance' : 'Mark Attendance'}
               </button>
             </div>
@@ -517,7 +446,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
           />
         )
       ) : (
-        isTeacher && inchargeClasses.length === 0 && !loadingClasses ? (
+        isTeacher && inchargeClasses.length === 0 ? (
           <EmptyState
             icon={ShieldOff}
             title="No classes assigned"
@@ -568,17 +497,17 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
             <button
               onClick={() => setShowConfirmModal(false)}
               className="px-4 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-              disabled={saving}
+              disabled={markAttendance.isPending}
             >
               Cancel
             </button>
             <button
               onClick={handleSaveAttendance}
-              disabled={saving}
+              disabled={markAttendance.isPending}
               className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-colors flex items-center gap-2"
             >
-              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-              {saving ? 'Saving...' : 'Confirm & Save'}
+              {markAttendance.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              {markAttendance.isPending ? 'Saving...' : 'Confirm & Save'}
             </button>
           </div>
         </div>

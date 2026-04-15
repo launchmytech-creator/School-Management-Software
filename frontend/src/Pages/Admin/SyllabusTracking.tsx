@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
-import { subjectService, type ClassSubject } from '../../services/subjectService';
-import { syllabusService, type ChapterWithStatus, type AllClassesProgress, type ClassProgress } from '../../services/syllabusService';
+import { useAllClassesProgress } from '../../hooks/queries/useSyllabus';
+import { useUpdateChapterStatus, useBulkUpdateChapterStatus } from '../../hooks/mutations/useSubjectMutations';
+import { syllabusService, type ChapterWithStatus } from '../../services/syllabusService';
 import { BookOpen, CheckCircle, Clock, BookMarked, ChevronRight, Loader, Circle } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
 import { Button } from '../../components/ui/button';
@@ -13,44 +14,20 @@ import { Button } from '../../components/ui/button';
 const SyllabusTracking: React.FC = () => {
   const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
-  const [loading, setLoading] = useState(true);
-  const [classesProgress, setClassesProgress] = useState<ClassProgress[]>([]);
+
+  const { data: classesProgressData, isLoading: loadingProgress } = useAllClassesProgress();
+  const classesProgress = classesProgressData?.classes || [];
   
   const [expandedClass, setExpandedClass] = useState<number | null>(null);
   const [expandedSubject, setExpandedSubject] = useState<number | null>(null);
-  const [classSubjectsCache, setClassSubjectsCache] = useState<Record<number, ClassSubject[]>>({});
   const [chapterStatusesCache, setChapterStatusesCache] = useState<Record<string, ChapterWithStatus[]>>({});
   const [loadingChapters, setLoadingChapters] = useState<Set<string>>(new Set());
   const [updatingChapter, setUpdatingChapter] = useState<number | null>(null);
 
-  const fetchAllClassesProgress = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data: AllClassesProgress = await syllabusService.getAllClassesProgress();
-      setClassesProgress(data.classes);
-    } catch {
-      showNotification('Failed to fetch class progress', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [showNotification]);
+  const updateChapterStatusMutation = useUpdateChapterStatus();
+  const bulkUpdateMutation = useBulkUpdateChapterStatus();
 
-  useEffect(() => {
-    fetchAllClassesProgress();
-  }, [fetchAllClassesProgress]);
-
-  const fetchClassSubjects = useCallback(async (classId: number) => {
-    if (classSubjectsCache[classId]) return;
-    
-    try {
-      const subjects = await subjectService.getSubjectsByClass(classId);
-      setClassSubjectsCache(prev => ({ ...prev, [classId]: subjects }));
-    } catch {
-      showNotification('Failed to fetch subjects', 'error');
-    }
-  }, [classSubjectsCache]);
-
-  const fetchSubjectChapters = useCallback(async (classId: number, subjectId: number) => {
+  const fetchSubjectChapters = useCallback(async (classId: number, subjectId: number, academicYearId: number) => {
     const cacheKey = `${classId}-${subjectId}`;
     
     if (chapterStatusesCache[cacheKey]) return;
@@ -62,7 +39,7 @@ const SyllabusTracking: React.FC = () => {
       const chaptersWithStatus = await syllabusService.getChaptersWithStatusDirect(
         classId,
         subjectId,
-        Number(selectedYear?.id)
+        academicYearId
       );
       setChapterStatusesCache(prev => ({ ...prev, [cacheKey]: chaptersWithStatus }));
     } catch {
@@ -74,7 +51,7 @@ const SyllabusTracking: React.FC = () => {
         return next;
       });
     }
-  }, [chapterStatusesCache, loadingChapters, selectedYear?.id]);
+  }, [chapterStatusesCache, loadingChapters]);
 
   const handleClassClick = async (classId: number) => {
     if (expandedClass === classId) {
@@ -83,7 +60,6 @@ const SyllabusTracking: React.FC = () => {
     } else {
       setExpandedClass(classId);
       setExpandedSubject(null);
-      await fetchClassSubjects(classId);
     }
   };
 
@@ -92,7 +68,7 @@ const SyllabusTracking: React.FC = () => {
       setExpandedSubject(null);
     } else {
       setExpandedSubject(subjectId);
-      await fetchSubjectChapters(classId, subjectId);
+      await fetchSubjectChapters(classId, subjectId, Number(selectedYear?.id));
     }
   };
 
@@ -104,13 +80,13 @@ const SyllabusTracking: React.FC = () => {
   ) => {
     setUpdatingChapter(chapterId);
     try {
-      await syllabusService.markCompletionDirect(
+      await updateChapterStatusMutation.mutateAsync({
         classId,
         subjectId,
         chapterId,
         status,
-        Number(selectedYear?.id)
-      );
+        academicYearId: Number(selectedYear?.id),
+      });
       
       const cacheKey = `${classId}-${subjectId}`;
       setChapterStatusesCache(prev => ({
@@ -136,15 +112,13 @@ const SyllabusTracking: React.FC = () => {
   ) => {
     setUpdatingChapter(-1);
     try {
-      for (const chapter of chapters) {
-        await syllabusService.markCompletionDirect(
-          classId,
-          subjectId,
-          chapter.chapterId,
-          newStatus,
-          Number(selectedYear?.id)
-        );
-      }
+      await bulkUpdateMutation.mutateAsync({
+        classId,
+        subjectId,
+        chapterIds: chapters.map(ch => ch.chapterId),
+        status: newStatus,
+        academicYearId: Number(selectedYear?.id),
+      });
       
       const cacheKey = `${classId}-${subjectId}`;
       setChapterStatusesCache(prev => ({
@@ -218,7 +192,7 @@ const SyllabusTracking: React.FC = () => {
         }}
       />
 
-      {loading ? (
+      {loadingProgress ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 flex items-center justify-center">
           <div className="animate-pulse text-slate-400">Loading class progress...</div>
         </div>
@@ -265,160 +239,20 @@ const SyllabusTracking: React.FC = () => {
 
                 {isClassExpanded && (
                   <div className="border-t border-slate-200 bg-slate-50 p-5">
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-slate-700 mb-4">Subjects & Chapters</h4>
-                      
-                      {classProgress.subjects.length > 0 ? (
-                        classProgress.subjects.map((subject) => {
-                          const isSubjectExpanded = expandedSubject === subject.subjectId;
-                          const cacheKey = `${classProgress.classId}-${subject.subjectId}`;
-                          const subjectChapters = chapterStatusesCache[cacheKey] || [];
-                          const isLoadingChapters = loadingChapters.has(cacheKey);
-                          
-                          return (
-                            <div key={subject.classSubjectId} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                              <div 
-                                className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
-                                onClick={() => handleSubjectClick(classProgress.classId, subject.subjectId)}
-                              >
-                                <div className="flex items-center gap-3 flex-1">
-                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                    subject.progressPercentage >= 80 ? 'bg-emerald-100' :
-                                    subject.progressPercentage >= 50 ? 'bg-amber-100' : 'bg-slate-100'
-                                  }`}>
-                                    <BookOpen className={`w-4 h-4 ${
-                                      subject.progressPercentage >= 80 ? 'text-emerald-600' :
-                                      subject.progressPercentage >= 50 ? 'text-amber-600' : 'text-slate-500'
-                                    }`} />
-                                  </div>
-                                  <div className="flex-1">
-                                    <p className="font-medium text-slate-800">{subject.subjectName}</p>
-                                    <p className="text-xs text-slate-500">
-                                      {subject.completedChapters}/{subject.totalChapters} chapters completed
-                                      {subject.inProgressChapters > 0 && ` • ${subject.inProgressChapters} in progress`}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
-                                    <div 
-                                      className={`h-full rounded-full ${getProgressBarColor(subject.progressPercentage)}`}
-                                      style={{ width: `${subject.progressPercentage}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-sm font-semibold text-slate-700 w-12 text-right">
-                                    {subject.progressPercentage}%
-                                  </span>
-                                  {isLoadingChapters ? (
-                                    <Loader className="w-4 h-4 animate-spin text-slate-400" />
-                                  ) : (
-                                    <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${isSubjectExpanded ? 'rotate-90' : ''}`} />
-                                  )}
-                                </div>
-                              </div>
-
-                              {isSubjectExpanded && (
-                                <div className="border-t border-slate-200 p-4 bg-white">
-                                  {subjectChapters.length > 0 && (
-                                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
-                                      <span className="text-xs font-semibold text-slate-500 uppercase">Bulk Actions:</span>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          bulkUpdateChapters(classProgress.classId, subject.subjectId, subjectChapters, 'pending');
-                                        }}
-                                        disabled={updatingChapter !== null}
-                                        className="text-xs h-7 px-2"
-                                      >
-                                        Mark All Pending
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          bulkUpdateChapters(classProgress.classId, subject.subjectId, subjectChapters, 'in-progress');
-                                        }}
-                                        disabled={updatingChapter !== null}
-                                        className="text-xs h-7 px-2"
-                                      >
-                                        Mark All In Progress
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          bulkUpdateChapters(classProgress.classId, subject.subjectId, subjectChapters, 'completed');
-                                        }}
-                                        disabled={updatingChapter !== null}
-                                        className="text-xs h-7 px-2 text-emerald-600"
-                                      >
-                                        Mark All Complete
-                                      </Button>
-                                    </div>
-                                  )}
-                                  
-                                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                                    {isLoadingChapters ? (
-                                      <div className="text-center py-4 text-slate-400">
-                                        <Loader className="w-5 h-5 animate-spin mx-auto mb-2" />
-                                        <p className="text-sm">Loading chapters...</p>
-                                      </div>
-                                    ) : subjectChapters.length > 0 ? (
-                                      subjectChapters.map((chapter) => (
-                                        <div
-                                          key={chapter.chapterId}
-                                          className={`flex items-center justify-between p-3 rounded-lg border ${getStatusColor(chapter.status)}`}
-                                        >
-                                          <div className="flex items-center gap-3">
-                                            {getStatusIcon(chapter.status)}
-                                            <div>
-                                              <p className="text-sm font-medium text-slate-700">
-                                                Ch. {chapter.sequenceNumber}: {chapter.chapterName}
-                                              </p>
-                                              {chapter.completedDate && (
-                                                <p className="text-xs text-slate-400">
-                                                  Completed on {formatDate(chapter.completedDate)}
-                                                </p>
-                                              )}
-                                            </div>
-                                          </div>
-                                          <select
-                                            value={chapter.status || 'pending'}
-                                            onChange={(e) => {
-                                              updateChapterStatus(
-                                                classProgress.classId,
-                                                subject.subjectId,
-                                                chapter.chapterId,
-                                                e.target.value as 'pending' | 'in-progress' | 'completed'
-                                              );
-                                            }}
-                                            disabled={updatingChapter !== null && updatingChapter !== chapter.chapterId}
-                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg border-0 cursor-pointer transition-colors ${getStatusSelectColor(chapter.status)} disabled:opacity-50`}
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            <option value="pending">Pending</option>
-                                            <option value="in-progress">In Progress</option>
-                                            <option value="completed">Completed</option>
-                                          </select>
-                                        </div>
-                                      ))
-                                    ) : (
-                                      <p className="text-sm text-slate-500 text-center py-4">No chapters available for this subject</p>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <p className="text-sm text-slate-500 text-center py-4">No subjects assigned to this class</p>
-                      )}
-                    </div>
+                    <SubjectSection
+                      classProgress={classProgress}
+                      expandedSubject={expandedSubject}
+                      chapterStatusesCache={chapterStatusesCache}
+                      loadingChapters={loadingChapters}
+                      updatingChapter={updatingChapter}
+                      onSubjectClick={handleSubjectClick}
+                      onUpdateChapterStatus={updateChapterStatus}
+                      onBulkUpdateChapters={bulkUpdateChapters}
+                      getStatusIcon={getStatusIcon}
+                      getStatusColor={getStatusColor}
+                      getStatusSelectColor={getStatusSelectColor}
+                      getProgressBarColor={getProgressBarColor}
+                    />
                   </div>
                 )}
               </div>
@@ -432,6 +266,204 @@ const SyllabusTracking: React.FC = () => {
           description="No classes have been set up yet"
         />
       )}
+    </div>
+  );
+};
+
+interface SubjectSectionProps {
+  classProgress: {
+    classId: number;
+    subjects: Array<{
+      classSubjectId: number;
+      subjectId: number;
+      subjectName: string;
+      totalChapters: number;
+      completedChapters: number;
+      inProgressChapters: number;
+      progressPercentage: number;
+    }>;
+  };
+  expandedSubject: number | null;
+  chapterStatusesCache: Record<string, ChapterWithStatus[]>;
+  loadingChapters: Set<string>;
+  updatingChapter: number | null;
+  onSubjectClick: (classId: number, subjectId: number) => void;
+  onUpdateChapterStatus: (classId: number, subjectId: number, chapterId: number, status: 'completed' | 'in-progress' | 'pending') => void;
+  onBulkUpdateChapters: (classId: number, subjectId: number, chapters: ChapterWithStatus[], newStatus: 'completed' | 'in-progress' | 'pending') => void;
+  getStatusIcon: (status: string | null | undefined) => React.ReactNode;
+  getStatusColor: (status: string | null | undefined) => string;
+  getStatusSelectColor: (status: string | null | undefined) => string;
+  getProgressBarColor: (percentage: number) => string;
+}
+
+const SubjectSection: React.FC<SubjectSectionProps> = ({
+  classProgress,
+  expandedSubject,
+  chapterStatusesCache,
+  loadingChapters,
+  updatingChapter,
+  onSubjectClick,
+  onUpdateChapterStatus,
+  onBulkUpdateChapters,
+  getStatusIcon,
+  getStatusColor,
+  getStatusSelectColor,
+  getProgressBarColor,
+}) => {
+  if (classProgress.subjects.length === 0) {
+    return <p className="text-sm text-slate-500 text-center py-4">No subjects assigned to this class</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <h4 className="font-medium text-slate-700 mb-4">Subjects & Chapters</h4>
+      
+      {classProgress.subjects.map((subject) => {
+        const isSubjectExpanded = expandedSubject === subject.subjectId;
+        const cacheKey = `${classProgress.classId}-${subject.subjectId}`;
+        const subjectChapters = chapterStatusesCache[cacheKey] || [];
+        const isLoadingChapters = loadingChapters.has(cacheKey);
+        
+        return (
+          <div key={subject.classSubjectId} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div 
+              className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+              onClick={() => onSubjectClick(classProgress.classId, subject.subjectId)}
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  subject.progressPercentage >= 80 ? 'bg-emerald-100' :
+                  subject.progressPercentage >= 50 ? 'bg-amber-100' : 'bg-slate-100'
+                }`}>
+                  <BookOpen className={`w-4 h-4 ${
+                    subject.progressPercentage >= 80 ? 'text-emerald-600' :
+                    subject.progressPercentage >= 50 ? 'text-amber-600' : 'text-slate-500'
+                  }`} />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-slate-800">{subject.subjectName}</p>
+                  <p className="text-xs text-slate-500">
+                    {subject.completedChapters}/{subject.totalChapters} chapters completed
+                    {subject.inProgressChapters > 0 && ` • ${subject.inProgressChapters} in progress`}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full ${getProgressBarColor(subject.progressPercentage)}`}
+                    style={{ width: `${subject.progressPercentage}%` }}
+                  />
+                </div>
+                <span className="text-sm font-semibold text-slate-700 w-12 text-right">
+                  {subject.progressPercentage}%
+                </span>
+                {isLoadingChapters ? (
+                  <Loader className="w-4 h-4 animate-spin text-slate-400" />
+                ) : (
+                  <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${isSubjectExpanded ? 'rotate-90' : ''}`} />
+                )}
+              </div>
+            </div>
+
+            {isSubjectExpanded && (
+              <div className="border-t border-slate-200 p-4 bg-white">
+                {subjectChapters.length > 0 && (
+                  <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+                    <span className="text-xs font-semibold text-slate-500 uppercase">Bulk Actions:</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onBulkUpdateChapters(classProgress.classId, subject.subjectId, subjectChapters, 'pending');
+                      }}
+                      disabled={updatingChapter !== null}
+                      className="text-xs h-7 px-2"
+                    >
+                      Mark All Pending
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onBulkUpdateChapters(classProgress.classId, subject.subjectId, subjectChapters, 'in-progress');
+                      }}
+                      disabled={updatingChapter !== null}
+                      className="text-xs h-7 px-2"
+                    >
+                      Mark All In Progress
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onBulkUpdateChapters(classProgress.classId, subject.subjectId, subjectChapters, 'completed');
+                      }}
+                      disabled={updatingChapter !== null}
+                      className="text-xs h-7 px-2 text-emerald-600"
+                    >
+                      Mark All Complete
+                    </Button>
+                  </div>
+                )}
+                
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {isLoadingChapters ? (
+                    <div className="text-center py-4 text-slate-400">
+                      <Loader className="w-5 h-5 animate-spin mx-auto mb-2" />
+                      <p className="text-sm">Loading chapters...</p>
+                    </div>
+                  ) : subjectChapters.length > 0 ? (
+                    subjectChapters.map((chapter) => (
+                      <div
+                        key={chapter.chapterId}
+                        className={`flex items-center justify-between p-3 rounded-lg border ${getStatusColor(chapter.status)}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {getStatusIcon(chapter.status)}
+                          <div>
+                            <p className="text-sm font-medium text-slate-700">
+                              Ch. {chapter.sequenceNumber}: {chapter.chapterName}
+                            </p>
+                            {chapter.completedDate && (
+                              <p className="text-xs text-slate-400">
+                                Completed on {formatDate(chapter.completedDate)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <select
+                          value={chapter.status || 'pending'}
+                          onChange={(e) => {
+                            onUpdateChapterStatus(
+                              classProgress.classId,
+                              subject.subjectId,
+                              chapter.chapterId,
+                              e.target.value as 'pending' | 'in-progress' | 'completed'
+                            );
+                          }}
+                          disabled={updatingChapter !== null && updatingChapter !== chapter.chapterId}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-lg border-0 cursor-pointer transition-colors ${getStatusSelectColor(chapter.status)} disabled:opacity-50`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="in-progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-500 text-center py-4">No chapters available for this subject</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };

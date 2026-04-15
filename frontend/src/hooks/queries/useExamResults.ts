@@ -1,8 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
-import { examResultService, type StudentResult, type ClassComparisonData, type ClassSubjectComparisonData } from '../../services/examResultService';
+import { examResultService, type StudentResult, type ClassComparisonData, type ClassSubjectComparisonData, type ExamResult, type ClassPerformance } from '../../services/examResultService';
 import { queryKeys } from '../../lib/queryKeys';
 import { QUERY_STALE_TIME } from '../../lib/constants';
 import { useAuth } from '../../context/AuthContext';
+
+export interface ExamResultsFilters {
+  studentId?: number;
+  examId?: number;
+  classId?: number;
+  subjectId?: number;
+  academicYearId?: number;
+}
 
 export interface StudentResultsFilters {
   academicYearId?: number;
@@ -63,5 +71,24 @@ export const useClassesForComparison = (
     queryFn: () => examResultService.getClassesForComparison(className, academicYearId),
     staleTime: QUERY_STALE_TIME.REFERENCE,
     enabled: enabled && !!className,
+  });
+};
+
+export const useExamResults = (filters: ExamResultsFilters = {}) => {
+  const { user } = useAuth();
+
+  return useQuery<ExamResult[]>({
+    queryKey: ['exam-results', 'filters', { schoolId: user?.schoolId ?? null, ...filters }] as const,
+    queryFn: () => examResultService.getResults(filters),
+    staleTime: QUERY_STALE_TIME.OPERATIONAL,
+  });
+};
+
+export const useExamResultsPerformance = (examId: number, academicYearId?: number) => {
+  return useQuery<ClassPerformance[]>({
+    queryKey: ['exam-results', 'performance', examId, academicYearId] as const,
+    queryFn: () => examResultService.getClassPerformance(examId, academicYearId),
+    staleTime: QUERY_STALE_TIME.OPERATIONAL,
+    enabled: !!examId,
   });
 };

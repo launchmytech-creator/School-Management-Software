@@ -58,3 +58,35 @@ export const useDeleteStudent = () => {
     },
   });
 };
+
+export const useActivateStudent = () => {
+  const qc = useQueryClient();
+  const { showNotification } = useNotification();
+
+  return useMutation({
+    mutationFn: (id: number) => studentService.activateStudent(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['students'] });
+      showNotification('Student activated successfully', 'success');
+    },
+    onError: (err: Error) => {
+      showNotification(err.message || 'Failed to activate student', 'error');
+    },
+  });
+};
+
+export const useDeactivateStudent = () => {
+  const qc = useQueryClient();
+  const { showNotification } = useNotification();
+
+  return useMutation({
+    mutationFn: (id: number) => studentService.deactivateStudent(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['students'] });
+      showNotification('Student deactivated successfully', 'success');
+    },
+    onError: (err: Error) => {
+      showNotification(err.message || 'Failed to deactivate student', 'error');
+    },
+  });
+};

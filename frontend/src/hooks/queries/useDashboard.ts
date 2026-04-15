@@ -153,7 +153,7 @@ export const useTeacherDashboard = (teacherId: number) => {
   
   return useQuery<TeacherDashboardData>({
     queryKey: queryKeys.dashboard.teacher(user?.schoolId ?? null, teacherId),
-    queryFn: () => apiRequest<TeacherDashboardData>('/dashboard/teacher'),
+    queryFn: () => apiRequest<TeacherDashboardData>(`/dashboard/teacher?teacherId=${teacherId}`),
     staleTime: QUERY_STALE_TIME.DASHBOARD,
     enabled: !!teacherId,
   });

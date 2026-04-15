@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Mail,
@@ -22,21 +22,16 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import { studentService } from "../../services/studentService";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
-import {
-  attendanceService,
-  type AttendanceRecord,
-} from "../../services/attendanceService";
-import { holidayService, type Holiday } from "../../services/holidayService";
-import { academicYearService } from "../../services/academicYearService";
-import {
-  examResultService,
-  type StudentResult,
-} from "../../services/examResultService";
-import { feeService, type FeeTransaction } from "../../services/feeService";
+import { useStudentById } from "../../hooks/queries/useStudents";
+import { useAcademicYears } from "../../hooks/queries/useAcademicYears";
+import { useHolidays } from "../../hooks/queries/useHolidays";
+import { useAttendance } from "../../hooks/queries/useAttendance";
+import { useStudentResults } from "../../hooks/queries/useExamResults";
+import { useStudentFees } from "../../hooks/queries/useFeeTransactions";
+import { type StudentResult } from "../../services/examResultService";
+import { useActivateStudent, useDeactivateStudent } from "../../hooks/mutations";
 import { useAuth } from "../../context/AuthContext";
-import type { AcademicYear } from "../../types/academicYear";
 import type { Student } from "../../types/student";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import UpgradePrompt from "../../components/common/UpgradePrompt";
@@ -54,7 +49,7 @@ interface CalendarDay {
   dateStr: string;
   status: AttendanceStatus;
   isCurrentMonth: boolean;
-  holiday?: Holiday;
+  holiday?: { description: string } | undefined;
 }
 
 const SUBJECT_COLORS: Record<string, string> = {
@@ -162,169 +157,80 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   const navigate = useNavigate();
   const { hasFeature } = useAuth();
   
+  const studentId = id ? parseInt(id) : 0;
+  
+  const { data: studentData, isLoading: loadingStudent } = useStudentById(studentId);
+  const { data: academicYears = [] } = useAcademicYears();
+  const [currentAcademicYear, setCurrentAcademicYear] = useState<{ name: string } | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState("Attendance");
   const [activeSubject, setActiveSubject] = useState("Mathematics");
-  const [student, setStudent] = useState<Student | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const [currentAcademicYear, setCurrentAcademicYear] =
-    useState<AcademicYear | null>(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [attendanceRecords, setAttendanceRecords] = useState<
-    AttendanceRecord[]
-  >([]);
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
-  const [loadingAttendance, setLoadingAttendance] = useState(false);
-
-  const [marksData, setMarksData] = useState<StudentResult[]>([]);
-  const [loadingMarks, setLoadingMarks] = useState(false);
-  const [feeData, setFeeData] = useState<FeeTransaction[]>([]);
-  const [loadingFee, setLoadingFee] = useState(false);
   const [activeType, setActiveType] = useState("All");
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
 
-  const isAdmin = layout === "admin";
-  const isAccountant = layout === "accountant";
-  const isTeacher = layout === "teacher";
-  const basePath = isAdmin ? "/admin" : isAccountant ? "/accountant" : "/teacher";
+  React.useEffect(() => {
+    const current = academicYears.find((y) => y.isCurrent) || academicYears[0];
+    setCurrentAcademicYear(current);
+  }, [academicYears]);
 
-  const fetchAcademicYears = useCallback(async () => {
-    try {
-      const years = await academicYearService.getAllYears();
-      const current = years.find((y) => y.isCurrent) || years[0];
-      setCurrentAcademicYear(current);
-    } catch {
-      setCurrentAcademicYear(null);
-    }
-  }, []);
+  const { data: holidays = [] } = useHolidays(
+    currentMonth.getFullYear()
+  );
 
-  const fetchHolidays = useCallback(async () => {
-    try {
-      const year = currentMonth.getFullYear();
-      const data = await holidayService.getHolidays(year);
-      setHolidays(data);
-    } catch {
-      setHolidays([]);
-    }
+  const monthStart = useMemo(() => {
+    return getLocalDateString(new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth(),
+      1,
+    ));
   }, [currentMonth]);
 
-  const fetchAttendance = useCallback(async () => {
-    if (!id) return;
-    try {
-      setLoadingAttendance(true);
-      const monthStart = new Date(
-        currentMonth.getFullYear(),
-        currentMonth.getMonth(),
-        1,
-      );
-      const monthEnd = new Date(
-        currentMonth.getFullYear(),
-        currentMonth.getMonth() + 1,
-        0,
-      );
+  const monthEnd = useMemo(() => {
+    return getLocalDateString(new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() + 1,
+      0,
+    ));
+  }, [currentMonth]);
 
-      const data = await attendanceService.getAttendance({
-        studentId: parseInt(id),
-        startDate: getLocalDateString(monthStart),
-        endDate: getLocalDateString(monthEnd),
-      });
+  const { data: attendanceRecords = [], isLoading: loadingAttendance } = useAttendance({
+    studentId,
+    startDate: monthStart,
+    endDate: monthEnd,
+  });
 
-      setAttendanceRecords(data);
-    } catch {
-      setAttendanceRecords([]);
-    } finally {
-      setLoadingAttendance(false);
-    }
-  }, [id, currentMonth]);
+  const { data: marksData = [], isLoading: loadingMarks } = useStudentResults(studentId);
+  const { data: feeData = [], isLoading: loadingFee } = useStudentFees(studentId);
 
-  const fetchMarks = useCallback(async () => {
-    if (!id) return;
-    try {
-      setLoadingMarks(true);
-      const data = await examResultService.getStudentResults(parseInt(id));
-      setMarksData(data);
-    } catch {
-      setMarksData([]);
-    } finally {
-      setLoadingMarks(false);
-    }
-  }, [id]);
+  const activateStudent = useActivateStudent();
+  const deactivateStudent = useDeactivateStudent();
 
-  const fetchFeeStatus = useCallback(async () => {
-    if (!id) return;
-    try {
-      setLoadingFee(true);
-      const data = await feeService.getStudentFeeTransactions(parseInt(id));
-      setFeeData(data);
-    } catch {
-      setFeeData([]);
-    } finally {
-      setLoadingFee(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    const fetchStudent = async () => {
-      try {
-        if (id) {
-          const data = await studentService.getStudentById(parseInt(id));
-          setStudent({
-            ...data,
-            fullName: data.fullName || "Student",
-            className: data.className || "Class",
-            parentName: data.parentName || "Parent",
-            phone: data.phone || "+1 234 567 890",
-            status: data.status || "active",
-          });
-        }
-      } catch {
-        // Error will be handled by notification
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStudent();
-    fetchAcademicYears();
-  }, [id, fetchAcademicYears]);
-
-  useEffect(() => {
-    fetchHolidays();
-  }, [fetchHolidays]);
-
-  useEffect(() => {
-    fetchAttendance();
-  }, [fetchAttendance]);
-
-  useEffect(() => {
-    if (activeTab === "Marks" || activeTab === "Performance") {
-      fetchMarks();
-    } else if (activeTab === "Fee Status" && isAccountant) {
-      fetchFeeStatus();
-    }
-  }, [activeTab, fetchMarks, fetchFeeStatus, isAccountant]);
+  const student: Student | null = studentData ? {
+    ...studentData,
+    fullName: studentData.fullName || "Student",
+    className: studentData.className || "Class",
+    parentName: studentData.parentName || "Parent",
+    phone: studentData.phone || "+1 234 567 890",
+    status: studentData.status || "active",
+  } : null;
 
   const handleDeactivate = async () => {
     if (!id) return;
-    setIsProcessing(true);
     try {
-      await studentService.deactivateStudent(Number(id));
+      await deactivateStudent.mutateAsync(Number(id));
       navigate(`${basePath}/students`);
     } catch {
-      setIsProcessing(false);
+      // Error handled by mutation
     }
   };
 
   const handleActivate = async () => {
     if (!id) return;
-    setIsProcessing(true);
     try {
-      await studentService.activateStudent(Number(id));
-      setStudent(prev => prev ? { ...prev, status: 'active' } : null);
-      setIsProcessing(false);
+      await activateStudent.mutateAsync(Number(id));
       setShowDeactivateModal(false);
     } catch {
-      setIsProcessing(false);
+      // Error handled by mutation
     }
   };
 
@@ -333,8 +239,6 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     const days: CalendarDay[] = [];
 
@@ -485,6 +389,11 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
     return Object.values(byExam);
   })();
 
+  const isAdmin = layout === "admin";
+  const isAccountant = layout === "accountant";
+  const isTeacher = layout === "teacher";
+  const basePath = isAdmin ? "/admin" : isAccountant ? "/accountant" : "/teacher";
+
   const renderContent = () => (
     <div className="space-y-6 pb-12">
       <PageHeader
@@ -588,15 +497,15 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                   {student?.status === 'inactive' ? (
                     <button
                       onClick={handleActivate}
-                      disabled={isProcessing}
+                      disabled={activateStudent.isPending}
                       className="w-full py-3.5 rounded-2xl border-2 border-emerald-100 text-emerald-600 font-black text-sm hover:bg-emerald-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isProcessing ? 'Activating...' : 'Activate Student'}
+                      {activateStudent.isPending ? 'Activating...' : 'Activate Student'}
                     </button>
                   ) : (
                     <button
                       onClick={() => setShowDeactivateModal(true)}
-                      disabled={isProcessing}
+                      disabled={deactivateStudent.isPending}
                       className="w-full py-3.5 rounded-2xl border-2 border-rose-100 text-rose-500 font-black text-sm hover:bg-rose-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Deactivate Student
@@ -1217,14 +1126,14 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
             confirmText="Deactivate"
             cancelText="Cancel"
             variant="warning"
-            loading={isProcessing}
+            loading={deactivateStudent.isPending}
           />
         </div>
       </div>
     </div>
   );
 
-  if (loading) {
+  if (loadingStudent) {
     return (
       <div className="h-96 flex items-center justify-center">
         <LoadingSpinner size="lg" message="Loading student profile..." />

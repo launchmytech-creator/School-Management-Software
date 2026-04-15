@@ -1,13 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
-import { useParentChildren } from '../../hooks/queries';
-import { syllabusService, type ChapterWithStatus } from '../../services/syllabusService';
-import { subjectService } from '../../services/subjectService';
-import { studentService } from '../../services/studentService';
+import { useParentChildren, useStudentClass, useParentSubjects } from '../../hooks/queries';
 import type { LinkedStudent } from '../../types/parent';
-
-// ── types ─────────────────────────────────────────────────────────────────────
+import type { ChapterWithStatus } from '../../services/syllabusService';
 
 interface SubjectCard {
   classSubjectId: number;
@@ -18,10 +14,7 @@ interface SubjectCard {
   completedChapters: number;
   progressPercentage: number;
   chapters: ChapterWithStatus[];
-  chaptersLoaded: boolean;
 }
-
-// ── accent colours per subject index ─────────────────────────────────────────
 
 const ACCENTS = [
   { border: 'border-l-green-400',  bar: 'bg-green-400',  pct: 'text-green-500',  badge: 'bg-green-50 text-green-600'  },
@@ -34,8 +27,6 @@ const ACCENTS = [
 
 const accent = (i: number) => ACCENTS[i % ACCENTS.length];
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-
 const fmtDate = (d?: string) => {
   if (!d) return '';
   const [y, m, day] = d.split('-').map(Number);
@@ -43,8 +34,6 @@ const fmtDate = (d?: string) => {
     day: '2-digit', month: 'short', year: 'numeric',
   });
 };
-
-// ── chapter row ───────────────────────────────────────────────────────────────
 
 const ChapterRow: React.FC<{ ch: ChapterWithStatus; idx: number }> = ({ ch, idx }) => {
   const isCompleted  = ch.status === 'completed';
@@ -80,9 +69,7 @@ const ChapterRow: React.FC<{ ch: ChapterWithStatus; idx: number }> = ({ ch, idx 
   );
 };
 
-// ── subject card ──────────────────────────────────────────────────────────────
-
-const SubjectCard: React.FC<{
+const SubjectCardComponent: React.FC<{
   card: SubjectCard;
   colorIdx: number;
   onToggleChapters: () => void;
@@ -91,7 +78,6 @@ const SubjectCard: React.FC<{
   const c = accent(colorIdx);
   const pct = Math.round(card.progressPercentage);
 
-  // Determine what to show in the collapsed preview
   const completedChapters = card.chapters.filter(ch => ch.status === 'completed');
   const pendingChapters   = card.chapters.filter(ch => ch.status === 'pending' || ch.status === 'in-progress');
   const nextChapter       = pendingChapters[0];
@@ -99,7 +85,6 @@ const SubjectCard: React.FC<{
   return (
     <div className={`bg-white rounded-2xl border border-slate-100 border-l-4 ${c.border} shadow-sm overflow-hidden`}>
       <div className="p-5">
-        {/* Header */}
         <div className="flex items-start justify-between mb-1">
           <div>
             <h3 className="font-black text-slate-900 text-base">{card.subjectName}</h3>
@@ -112,7 +97,6 @@ const SubjectCard: React.FC<{
           </span>
         </div>
 
-        {/* Progress bar */}
         <div className="mt-4">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Progress</span>
@@ -128,7 +112,6 @@ const SubjectCard: React.FC<{
           </div>
         </div>
 
-        {/* Collapsed preview */}
         {!expanded && (
           <div className="mt-4">
             {completedChapters.length > 0 && (
@@ -157,7 +140,6 @@ const SubjectCard: React.FC<{
           </div>
         )}
 
-        {/* Expanded chapter list */}
         {expanded && (
           <div className="mt-4 border-t border-slate-100 pt-3">
             {card.chapters.length === 0 ? (
@@ -171,7 +153,6 @@ const SubjectCard: React.FC<{
         )}
       </div>
 
-      {/* Footer action */}
       <button
         onClick={onToggleChapters}
         className="w-full py-3 border-t border-slate-100 text-xs font-bold text-slate-500 hover:text-[#4A9FD4] hover:bg-slate-50 transition-colors"
@@ -186,8 +167,6 @@ const SubjectCard: React.FC<{
   );
 };
 
-// ── main page ─────────────────────────────────────────────────────────────────
-
 const EMPTY_CHILDREN: LinkedStudent[] = [];
 
 const ParentSyllabus: React.FC = () => {
@@ -196,71 +175,37 @@ const ParentSyllabus: React.FC = () => {
 
   const { data: childrenData, isLoading: loading } = useParentChildren(Number(user?.id));
   const children = childrenData || EMPTY_CHILDREN;
-  const [selected, setSelected]     = useState<LinkedStudent | null>(null);
-  const [subjects, setSubjects]     = useState<SubjectCard[]>([]);
-  const [expanded, setExpanded]     = useState<Set<number>>(new Set());
-  const [subLoading, setSubLoading] = useState(false);
+  const [selected, setSelected] = useState<LinkedStudent | null>(null);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const tabsRef = useRef<HTMLDivElement>(null);
 
-  // ── set initial child ───────────────────────────────────────────────────────
-  useEffect(() => {
+  const { data: studentData } = useStudentClass(selected?.id ?? 0);
+  const classId = studentData?.currentClassId ?? 0;
+
+  const { data: subjectsData = [] } = useParentSubjects(
+    classId,
+    selectedYear?.id ? Number(selectedYear.id) : 0
+  );
+
+  const subjectCards = React.useMemo<SubjectCard[]>(() => {
+    return subjectsData.map((cs) => ({
+      classSubjectId: cs.id,
+      subjectId: cs.subjectId,
+      subjectName: cs.subjectName,
+      totalChapters: 0,
+      completedChapters: 0,
+      progressPercentage: 0,
+      chapters: [],
+    }));
+  }, [subjectsData]);
+
+  React.useEffect(() => {
     if (children.length > 0 && !selected) {
       setSelected(children[0]);
     }
   }, [children, selected]);
-
-  // ── fetch subjects + progress for selected child ────────────────────────────
-  const fetchSubjects = useCallback(async () => {
-    if (!selected?.id || !selectedYear?.id) return;
-
-    setSubLoading(true);
-    setSubjects([]);
-    setExpanded(new Set());
-
-    try {
-      // Resolve classId from the student record
-      const student = await studentService.getStudentById(selected.id);
-      const classId = student.currentClassId;
-      if (!classId) { setSubLoading(false); return; }
-
-      // Get all class-subjects for this class
-      const rawSubjects = await subjectService.getSubjectsByClass(classId);
-      if (rawSubjects.length === 0) { setSubLoading(false); return; }
-
-      // Build subject cards with chapter progress
-      const cards: SubjectCard[] = await Promise.all(
-        rawSubjects.map(async (cs) => {
-          try {
-            const chapters = await syllabusService.getChaptersWithStatusDirect(
-              classId,
-              cs.subjectId,
-              Number(selectedYear.id)
-            );
-            const completed = chapters.filter(c => c.status === 'completed').length;
-            const total     = chapters.length;
-            const pct       = total > 0 ? Math.round((completed / total) * 100) : 0;
-            return { classSubjectId: cs.id, subjectId: cs.subjectId, subjectName: cs.subjectName,
-              totalChapters: total, completedChapters: completed, progressPercentage: pct,
-              chapters, chaptersLoaded: true } as SubjectCard;
-          } catch {
-            return { classSubjectId: cs.id, subjectId: cs.subjectId, subjectName: cs.subjectName,
-              totalChapters: 0, completedChapters: 0, progressPercentage: 0,
-              chapters: [], chaptersLoaded: true } as SubjectCard;
-          }
-        })
-      );
-
-      setSubjects(cards);
-    } catch {
-      setSubjects([]);
-    } finally {
-      setSubLoading(false);
-    }
-  }, [selected, selectedYear]);
-
-  useEffect(() => { fetchSubjects(); }, [fetchSubjects]);
 
   const scrollTabs = (direction: 'left' | 'right') => {
     if (tabsRef.current) {
@@ -277,7 +222,7 @@ const ParentSyllabus: React.FC = () => {
     }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (tabsRef.current) {
       updateScrollState();
       tabsRef.current.addEventListener('scroll', updateScrollState);
@@ -285,7 +230,6 @@ const ParentSyllabus: React.FC = () => {
     }
   }, [children]);
 
-  // ── toggle chapter expansion ────────────────────────────────────────────────
   const toggleExpand = (classSubjectId: number) => {
     setExpanded(prev => {
       const next = new Set(prev);
@@ -295,7 +239,6 @@ const ParentSyllabus: React.FC = () => {
     });
   };
 
-  // ── loading state ───────────────────────────────────────────────────────────
   if (loading) {
     return (
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -319,7 +262,6 @@ const ParentSyllabus: React.FC = () => {
   return (
       <div className="p-8 max-w-6xl mx-auto space-y-6">
 
-        {/* Child tabs */}
         <div className="relative">
           <div ref={tabsRef} className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto scrollbar-hide px-10">
             {children.map(child => (
@@ -360,7 +302,6 @@ const ParentSyllabus: React.FC = () => {
           )}
         </div>
 
-        {/* Page title */}
         {selected && (
           <>
             <div>
@@ -371,18 +312,7 @@ const ParentSyllabus: React.FC = () => {
               </p>
             </div>
 
-            {/* Subject grid */}
-            {subLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 animate-pulse">
-                    <div className="h-4 bg-slate-100 rounded w-1/3 mb-3" />
-                    <div className="h-3 bg-slate-100 rounded w-1/2 mb-5" />
-                    <div className="h-2 bg-slate-100 rounded-full" />
-                  </div>
-                ))}
-              </div>
-            ) : subjects.length === 0 ? (
+            {subjectCards.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <span className="material-symbols-outlined text-6xl text-slate-200 block mb-4">auto_stories</span>
                 <h3 className="text-base font-bold text-slate-600 mb-1">No Syllabus Data</h3>
@@ -390,8 +320,8 @@ const ParentSyllabus: React.FC = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {subjects.map((card, idx) => (
-                  <SubjectCard
+                {subjectCards.map((card, idx) => (
+                  <SubjectCardComponent
                     key={card.classSubjectId}
                     card={card}
                     colorIdx={idx}

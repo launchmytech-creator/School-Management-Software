@@ -9,7 +9,7 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import PageHeader from '../../components/common/PageHeader';
 import { useNotification } from '../../context/NotificationContext';
-import { useStudents, useStudentHistory } from '../../hooks/queries';
+import { useAllStudents, useStudentHistory } from '../../hooks/queries';
 import type { 
   AttendanceYearData, 
   ResultsYearData, 
@@ -20,7 +20,7 @@ import { formatCurrency } from '../../lib/utils';
 const StudentHistory: React.FC = () => {
   const { showNotification } = useNotification();
   
-  const { data: allStudents = [], isLoading: loadingStudents } = useStudents();
+  const { data: allStudents = [], isLoading: loadingStudents } = useAllStudents();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);

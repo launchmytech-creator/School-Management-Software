@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { syllabusService, type SubjectProgress, type ChapterWithStatus } from '../../services/syllabusService';
+import { syllabusService, type SubjectProgress, type ChapterWithStatus, type AllClassesProgress } from '../../services/syllabusService';
 import { QUERY_STALE_TIME } from '../../lib/constants';
 import { useAuth } from '../../context/AuthContext';
+import { queryKeys } from '../../lib/queryKeys';
 
 export const useClassProgress = (classId: number | string) => {
   const { user } = useAuth();
@@ -22,5 +23,15 @@ export const useSubjectChapters = (classId: number | string, subjectId: number |
     queryFn: () => syllabusService.getChaptersWithStatusDirect(Number(classId), Number(subjectId), Number(academicYearId)),
     staleTime: QUERY_STALE_TIME.REFERENCE,
     enabled: !!classId && !!subjectId && !!academicYearId,
+  });
+};
+
+export const useAllClassesProgress = () => {
+  const { user } = useAuth();
+  
+  return useQuery<AllClassesProgress>({
+    queryKey: queryKeys.syllabus.allProgress(user?.schoolId ?? null),
+    queryFn: () => syllabusService.getAllClassesProgress(),
+    staleTime: QUERY_STALE_TIME.REFERENCE,
   });
 };

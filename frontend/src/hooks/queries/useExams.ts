@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { examService, type Exam, type CreateExamDto, type AddExamSubjectDto } from '../../services/examService';
 import { QUERY_STALE_TIME } from '../../lib/constants';
+import { useAuth } from '../../context/AuthContext';
+import { queryKeys } from '../../lib/queryKeys';
 
 export interface ExamFilters {
   classId?: number;
@@ -8,16 +10,20 @@ export interface ExamFilters {
 }
 
 export const useExams = (filters: ExamFilters = {}) => {
+  const { user } = useAuth();
+
   return useQuery<Exam[]>({
-    queryKey: ['exams', filters],
+    queryKey: queryKeys.exams.byFilters(user?.schoolId ?? null, filters),
     queryFn: () => examService.getExams(filters.classId),
     staleTime: QUERY_STALE_TIME.LISTS,
   });
 };
 
 export const useExamById = (id: number) => {
+  const { user } = useAuth();
+
   return useQuery<Exam>({
-    queryKey: ['exams', id],
+    queryKey: ['exams', 'detail', { schoolId: user?.schoolId ?? null, id }] as const,
     queryFn: () => examService.getExamById(id),
     staleTime: QUERY_STALE_TIME.LISTS,
     enabled: !!id,

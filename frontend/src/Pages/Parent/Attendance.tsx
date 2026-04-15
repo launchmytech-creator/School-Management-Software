@@ -1,14 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useParentChildren } from '../../hooks/queries';
-import { attendanceService } from '../../services/attendanceService';
-import { holidayService } from '../../services/holidayService';
+import { useParentChildren, useParentAttendance, useParentHolidays, useSchoolOpenDays } from '../../hooks/queries';
 import type { LinkedStudent } from '../../types/parent';
-import type { AttendanceRecord } from '../../services/attendanceService';
-import type { Holiday } from '../../services/holidayService';
-
-// ── helpers ──────────────────────────────────────────────────────────────────
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -25,8 +19,6 @@ function getFirstDayOfMonth(year: number, month: number) {
 function toDateStr(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
-
-// ── circular progress ─────────────────────────────────────────────────────────
 
 const CircularProgress: React.FC<{ pct: number }> = ({ pct }) => {
   const r = 54;
@@ -61,8 +53,6 @@ const CircularProgress: React.FC<{ pct: number }> = ({ pct }) => {
   );
 };
 
-// ── main ──────────────────────────────────────────────────────────────────────
-
 const today = new Date();
 const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -79,54 +69,27 @@ const ParentAttendance: React.FC = () => {
   const { data: childrenData, isLoading: childrenLoading } = useParentChildren(Number(user?.id));
   const children = childrenData || EMPTY_CHILDREN;
 
-  const [selected, setSelected]     = useState<LinkedStudent | null>(null);
-  const [records, setRecords]       = useState<AttendanceRecord[]>([]);
-  const [holidays, setHolidays]     = useState<Holiday[]>([]);
-  const [monthOpenDays, setMonthOpenDays] = useState<number>(0);
+  const [selected, setSelected] = useState<LinkedStudent | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  // ── set initial child ───────────────────────────────────────────────────────
-  useEffect(() => {
+  const monthStart = toDateStr(viewYear, viewMonth, 1);
+  const monthEnd = toDateStr(viewYear, viewMonth, getDaysInMonth(viewYear, viewMonth));
+
+  const { data: records = [] } = useParentAttendance(
+    selected?.id ?? 0,
+    monthStart,
+    monthEnd
+  );
+  const { data: holidays = [] } = useParentHolidays(viewYear);
+  const { data: monthOpenDays = 0 } = useSchoolOpenDays(viewYear, viewMonth + 1);
+
+  React.useEffect(() => {
     if (children.length > 0 && !selected) {
       setSelected(children[0]);
     }
   }, [children, selected]);
 
-  // ── fetch attendance for selected child ─────────────────────────────────────
-  const fetchAttendance = useCallback(async () => {
-    if (!selected) return;
-    const monthStart = toDateStr(viewYear, viewMonth, 1);
-    const monthEnd = toDateStr(viewYear, viewMonth, getDaysInMonth(viewYear, viewMonth));
-    try {
-      const data = await attendanceService.getAttendance({
-        studentId: selected.id,
-        startDate: monthStart,
-        endDate: monthEnd,
-      });
-      setRecords(data);
-    } catch { setRecords([]); }
-  }, [selected, viewYear, viewMonth]);
-
-  // ── fetch holidays ──────────────────────────────────────────────────────────
-  const fetchHolidays = useCallback(async () => {
-    try {
-      const data = await holidayService.getHolidays(viewYear);
-      setHolidays(data);
-    } catch { setHolidays([]); }
-  }, [viewYear]);
-
-  // ── fetch school open days ───────────────────────────────────────────────────
-  const fetchSchoolOpenDays = useCallback(async () => {
-    try {
-      const count = await attendanceService.getSchoolOpenDays(viewYear, viewMonth + 1);
-      setMonthOpenDays(count);
-    } catch { /* ignore */ }
-  }, [viewYear, viewMonth]);
-
-  useEffect(() => { fetchAttendance(); fetchHolidays(); fetchSchoolOpenDays(); }, [fetchAttendance, fetchHolidays, fetchSchoolOpenDays]);
-
-  // ── derived ─────────────────────────────────────────────────────────────────
   const recordMap = new Map(records.map(r => [r.attendanceDate.slice(0, 10), r.status]));
   const holidaySet = new Set(holidays.map(h => h.holidayDate.slice(0, 10)));
 
@@ -138,12 +101,10 @@ const ParentAttendance: React.FC = () => {
   const monthAbsent  = monthRecords.filter(r => r.status === 'absent').length;
   const monthPct     = monthOpenDays > 0 ? Math.round((monthPresent / monthOpenDays) * 100) : 0;
 
-  // ── calendar grid ────────────────────────────────────────────────────────────
   const daysInMonth  = getDaysInMonth(viewYear, viewMonth);
   const firstDay     = getFirstDayOfMonth(viewYear, viewMonth);
   const prevDays     = getDaysInMonth(viewYear, viewMonth - 1);
 
-  // build 6×7 grid
   const cells: { day: number; month: 'prev' | 'cur' | 'next'; dateStr: string }[] = [];
   for (let i = firstDay - 1; i >= 0; i--) {
     const d = prevDays - i;
@@ -190,7 +151,7 @@ const ParentAttendance: React.FC = () => {
     }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (tabsRef.current) {
       tabsRef.current.addEventListener('scroll', updateScrollState);
       updateScrollState();
@@ -209,7 +170,6 @@ const ParentAttendance: React.FC = () => {
   return (
       <div className="p-6 max-w-5xl mx-auto space-y-5 pb-24">
 
-        {/* Back + title */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/parent/dashboard')}
@@ -220,7 +180,6 @@ const ParentAttendance: React.FC = () => {
           </button>
         </div>
 
-        {/* Child selector tabs */}
         {children.length > 1 && (
           <div className="relative">
             {canScrollLeft && (
@@ -270,11 +229,8 @@ const ParentAttendance: React.FC = () => {
           </div>
         )}
 
-        {/* Calendar + Overview side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Calendar card */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          {/* Month nav */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <button
               onClick={prevMonth}
@@ -296,7 +252,6 @@ const ParentAttendance: React.FC = () => {
             </button>
           </div>
 
-          {/* Day headers */}
           <div className="grid grid-cols-7 border-b border-slate-100">
             {DAY_LABELS.map(d => (
               <div key={d} className="py-2 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wide">
@@ -305,7 +260,6 @@ const ParentAttendance: React.FC = () => {
             ))}
           </div>
 
-          {/* Calendar cells */}
           <div className="grid grid-cols-7">
             {cells.map((cell, idx) => {
               const isCur     = cell.month === 'cur';
@@ -342,7 +296,6 @@ const ParentAttendance: React.FC = () => {
                     isToday ? 'ring-2 ring-inset ring-[#4A9FD4]' : ''
                   }`}
                 >
-                  {/* day number */}
                   <div className="flex items-start justify-between">
                     <span className={`text-sm font-bold leading-none ${
                       !isCur ? 'text-slate-300' :
@@ -366,7 +319,6 @@ const ParentAttendance: React.FC = () => {
                       </span>
                     ) : null}
                   </div>
-                  {/* bottom color bar */}
                   {isCur && (status || isHoliday) && (
                     <div className={`absolute bottom-0 left-0 right-0 h-1 rounded-b ${
                       status === 'present' ? 'bg-emerald-400' :
@@ -375,7 +327,6 @@ const ParentAttendance: React.FC = () => {
                       isHoliday           ? 'bg-blue-300' : ''
                     }`} />
                   )}
-                  {/* holiday label in center */}
                   {isHoliday && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <span className="text-[9px] font-bold text-blue-400 rotate-[-15deg] opacity-60 uppercase tracking-widest">
@@ -389,7 +340,6 @@ const ParentAttendance: React.FC = () => {
           </div>
         </div>
 
-          {/* Monthly overview card */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col items-center">
             <CircularProgress pct={monthPct} />
             <h2 className="text-base font-black text-slate-900 mt-4">Monthly Attendance</h2>
@@ -414,7 +364,6 @@ const ParentAttendance: React.FC = () => {
           </div>
         </div>
 
-        {/* Legend */}
         <div className="flex items-center gap-5 px-1 flex-wrap">
           {[
             { color: 'bg-emerald-400', label: 'Present' },
@@ -427,9 +376,9 @@ const ParentAttendance: React.FC = () => {
               {l.label}
             </span>
           ))}
-</div>
+        </div>
       </div>
     );
-  };
+};
 
 export default ParentAttendance;
