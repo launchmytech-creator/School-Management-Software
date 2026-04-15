@@ -10,6 +10,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import PageHeader from '../../components/common/PageHeader';
 import { useNotification } from '../../context/NotificationContext';
 import { useAllStudents, useStudentHistory } from '../../hooks/queries';
+import { QueryErrorFallback } from '../../components/error';
 import type { 
   AttendanceYearData, 
   ResultsYearData, 
@@ -180,6 +181,7 @@ const StudentHistory: React.FC = () => {
 
       {/* History Content */}
       {selectedStudentId && (
+        <QueryErrorFallback>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Student Info Card */}
           <div className="lg:col-span-1">
@@ -466,6 +468,7 @@ const StudentHistory: React.FC = () => {
             )}
           </div>
         </div>
+        </QueryErrorFallback>
       )}
 
       {/* Empty State */}

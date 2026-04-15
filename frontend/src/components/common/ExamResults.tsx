@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { SkeletonTable } from "../../components/common/Skeleton";
+import { QueryErrorFallback } from "../../components/error";
 
 interface ExamResultsProps {
   layout?: "admin" | "accountant";
@@ -530,7 +531,7 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
     </div>
   );
 
-  return content;
+  return <QueryErrorFallback>{content}</QueryErrorFallback>;
 };
 
 export default ExamResults;

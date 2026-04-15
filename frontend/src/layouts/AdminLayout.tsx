@@ -4,6 +4,7 @@ import AdminSidebar from "../components/layout/AdminSidebar";
 import SuperAdminSidebar from "../components/layout/SuperAdminSidebar";
 import AppHeader from "../components/common/AppHeader";
 import { useStudentCache } from "../hooks/useStudentCache";
+import RouteErrorBoundary from "../components/error/RouteErrorBoundary";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -35,7 +36,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
         <AppHeader />
 
         <main className="flex-1 overflow-y-auto p-12 custom-scrollbar bg-white shadow-inner">
-          <div className="max-w-[1400px] mx-auto">{children}</div>
+          <div className="max-w-[1400px] mx-auto">
+            <RouteErrorBoundary>{children}</RouteErrorBoundary>
+          </div>
         </main>
       </div>
     </div>

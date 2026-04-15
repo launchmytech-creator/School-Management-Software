@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import ParentSidebar from '../components/layout/ParentSidebar';
 import { useAuth } from '../context/AuthContext';
+import RouteErrorBoundary from '../components/error/RouteErrorBoundary';
 
 const ROUTE_TITLES: Record<string, string> = {
   "/parent/dashboard": "Dashboard",
@@ -72,7 +73,7 @@ const ParentLayout: React.FC<ParentLayoutProps> = ({ children, title }) => {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto bg-[#F8FAFC] custom-scrollbar">
-          {children}
+          <RouteErrorBoundary>{children}</RouteErrorBoundary>
         </main>
       </div>
     </div>

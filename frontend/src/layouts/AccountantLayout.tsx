@@ -2,6 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import AccountantSidebar from "../components/layout/AccountantSidebar";
 import { useAuth } from "../context/AuthContext";
+import RouteErrorBoundary from "../components/error/RouteErrorBoundary";
 
 interface AccountantLayoutProps {
   children: React.ReactNode;
@@ -74,7 +75,9 @@ const AccountantLayout: React.FC<AccountantLayoutProps> = ({
           </div>
         </header>
 
-        <div className="p-8 max-w-[1440px] mx-auto">{children}</div>
+        <div className="p-8 max-w-[1440px] mx-auto">
+          <RouteErrorBoundary>{children}</RouteErrorBoundary>
+        </div>
       </main>
     </div>
   );

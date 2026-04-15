@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import TeacherSidebar from '../components/layout/TeacherSidebar';
 import AppHeader from '../components/common/AppHeader';
+import RouteErrorBoundary from '../components/error/RouteErrorBoundary';
 
 const ROUTE_TITLES: Record<string, string> = {
   "/teacher/dashboard": "Dashboard",
@@ -33,7 +34,7 @@ const TeacherLayout: React.FC<TeacherLayoutProps> = ({ children, title }) => {
 
         <main className="flex-1 overflow-y-auto p-12 custom-scrollbar bg-white shadow-inner">
           <div className="max-w-[1400px] mx-auto">
-            {children}
+            <RouteErrorBoundary>{children}</RouteErrorBoundary>
           </div>
         </main>
       </div>

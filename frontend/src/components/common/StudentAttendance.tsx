@@ -15,6 +15,7 @@ import { type MarkAttendanceDto } from '../../services/attendanceService';
 import { Users, CheckCircle, XCircle, AlertCircle, CalendarCheck, Loader2, ShieldOff } from 'lucide-react';
 import { formatDate, getLocalDateString } from '../../lib/utils';
 import { BaseModal } from '../../components/common/BaseModal';
+import { QueryErrorFallback } from '../../components/error';
 
 type AttendanceStatus = 'present' | 'absent';
 
@@ -188,7 +189,8 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   const loadingClasses = false;
 
   const renderContent = () => (
-    <div className="space-y-6 pb-12">
+    <QueryErrorFallback>
+      <div className="space-y-6 pb-12">
       {isTeacher && (
         <PageHeader 
           title="Student Attendance"
@@ -513,6 +515,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
         </div>
       </BaseModal>
     </div>
+    </QueryErrorFallback>
   );
 
   return renderContent();

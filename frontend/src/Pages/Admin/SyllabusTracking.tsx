@@ -10,6 +10,7 @@ import { syllabusService, type ChapterWithStatus } from '../../services/syllabus
 import { BookOpen, CheckCircle, Clock, BookMarked, ChevronRight, Loader, Circle } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
 import { Button } from '../../components/ui/button';
+import { QueryErrorFallback } from '../../components/error';
 
 const SyllabusTracking: React.FC = () => {
   const { showNotification } = useNotification();
@@ -181,7 +182,7 @@ const SyllabusTracking: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      <PageHeader 
+      <PageHeader
         title="Syllabus Tracking"
         subtitle="Track and manage syllabus completion progress"
         breadcrumb={{
@@ -192,12 +193,13 @@ const SyllabusTracking: React.FC = () => {
         }}
       />
 
-      {loadingProgress ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 flex items-center justify-center">
-          <div className="animate-pulse text-slate-400">Loading class progress...</div>
-        </div>
-      ) : classesProgress.length > 0 ? (
-        <div className="space-y-4">
+      <QueryErrorFallback>
+        {loadingProgress ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-12 flex items-center justify-center">
+            <div className="animate-pulse text-slate-400">Loading class progress...</div>
+          </div>
+        ) : classesProgress.length > 0 ? (
+          <div className="space-y-4">
           {classesProgress.map((classProgress) => {
             const isClassExpanded = expandedClass === classProgress.classId;
             
@@ -266,6 +268,7 @@ const SyllabusTracking: React.FC = () => {
           description="No classes have been set up yet"
         />
       )}
+      </QueryErrorFallback>
     </div>
   );
 };

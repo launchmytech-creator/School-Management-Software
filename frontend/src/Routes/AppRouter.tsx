@@ -5,12 +5,22 @@ import PublicRoute from "./PublicRoute";
 import ProtectedRoute from "./ProtectedRoute";
 import NotFound from "../Pages/NotFound";
 
-// Route chunks — only loaded when the user navigates to that role's pages
-const SuperAdminRoutes = lazy(() => import("./superAdminRoutes"));
-const AdminRoutes = lazy(() => import("./adminRoutes"));
-const AccountantRoutes = lazy(() => import("./accountantRoutes"));
-const TeacherRoutes = lazy(() => import("./teacherRoutes"));
-const ParentRoutes = lazy(() => import("./parentRoutes"));
+const lazyWithRetry = (loader: () => Promise<{ default: React.ComponentType<any> }>) => {
+  return lazy(async () => {
+    try {
+      return await loader();
+    } catch {
+      await new Promise<void>((res) => setTimeout(res, 1000));
+      return loader();
+    }
+  });
+};
+
+const SuperAdminRoutes = lazyWithRetry(() => import("./superAdminRoutes"));
+const AdminRoutes = lazyWithRetry(() => import("./adminRoutes"));
+const AccountantRoutes = lazyWithRetry(() => import("./accountantRoutes"));
+const TeacherRoutes = lazyWithRetry(() => import("./teacherRoutes"));
+const ParentRoutes = lazyWithRetry(() => import("./parentRoutes"));
 
 const PageLoader = () => (
   <div className="h-screen w-full flex items-center justify-center bg-slate-50">
@@ -93,4 +103,3 @@ const AppRouter = () => (
 );
 
 export default AppRouter;
-
