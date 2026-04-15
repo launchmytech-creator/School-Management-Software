@@ -13,7 +13,7 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
-import { ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
+import { ResponsiveContainer } from "recharts";
 import {
   LineChart,
   Line,
@@ -34,10 +34,6 @@ import { type FeeTransaction } from "../../services/feeService";
 import { computeFeeSummary } from "../../lib/fee-utils";
 import {
   subjectColor,
-  gradeColor,
-  progressColor,
-  subjectIcon,
-  EXAM_TYPES,
 } from "../../lib/subject-utils";
 import { useActivateStudent, useDeactivateStudent } from "../../hooks/mutations";
 import { useAuth } from "../../context/AuthContext";
@@ -48,6 +44,9 @@ import PageHeader from "../../components/common/PageHeader";
 import { getLocalDateString } from "../../lib/utils";
 import { TabBar } from "../../components/ui";
 import ProfileInfoRow from "../../components/common/ProfileInfoRow";
+import SubjectCard from "../../components/students/SubjectCard";
+import AttendanceSummary from "../../components/students/AttendanceSummary";
+import ExamTypeFilter from "../../components/students/ExamTypeFilter";
 
 interface StudentProfileProps {
   layout: "admin" | "accountant" | "teacher";
@@ -62,65 +61,6 @@ interface CalendarDay {
   isCurrentMonth: boolean;
   holiday?: { description: string } | undefined;
 }
-
-const SubjectCard: React.FC<{ result: StudentResult }> = ({ result }) => {
-  const pct = Math.round((result.marksObtained / result.maxMarks) * 100);
-  const { bar, label } = progressColor(pct);
-  const { icon, bg, text } = subjectIcon(result.subjectName);
-
-  return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}
-          >
-            <span
-              className={`material-symbols-outlined text-[20px] ${text}`}
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              {icon}
-            </span>
-          </div>
-          <div>
-            <h4 className="font-bold text-slate-900 text-sm">
-              {result.subjectName}
-            </h4>
-            <p className="text-[11px] text-slate-400">
-              Exam: {result.examName}
-            </p>
-          </div>
-        </div>
-        <span
-          className={`text-xs font-black px-2 py-0.5 rounded-lg ${gradeColor(result.grade)}`}
-        >
-          {result.grade}
-        </span>
-      </div>
-      <div className="mb-3">
-        <span className="text-3xl font-black text-slate-900">
-          {result.marksObtained}
-        </span>
-        <span className="text-sm text-slate-400 font-semibold">
-          {" "}
-          / {result.maxMarks}
-        </span>
-      </div>
-      <div className="space-y-1">
-        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-700 ${bar}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-          <span>Progress</span>
-          <span className={bar.replace("bg-", "text-")}>{label}</span>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   const { id } = useParams<{ id: string }>();
@@ -590,91 +530,10 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                 </div>
               </div>
 
-              <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
-                <h3 className="text-xl font-black text-slate-900 tracking-tight mb-8">
-                  Attendance Summary
-                </h3>
-
-                <div className="relative w-48 h-48 mb-6">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          {
-                            name: "Present",
-                            value: attendanceSummary.presentCount,
-                            color: "#10B981",
-                          },
-                          {
-                            name: "Absent",
-                            value: Math.max(
-                              0,
-                              attendanceSummary.workingDays -
-                                attendanceSummary.presentCount,
-                            ),
-                            color: "#F1F5F9",
-                          },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={2}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        <Cell fill="#10B981" />
-                        <Cell fill="#F1F5F9" />
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-black text-slate-800 tracking-tight">
-                      {attendanceSummary.percentage}%
-                    </span>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Attendance
-                    </span>
-                  </div>
-                </div>
-
-                <div className="w-full space-y-3 mb-6">
-                  <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl">
-                    <span className="text-xs font-bold text-emerald-600">
-                      Working Days
-                    </span>
-                    <span className="text-lg font-black text-emerald-700">
-                      {attendanceSummary.workingDays}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-rose-50 rounded-xl">
-                    <span className="text-xs font-bold text-rose-600">
-                      Present Days
-                    </span>
-                    <span className="text-lg font-black text-rose-700">
-                      {attendanceSummary.presentCount}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                    <span className="text-xs font-bold text-slate-500">
-                      Absent Days
-                    </span>
-                    <span className="text-lg font-black text-slate-700">
-                      {attendanceSummary.absentCount}
-                    </span>
-                  </div>
-                </div>
-
-                <p className="text-xs font-bold text-slate-400 leading-relaxed px-4">
-                  {student?.fullName?.split(" ")[0]} has{" "}
-                  {attendanceSummary.percentage >= 90
-                    ? "excellent"
-                    : attendanceSummary.percentage >= 75
-                      ? "good"
-                      : "needs improvement"}{" "}
-                  attendance this month.
-                </p>
-              </div>
+              <AttendanceSummary
+                data={attendanceSummary}
+                studentName={student?.fullName ?? ""}
+              />
             </div>
             ) : (
               <UpgradePrompt feature="attendance" />
@@ -692,21 +551,10 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                     </h3>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-wrap mb-6">
-                    {EXAM_TYPES.map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setActiveType(t)}
-                        className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                          activeType === t
-                            ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
-                            : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
+                  <ExamTypeFilter
+                    activeType={activeType}
+                    onChange={setActiveType}
+                  />
 
                   {loadingMarks ? (
                     <div className="flex items-center justify-center h-48">
