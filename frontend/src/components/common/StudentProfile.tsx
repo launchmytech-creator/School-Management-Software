@@ -43,6 +43,7 @@ import { TabBar } from "../../components/ui";
 import ProfileInfoRow from "../../components/common/ProfileInfoRow";
 import SubjectCard from "../../components/students/SubjectCard";
 import AttendanceSummary from "../../components/students/AttendanceSummary";
+import AttendanceLegend from "../../components/students/AttendanceLegend";
 import ExamTypeFilter from "../../components/students/ExamTypeFilter";
 import FeeStatsRow from "../../components/fee/FeeStatsRow";
 import FeeTransactionCard from "../../components/fee/FeeTransactionCard";
@@ -501,32 +502,12 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                   </div>
                 )}
 
-                <div className="mt-10 flex items-center gap-6 text-[10px] font-black uppercase tracking-widest">
-                  <div className="flex items-center gap-2">
-                    <div className="size-3 rounded-full bg-emerald-500"></div>
-                    <span className="text-slate-500">
-                      Present ({attendanceSummary.presentCount})
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="size-3 rounded-full bg-rose-500"></div>
-                    <span className="text-slate-500">
-                      Absent ({attendanceSummary.absentCount})
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="size-3 rounded-full bg-amber-400"></div>
-                    <span className="text-slate-500">
-                      Holiday ({attendanceSummary.holidayCount})
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="size-3 rounded-full bg-red-50 border border-red-200"></div>
-                    <span className="text-slate-300">
-                      Sunday ({attendanceSummary.sundayCount})
-                    </span>
-                  </div>
-                </div>
+                <AttendanceLegend
+                  presentCount={attendanceSummary.presentCount}
+                  absentCount={attendanceSummary.absentCount}
+                  holidayCount={attendanceSummary.holidayCount}
+                  sundayCount={attendanceSummary.sundayCount}
+                />
               </div>
 
               <AttendanceSummary

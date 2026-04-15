@@ -18,6 +18,7 @@ import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { EXAM_TYPE_OPTIONS } from '../../lib/subject-utils';
 
 interface SubjectFormItem {
   subjectId: number;
@@ -29,12 +30,6 @@ interface SubjectFormItem {
 interface ExamsListProps {
   layout: 'admin' | 'accountant';
 }
-
-const EXAM_TYPES = [
-  { value: 'Annual', label: 'Annual' },
-  { value: 'Half Yearly', label: 'Half Yearly' },
-  { value: 'Unit Test', label: 'Unit Test' },
-];
 
 const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
   const { showNotification } = useNotification();
@@ -434,7 +429,7 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
                 {...registerCreate('examType')}
               >
                 <option value="">Select Type (Optional)</option>
-                {EXAM_TYPES.map(type => (
+                {EXAM_TYPE_OPTIONS.map(type => (
                   <option key={type.value} value={type.value}>{type.label}</option>
                 ))}
               </select>
@@ -604,7 +599,7 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
                 {...registerEdit('examType')}
               >
                 <option value="">Select Type (Optional)</option>
-                {EXAM_TYPES.map(type => (
+                {EXAM_TYPE_OPTIONS.map(type => (
                   <option key={type.value} value={type.value}>{type.label}</option>
                 ))}
               </select>

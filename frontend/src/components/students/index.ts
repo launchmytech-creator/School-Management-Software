@@ -1,6 +1,7 @@
 export { StudentClassGroup } from './StudentClassGroup';
 export { default as SubjectCard } from './SubjectCard';
 export { default as AttendanceSummary } from './AttendanceSummary';
+export { default as AttendanceLegend } from './AttendanceLegend';
 export { default as ExamTypeFilter } from './ExamTypeFilter';
 export { default as StudentAvatar } from './StudentAvatar';
 export { default as StudentRowActions } from './StudentRowActions';

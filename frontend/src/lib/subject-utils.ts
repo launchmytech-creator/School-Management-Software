@@ -1,6 +1,12 @@
 export const EXAM_TYPES = ["All", "Class Test", "Unit Test", "Half Yearly", "Final"] as const;
 export type ExamType = typeof EXAM_TYPES[number];
 
+export const EXAM_TYPE_OPTIONS = [
+  { value: "Annual", label: "Annual" },
+  { value: "Half Yearly", label: "Half Yearly" },
+  { value: "Unit Test", label: "Unit Test" },
+] as const;
+
 export const SUBJECT_COLORS: Record<string, string> = {
   Mathematics: "#4A9FD4",
   Science: "#22c55e",

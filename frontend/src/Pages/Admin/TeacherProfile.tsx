@@ -13,6 +13,7 @@ import { getLocalDateString } from "../../lib/utils";
 import PageHeader from "../../components/common/PageHeader";
 import { TabBar } from "../../components/ui";
 import ProfileInfoRow from "../../components/common/ProfileInfoRow";
+import AttendanceLegend from "../../components/students/AttendanceLegend";
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'holiday' | 'sunday' | 'none';
 
@@ -321,28 +322,15 @@ const TeacherProfile: React.FC = () => {
                     </div>
                   )}
 
-                  <div className="mt-6 flex items-center gap-6 text-[10px] font-black uppercase tracking-widest flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <div className="size-3 rounded-full bg-emerald-500"></div>
-                      <span className="text-slate-500">Present ({attendanceStats.presentCount})</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="size-3 rounded-full bg-amber-500"></div>
-                      <span className="text-slate-500">Late ({attendanceStats.lateCount})</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="size-3 rounded-full bg-rose-500"></div>
-                      <span className="text-slate-500">Absent ({attendanceStats.absentCount})</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="size-3 rounded-full bg-purple-500"></div>
-                      <span className="text-slate-500">Holiday ({attendanceStats.holidayCount})</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="size-3 rounded-full bg-red-50 border border-red-200"></div>
-                      <span className="text-slate-300">Sunday ({attendanceStats.sundayCount})</span>
-                    </div>
-                  </div>
+                  <AttendanceLegend
+                    presentCount={attendanceStats.presentCount}
+                    absentCount={attendanceStats.absentCount}
+                    holidayCount={attendanceStats.holidayCount}
+                    sundayCount={attendanceStats.sundayCount}
+                    lateCount={attendanceStats.lateCount}
+                    showLate
+                    holidayColor="purple"
+                  />
                 </div>
 
                 <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
