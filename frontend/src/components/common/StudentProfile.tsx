@@ -9,9 +9,6 @@ import {
   CalendarDays,
   Award,
   DollarSign,
-  CheckCircle,
-  XCircle,
-  Clock,
 } from "lucide-react";
 import { ResponsiveContainer } from "recharts";
 import {
@@ -47,6 +44,8 @@ import ProfileInfoRow from "../../components/common/ProfileInfoRow";
 import SubjectCard from "../../components/students/SubjectCard";
 import AttendanceSummary from "../../components/students/AttendanceSummary";
 import ExamTypeFilter from "../../components/students/ExamTypeFilter";
+import FeeStatsRow from "../../components/fee/FeeStatsRow";
+import FeeTransactionCard from "../../components/fee/FeeTransactionCard";
 
 interface StudentProfileProps {
   layout: "admin" | "accountant" | "teacher";
@@ -687,179 +686,29 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                     </div>
                   ) : feeData.length > 0 ? (
                     <>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">
-                                Total Fee
-                              </p>
-                              <p className="text-xl font-black text-blue-700">
-                                ${Number(feeSummary.totalAmount).toFixed(2)}
-                              </p>
-                            </div>
-                            <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
-                              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">
-                                Total Paid
-                              </p>
-                              <p className="text-xl font-black text-emerald-700">
-                                ${Number(feeSummary.totalPaid).toFixed(2)}
-                              </p>
-                            </div>
-                            <div className="bg-rose-50 rounded-xl p-4 border border-rose-100">
-                              <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mb-1">
-                                Pending
-                              </p>
-                              <p className="text-xl font-black text-rose-700">
-                                ${Number(feeSummary.totalPending).toFixed(2)}
-                              </p>
-                            </div>
-                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
-                                Progress
-                              </p>
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 bg-slate-200 rounded-full h-2">
-                                  <div
-                                    className="bg-blue-500 h-2 rounded-full transition-all"
-                                    style={{ width: `${feeSummary.paidPercentage}%` }}
-                                  />
-                                </div>
-                                <span className="text-sm font-black text-slate-700">
-                                  {feeSummary.paidPercentage}%
-                                </span>
-                              </div>
-                            </div>
-                          </div>
+                      <FeeStatsRow
+                        totalAmount={feeSummary.totalAmount}
+                        totalPaid={feeSummary.totalPaid}
+                        totalPending={feeSummary.totalPending}
+                        paidPercentage={feeSummary.paidPercentage}
+                      />
 
                       <div className="space-y-3">
                         {feeData.map((transaction) => (
-                          <div
+                          <FeeTransactionCard
                             key={transaction.id}
-                            className="p-4 bg-slate-50 rounded-xl border border-slate-100"
-                          >
-                            <div className="flex items-center justify-between mb-3">
-                              <div>
-                                <h4 className="text-base font-black text-slate-900">
-                                  Term {transaction.termNumber || 1}
-                                </h4>
-                                <p className="text-xs text-slate-500">
-                                  {transaction.academicYearName}
-                                </p>
-                              </div>
-                              <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  transaction.status === "paid"
-                                    ? "bg-emerald-100 text-emerald-700"
-                                    : transaction.status === "partial"
-                                      ? "bg-amber-100 text-amber-700"
-                                      : transaction.status === "waived"
-                                        ? "bg-purple-100 text-purple-700"
-                                        : "bg-rose-100 text-rose-700"
-                                }`}
-                              >
-                                {transaction.status === "paid" ? (
-                                  <CheckCircle size={10} />
-                                ) : transaction.status === "partial" ? (
-                                  <Clock size={10} />
-                                ) : (
-                                  <XCircle size={10} />
-                                )}
-                                {transaction.status.toUpperCase()}
-                              </span>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs mb-3">
-                              <div>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase">
-                                  Original
-                                </p>
-                                <p className="font-bold text-slate-700">
-                                  $
-                                  {Number(transaction.originalAmount).toFixed(
-                                    2,
-                                  )}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase">
-                                  Paid
-                                </p>
-                                <p className="font-bold text-emerald-600">
-                                  ${Number(transaction.amountPaid).toFixed(2)}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase">
-                                  Pending
-                                </p>
-                                <p className="font-bold text-rose-600">
-                                  $
-                                  {Number(transaction.amountPending).toFixed(2)}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase">
-                                  Due Date
-                                </p>
-                                <p className="font-bold text-slate-700">
-                                  {new Date(
-                                    transaction.dueDate,
-                                  ).toLocaleDateString()}
-                                </p>
-                              </div>
-                              {Number(transaction.waiverAmount) > 0 && (
-                                <div>
-                                  <p className="text-[9px] text-purple-600 font-bold uppercase">
-                                    Waiver
-                                  </p>
-                                  <p className="font-bold text-purple-600">
-                                    -$
-                                    {Number(transaction.waiverAmount).toFixed(
-                                      2,
-                                    )}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-
-                            {transaction.status !== "pending" &&
-                              transaction.paymentDate && (
-                                <div className="pt-3 border-t border-slate-200 flex flex-wrap gap-3 text-[10px]">
-                                  <div>
-                                    <span className="text-slate-400">
-                                      Paid:{" "}
-                                    </span>
-                                    <span className="font-bold text-slate-700">
-                                      {new Date(
-                                        transaction.paymentDate,
-                                      ).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                  {transaction.paymentMode && (
-                                    <div>
-                                      <span className="text-slate-400">
-                                        Mode:{" "}
-                                      </span>
-                                      <span className="font-bold text-slate-700 capitalize">
-                                        {transaction.paymentMode.replace(
-                                          /_/g,
-                                          " ",
-                                        )}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {transaction.receiptNumber && (
-                                    <div>
-                                      <span className="text-slate-400">
-                                        Receipt:{" "}
-                                      </span>
-                                      <span className="font-bold text-slate-700">
-                                        {transaction.receiptNumber}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                          </div>
+                            termNumber={transaction.termNumber}
+                            academicYearName={transaction.academicYearName}
+                            status={transaction.status}
+                            originalAmount={transaction.originalAmount}
+                            amountPaid={transaction.amountPaid}
+                            amountPending={transaction.amountPending}
+                            dueDate={transaction.dueDate}
+                            waiverAmount={transaction.waiverAmount}
+                            paymentDate={transaction.paymentDate}
+                            paymentMode={transaction.paymentMode}
+                            receiptNumber={transaction.receiptNumber}
+                          />
                         ))}
                       </div>
                     </>
