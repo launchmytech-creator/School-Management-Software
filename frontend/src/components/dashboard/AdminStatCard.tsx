@@ -4,7 +4,7 @@ interface AdminStatCardProps {
   label: string;
   value: string | number;
   icon: React.ElementType;
-  variant?: 'default' | 'emerald' | 'rose' | 'amber' | 'blue';
+  variant?: 'default' | 'emerald' | 'rose' | 'amber' | 'blue' | 'purple';
   onClick?: () => void;
 }
 
@@ -43,6 +43,13 @@ const variantStyles = {
     label: 'text-blue-600',
     iconBg: 'bg-blue-100',
     iconColor: 'text-blue-600',
+  },
+  purple: {
+    card: 'bg-purple-50 border-purple-200',
+    value: 'text-purple-700',
+    label: 'text-purple-600',
+    iconBg: 'bg-purple-100',
+    iconColor: 'text-purple-600',
   },
 };
 

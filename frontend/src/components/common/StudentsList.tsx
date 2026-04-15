@@ -7,6 +7,7 @@ import StudentFilters from "../../components/Admin/StudentFilters";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { StudentClassGroup } from "../../components/students";
 import StatusBadge, { getStatusBadge } from "../../components/common/StatusBadge";
+import { AdminStatCard } from "../../components/dashboard";
 import {
   Plus,
   Eye,
@@ -511,121 +512,57 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
     <div className="space-y-6 pb-12">
       {isTeacher && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-primary">
-                  {stats.totalClasses}
-                </p>
-                <p className="text-sm text-slate-500">Classes Assigned</p>
-              </div>
-              <div className="p-3 bg-blue-50 rounded-xl">
-                <Users className="w-5 h-5 text-blue-500" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-slate-700">
-                  {stats.totalLoadedStudents}
-                </p>
-                <p className="text-sm text-slate-500">Total Students</p>
-              </div>
-              <div className="p-3 bg-slate-100 rounded-xl">
-                <Users className="w-5 h-5 text-slate-500" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-purple-600">
-                  {allocations.length || 0}
-                </p>
-                <p className="text-sm text-slate-500">Subject Allocations</p>
-              </div>
-              <div className="p-3 bg-purple-50 rounded-xl">
-                <BookOpen className="w-5 h-5 text-purple-500" />
-              </div>
-            </div>
-          </div>
+          <AdminStatCard
+            label="Classes Assigned"
+            value={stats.totalClasses}
+            icon={Users}
+          />
+          <AdminStatCard
+            label="Total Students"
+            value={stats.totalLoadedStudents}
+            icon={Users}
+            variant="default"
+          />
+          <AdminStatCard
+            label="Subject Allocations"
+            value={allocations.length || 0}
+            icon={BookOpen}
+            variant="purple"
+          />
         </div>
       )}
 
       {isAccountant && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-primary">
-                  {stats.totalClasses}
-                </p>
-                <p className="text-sm text-slate-500">Total Classes</p>
-              </div>
-              <div className="p-3 bg-blue-50 rounded-xl">
-                <Users className="w-5 h-5 text-blue-500" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-emerald-700">
-                  {stats.paid}
-                </p>
-                <p className="text-sm text-emerald-600">Fee Paid</p>
-              </div>
-              <div className="p-3 bg-emerald-100 rounded-xl">
-                <CheckCircle className="w-5 h-5 text-emerald-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-blue-50 p-5 rounded-xl border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-blue-700">
-                  {stats.partial}
-                </p>
-                <p className="text-sm text-blue-600">Partial Payment</p>
-              </div>
-              <div className="p-3 bg-blue-100 rounded-xl">
-                <Clock className="w-5 h-5 text-blue-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-amber-50 p-5 rounded-xl border border-amber-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-amber-700">
-                  {stats.pending}
-                </p>
-                <p className="text-sm text-amber-600">Pending</p>
-              </div>
-              <div className="p-3 bg-amber-100 rounded-xl">
-                <AlertTriangle className="w-5 h-5 text-amber-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-slate-700">
-                  {stats.totalLoadedStudents}
-                </p>
-                <p className="text-sm text-slate-500">Students Loaded</p>
-              </div>
-              <div className="p-3 bg-slate-100 rounded-xl">
-                <Users className="w-5 h-5 text-slate-500" />
-              </div>
-            </div>
-          </div>
+          <AdminStatCard
+            label="Total Classes"
+            value={stats.totalClasses}
+            icon={Users}
+          />
+          <AdminStatCard
+            label="Fee Paid"
+            value={stats.paid}
+            icon={CheckCircle}
+            variant="emerald"
+          />
+          <AdminStatCard
+            label="Partial Payment"
+            value={stats.partial}
+            icon={Clock}
+            variant="blue"
+          />
+          <AdminStatCard
+            label="Pending"
+            value={stats.pending}
+            icon={AlertTriangle}
+            variant="amber"
+          />
+          <AdminStatCard
+            label="Students Loaded"
+            value={stats.totalLoadedStudents}
+            icon={Users}
+            variant="default"
+          />
         </div>
       )}
 
