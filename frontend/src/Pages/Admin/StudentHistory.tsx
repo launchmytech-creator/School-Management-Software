@@ -3,7 +3,6 @@ import {
   Search, User, GraduationCap, Calendar, 
   TrendingUp, DollarSign, BarChart3, 
   ChevronDown, ChevronUp, Loader2, 
-  CheckCircle, Clock, AlertTriangle, XCircle,
   Mail, Phone
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -11,6 +10,7 @@ import PageHeader from '../../components/common/PageHeader';
 import { useNotification } from '../../context/NotificationContext';
 import { useAllStudents, useStudentHistory } from '../../hooks/queries';
 import { QueryErrorFallback } from '../../components/error';
+import { getStatusBadge } from '../../components/common/StatusBadge';
 import type { 
   AttendanceYearData, 
   ResultsYearData, 
@@ -81,39 +81,6 @@ const StudentHistory: React.FC = () => {
   // Get fees for a specific year
   const getFeesForYear = (yearId: number): FeeYearData | undefined => {
     return history?.fees.find(f => f.academic_year_id === yearId);
-  };
-
-  // Get status badge
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'passed':
-      case 'paid':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">
-            <CheckCircle className="w-3 h-3" /> {status}
-          </span>
-        );
-      case 'partial':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">
-            <Clock className="w-3 h-3" /> Partial
-          </span>
-        );
-      case 'failed':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-rose-100 text-rose-700 text-xs font-bold rounded-full">
-            <XCircle className="w-3 h-3" /> Failed
-          </span>
-        );
-      case 'pending':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded-full">
-            <AlertTriangle className="w-3 h-3" /> Pending
-          </span>
-        );
-      default:
-        return null;
-    }
   };
 
   return (

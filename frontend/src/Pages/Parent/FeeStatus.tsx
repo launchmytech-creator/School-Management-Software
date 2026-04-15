@@ -6,7 +6,9 @@ import { useQuery } from '@tanstack/react-query';
 import { schoolSettingsService } from '../../services/schoolSettingsService';
 import type { LinkedStudent } from '../../types/parent';
 import type { FeeTransaction } from '../../services/feeService';
+import { computeFeeSummary } from '../../lib/fee-utils';
 import type { SchoolSettings } from '../../services/schoolSettingsService';
+import StatusBadge from '../../components/common/StatusBadge';
 
 const fmt = (n: number) =>
   '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
@@ -20,20 +22,6 @@ const fmtDate = (d: string) => {
 
 const txLabel = (tx: FeeTransaction): string =>
   tx.termNumber ? `Term ${tx.termNumber}` : 'Fee';
-
-const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const map: Record<string, string> = {
-    paid:    'bg-emerald-100 text-emerald-700 border border-emerald-200',
-    partial: 'bg-blue-100 text-blue-700 border border-blue-200',
-    pending: 'bg-amber-100 text-amber-700 border border-amber-200',
-    waived:  'bg-slate-100 text-slate-500 border border-slate-200',
-  };
-  return (
-    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full capitalize ${map[status] ?? map.pending}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  );
-};
 
 const printElement = (el: HTMLElement, title: string) => {
   const win = window.open('', '_blank', 'width=800,height=600');
@@ -98,10 +86,7 @@ const ParentFeeStatus: React.FC = () => {
 
   const feeSummary = React.useMemo(() => {
     if (transactions.length === 0) return null;
-    const totalAmount = transactions.reduce((sum, t) => sum + (t.amountDue || 0), 0);
-    const totalPaid = transactions.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
-    const totalPending = transactions.reduce((sum, t) => sum + (t.amountPending || 0), 0);
-    return { totalAmount, totalPaid, totalPending };
+    return computeFeeSummary(transactions, "amountDue");
   }, [transactions]);
 
   React.useEffect(() => {

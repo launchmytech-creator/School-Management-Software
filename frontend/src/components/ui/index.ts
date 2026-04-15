@@ -5,3 +5,4 @@ export { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLe
 export { default as ActionMenu } from './ActionMenu';
 export { default as InputField } from './InputField';
 export { default as Toast } from './Toast';
+export { default as TabBar } from './TabBar';

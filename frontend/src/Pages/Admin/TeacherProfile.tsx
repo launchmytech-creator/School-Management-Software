@@ -11,6 +11,7 @@ import { useTeacherById, useTeacherAllocations, useTeacherAttendance, useHoliday
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { getLocalDateString } from "../../lib/utils";
 import PageHeader from "../../components/common/PageHeader";
+import { TabBar } from "../../components/ui";
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'holiday' | 'sunday' | 'none';
 
@@ -261,21 +262,17 @@ const TeacherProfile: React.FC = () => {
             {/* Right Column - Tabs Content */}
           <div className="lg:col-span-9 space-y-6">
             {/* Tab Navigation */}
-            <div className="bg-white p-2 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center gap-2 overflow-x-auto">
-              {['Attendance', 'Classes', 'Schedule'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-3 px-6 rounded-2xl text-[13px] font-black transition-all whitespace-nowrap ${
-                    activeTab === tab 
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/20' 
-                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
+            <TabBar
+              variant="gradient"
+              tabs={[
+                { key: "Attendance", label: "Attendance" },
+                { key: "Classes", label: "Classes" },
+                { key: "Schedule", label: "Schedule" },
+              ]}
+              active={activeTab}
+              onChange={setActiveTab}
+              className="overflow-x-auto"
+            />
 
             {/* Attendance Tab */}
             {activeTab === 'Attendance' && (

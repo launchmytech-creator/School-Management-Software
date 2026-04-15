@@ -9,6 +9,7 @@ import { useUpdateChapterStatus } from '../../hooks/mutations/useSubjectMutation
 import { type TeacherAllocation } from '../../types/teacher';
 import { type ChapterWithStatus } from '../../services/syllabusService';
 import { BookOpen, CheckCircle, Clock, BookMarked, Users, Circle, Loader } from 'lucide-react';
+import { getStatusBadge } from '../../components/common/StatusBadge';
 
 interface TeacherSubjectProgress {
   allocationId: number;
@@ -202,17 +203,6 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
         return <Clock className="w-4 h-4 text-amber-500" />;
       default:
         return <Circle className="w-4 h-4 text-slate-400" />;
-    }
-  };
-
-  const getStatusBadge = (status: string | null | undefined) => {
-    switch (status) {
-      case 'completed':
-        return <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">Completed</span>;
-      case 'in-progress':
-        return <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">In Progress</span>;
-      default:
-        return <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-full">Pending</span>;
     }
   };
 

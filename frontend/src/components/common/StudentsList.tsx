@@ -6,7 +6,7 @@ import EmptyState from "../../components/common/EmptyState";
 import StudentFilters from "../../components/Admin/StudentFilters";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { StudentClassGroup } from "../../components/students";
-import StatusBadge from "../../components/common/StatusBadge";
+import StatusBadge, { getStatusBadge } from "../../components/common/StatusBadge";
 import {
   Plus,
   Eye,
@@ -308,44 +308,6 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
     }
   }, [matchingClassIds]);
 
-  const getFeeStatusVariant = (status: string) => {
-    switch (status) {
-      case "Paid":
-        return "success";
-      case "Pending":
-        return "danger";
-      case "Partial":
-        return "warning";
-      default:
-        return "neutral";
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "paid":
-        return (
-          <span className="flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">
-            <CheckCircle className="w-3 h-3" /> Paid
-          </span>
-        );
-      case "partial":
-        return (
-          <span className="flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
-            <Clock className="w-3 h-3" /> Partial
-          </span>
-        );
-      case "pending":
-        return (
-          <span className="flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">
-            <AlertTriangle className="w-3 h-3" /> Pending
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
-
   const basePath = isAdmin
     ? "/admin"
     : isAccountant
@@ -423,8 +385,7 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
           </td>
           <td className="px-6 py-4 text-center">
             <StatusBadge
-              label={student.feeStatus || "N/A"}
-              variant={getFeeStatusVariant(student.feeStatus || "")}
+              status={student.feeStatus || "N/A"}
             />
           </td>
           <td className="pl-6 pr-10 py-4">

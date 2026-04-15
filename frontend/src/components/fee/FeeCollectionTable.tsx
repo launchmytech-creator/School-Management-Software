@@ -4,9 +4,6 @@ import {
   ChevronRight,
   Calendar,
   FileText,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
   Wallet,
   Percent,
   Pencil,
@@ -16,6 +13,7 @@ import { formatCurrency } from "../../lib/utils";
 import { Button } from "../ui/button";
 import EmptyState from "../common/EmptyState";
 import type { FeeTransaction } from "../../services/feeService";
+import { getStatusBadge } from "../common/StatusBadge";
 
 interface TermGroup {
   id: string;
@@ -57,27 +55,6 @@ interface FeeCollectionTableProps {
   canEdit: boolean;
   loading?: boolean;
 }
-
-const getStatusBadge = (status: "paid" | "pending" | "partial") => {
-  const styles = {
-    paid: "bg-emerald-100 text-emerald-700",
-    pending: "bg-rose-100 text-rose-700",
-    partial: "bg-amber-100 text-amber-700",
-  };
-  const icons = {
-    paid: <CheckCircle className="w-3 h-3" />,
-    pending: <XCircle className="w-3 h-3" />,
-    partial: <AlertTriangle className="w-3 h-3" />,
-  };
-  return (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${styles[status]}`}
-    >
-      {icons[status]}
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  );
-};
 
 export const FeeCollectionTable: React.FC<FeeCollectionTableProps> = ({
   students,

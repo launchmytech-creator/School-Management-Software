@@ -30,6 +30,15 @@ import { useAttendance } from "../../hooks/queries/useAttendance";
 import { useStudentResults } from "../../hooks/queries/useExamResults";
 import { useStudentFees } from "../../hooks/queries/useFeeTransactions";
 import { type StudentResult } from "../../services/examResultService";
+import { type FeeTransaction } from "../../services/feeService";
+import { computeFeeSummary } from "../../lib/fee-utils";
+import {
+  subjectColor,
+  gradeColor,
+  progressColor,
+  subjectIcon,
+  EXAM_TYPES,
+} from "../../lib/subject-utils";
 import { useActivateStudent, useDeactivateStudent } from "../../hooks/mutations";
 import { useAuth } from "../../context/AuthContext";
 import type { Student } from "../../types/student";
@@ -37,6 +46,7 @@ import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import UpgradePrompt from "../../components/common/UpgradePrompt";
 import PageHeader from "../../components/common/PageHeader";
 import { getLocalDateString } from "../../lib/utils";
+import { TabBar } from "../../components/ui";
 
 interface StudentProfileProps {
   layout: "admin" | "accountant" | "teacher";
@@ -51,47 +61,6 @@ interface CalendarDay {
   isCurrentMonth: boolean;
   holiday?: { description: string } | undefined;
 }
-
-const SUBJECT_COLORS: Record<string, string> = {
-  Mathematics: "#4A9FD4",
-  Science: "#22c55e",
-  English: "#f97316",
-  History: "#ef4444",
-  Geography: "#a855f7",
-  default: "#64748b",
-};
-
-const subjectColor = (name: string) =>
-  SUBJECT_COLORS[name] || SUBJECT_COLORS.default;
-
-const EXAM_TYPES = ["All", "Class Test", "Unit Test", "Half Yearly", "Final"];
-
-const gradeColor = (grade: string) => {
-  if (["A+", "A"].includes(grade)) return "text-emerald-600 bg-emerald-50";
-  if (["B+", "B"].includes(grade)) return "text-blue-600 bg-blue-50";
-  if (["C+", "C"].includes(grade)) return "text-amber-600 bg-amber-50";
-  return "text-rose-600 bg-rose-50";
-};
-
-const progressColor = (pct: number) => {
-  if (pct >= 85) return { bar: "bg-emerald-500", label: "EXCELLENT" };
-  if (pct >= 70) return { bar: "bg-blue-500", label: "ABOVE AVERAGE" };
-  if (pct >= 50) return { bar: "bg-amber-500", label: "GOOD" };
-  return { bar: "bg-rose-500", label: "NEEDS ATTENTION" };
-};
-
-const subjectIcon = (name: string) => {
-  const n = name.toLowerCase();
-  if (n.includes("math"))
-    return { icon: "calculate", bg: "bg-blue-100", text: "text-blue-600" };
-  if (n.includes("science"))
-    return { icon: "science", bg: "bg-green-100", text: "text-green-600" };
-  if (n.includes("english"))
-    return { icon: "menu_book", bg: "bg-orange-100", text: "text-orange-600" };
-  if (n.includes("history"))
-    return { icon: "history_edu", bg: "bg-red-100", text: "text-red-600" };
-  return { icon: "school", bg: "bg-purple-100", text: "text-purple-600" };
-};
 
 const SubjectCard: React.FC<{ result: StudentResult }> = ({ result }) => {
   const pct = Math.round((result.marksObtained / result.maxMarks) * 100);
@@ -201,6 +170,11 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
 
   const { data: marksData = [], isLoading: loadingMarks } = useStudentResults(studentId);
   const { data: feeData = [], isLoading: loadingFee } = useStudentFees(studentId);
+
+  const feeSummary = React.useMemo(
+    () => computeFeeSummary(feeData as FeeTransaction[]),
+    [feeData]
+  );
 
   const activateStudent = useActivateStudent();
   const deactivateStudent = useDeactivateStudent();
@@ -518,32 +492,16 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
         </div>
 
         <div className="lg:col-span-9 space-y-8">
-          {(() => {
-            const tabs = [
+          <TabBar
+            tabs={[
               { key: "Attendance", label: "Attendance" },
               { key: "Marks", label: "Marks" },
               ...(!isTeacher ? [{ key: "Fee Status", label: "Fee Status" }] : []),
               { key: "Performance", label: "Performance" },
-            ];
-            
-            return (
-              <div className="bg-white p-2 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center gap-2">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key)}
-                    className={`flex-1 py-3 px-6 rounded-2xl text-[13px] font-black transition-all ${
-                      activeTab === tab.key
-                        ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20"
-                        : "text-slate-400 hover:text-slate-600"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
+            ]}
+            active={activeTab}
+            onChange={setActiveTab}
+          />
 
           {activeTab === "Attendance" && (
             hasFeature("attendance") ? (
@@ -904,32 +862,13 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                     </div>
                   ) : feeData.length > 0 ? (
                     <>
-                      {(() => {
-                        const totalFee = feeData.reduce(
-                          (sum, t) => sum + t.originalAmount,
-                          0,
-                        );
-                        const totalPaid = feeData.reduce(
-                          (sum, t) => sum + t.amountPaid,
-                          0,
-                        );
-                        const totalPending = feeData.reduce(
-                          (sum, t) => sum + t.amountPending,
-                          0,
-                        );
-                        const paidPercentage =
-                          totalFee > 0
-                            ? Math.round((totalPaid / totalFee) * 100)
-                            : 0;
-
-                        return (
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                             <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
                               <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">
                                 Total Fee
                               </p>
                               <p className="text-xl font-black text-blue-700">
-                                ${Number(totalFee).toFixed(2)}
+                                ${Number(feeSummary.totalAmount).toFixed(2)}
                               </p>
                             </div>
                             <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
@@ -937,7 +876,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                                 Total Paid
                               </p>
                               <p className="text-xl font-black text-emerald-700">
-                                ${Number(totalPaid).toFixed(2)}
+                                ${Number(feeSummary.totalPaid).toFixed(2)}
                               </p>
                             </div>
                             <div className="bg-rose-50 rounded-xl p-4 border border-rose-100">
@@ -945,7 +884,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                                 Pending
                               </p>
                               <p className="text-xl font-black text-rose-700">
-                                ${Number(totalPending).toFixed(2)}
+                                ${Number(feeSummary.totalPending).toFixed(2)}
                               </p>
                             </div>
                             <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
@@ -956,17 +895,15 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                                 <div className="flex-1 bg-slate-200 rounded-full h-2">
                                   <div
                                     className="bg-blue-500 h-2 rounded-full transition-all"
-                                    style={{ width: `${paidPercentage}%` }}
+                                    style={{ width: `${feeSummary.paidPercentage}%` }}
                                   />
                                 </div>
                                 <span className="text-sm font-black text-slate-700">
-                                  {paidPercentage}%
+                                  {feeSummary.paidPercentage}%
                                 </span>
                               </div>
                             </div>
                           </div>
-                        );
-                      })()}
 
                       <div className="space-y-3">
                         {feeData.map((transaction) => (
