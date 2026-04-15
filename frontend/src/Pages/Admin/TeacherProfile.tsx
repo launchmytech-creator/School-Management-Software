@@ -12,6 +12,7 @@ import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { getLocalDateString } from "../../lib/utils";
 import PageHeader from "../../components/common/PageHeader";
 import { TabBar } from "../../components/ui";
+import ProfileInfoRow from "../../components/common/ProfileInfoRow";
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'holiday' | 'sunday' | 'none';
 
@@ -199,52 +200,33 @@ const TeacherProfile: React.FC = () => {
               <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-8">ID: #{teacher.id.toString().padStart(4, '0')}</p>
 
               <div className="space-y-4 text-left border-t border-slate-50 pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                    <Mail size={16} />
-                  </div>
-                  <div className="overflow-hidden">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">Email</p>
-                    <p className="text-sm font-bold text-slate-700 truncate">{teacher.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                    <Phone size={16} />
-                  </div>
-                  <div className="overflow-hidden">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">Phone</p>
-                    <p className="text-sm font-bold text-slate-700">{teacher.phone || 'Not provided'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                    <Calendar size={16} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">Date of Birth</p>
-                    <p className="text-sm font-bold text-slate-700">{teacher.dateOfBirth ? new Date(teacher.dateOfBirth).toLocaleDateString() : 'Not set'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                    <User size={16} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">Gender</p>
-                    <p className="text-sm font-bold text-slate-700">{teacher.gender || 'Not set'}</p>
-                  </div>
-                </div>
+                <ProfileInfoRow
+                  icon={Mail}
+                  label="Email"
+                  value={teacher.email}
+                  truncate
+                />
+                <ProfileInfoRow
+                  icon={Phone}
+                  label="Phone"
+                  value={teacher.phone || "Not provided"}
+                />
+                <ProfileInfoRow
+                  icon={Calendar}
+                  label="Date of Birth"
+                  value={teacher.dateOfBirth ? new Date(teacher.dateOfBirth).toLocaleDateString() : "Not set"}
+                />
+                <ProfileInfoRow
+                  icon={User}
+                  label="Gender"
+                  value={teacher.gender || "Not set"}
+                />
                 {teacher.address && (
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                      <MapPin size={16} />
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">Address</p>
-                      <p className="text-sm font-bold text-slate-700">{teacher.address}</p>
-                    </div>
-                  </div>
+                  <ProfileInfoRow
+                    icon={MapPin}
+                    label="Address"
+                    value={teacher.address}
+                  />
                 )}
               </div>
 

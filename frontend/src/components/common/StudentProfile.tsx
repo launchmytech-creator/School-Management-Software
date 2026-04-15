@@ -47,6 +47,7 @@ import UpgradePrompt from "../../components/common/UpgradePrompt";
 import PageHeader from "../../components/common/PageHeader";
 import { getLocalDateString } from "../../lib/utils";
 import { TabBar } from "../../components/ui";
+import ProfileInfoRow from "../../components/common/ProfileInfoRow";
 
 interface StudentProfileProps {
   layout: "admin" | "accountant" | "teacher";
@@ -415,46 +416,22 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
               Academic Year: {currentAcademicYear?.name || "N/A"}
             </p>
 
-            <div className="space-y-6 text-left border-t border-slate-50 pt-8">
-              <div className="flex items-start gap-4">
-                <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                  <Users size={16} />
-                </div>
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">
-                    Parent
-                  </p>
-                  <p className="text-sm font-bold text-slate-700">
-                    {student?.parentName}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                  <Phone size={16} />
-                </div>
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">
-                    Phone
-                  </p>
-                  <p className="text-sm font-bold text-slate-700">
-                    {student?.phone}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                  <Mail size={16} />
-                </div>
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">
-                    Email
-                  </p>
-                  <p className="text-sm font-bold text-slate-700">
-                    {student?.phone?.replace(/\D/g, "")}@email.com
-                  </p>
-                </div>
-              </div>
+            <div className="space-y-4 text-left border-t border-slate-50 pt-8">
+              <ProfileInfoRow
+                icon={Users}
+                label="Parent"
+                value={student?.parentName ?? "N/A"}
+              />
+              <ProfileInfoRow
+                icon={Phone}
+                label="Phone"
+                value={student?.phone ?? "N/A"}
+              />
+              <ProfileInfoRow
+                icon={Mail}
+                label="Email"
+                value={<>{student?.phone?.replace(/\D/g, "")}@email.com</>}
+              />
             </div>
 
             <div className="mt-10 space-y-3">
