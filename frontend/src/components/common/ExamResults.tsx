@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import EmptyState from "../../components/common/EmptyState";
+import { ExamResultsStats } from "./ExamResultsStats";
+import { SubjectResultCard } from "./SubjectResultCard";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useClasses } from "../../hooks/queries/useClasses";
@@ -10,15 +12,7 @@ import { useExamResults, useExamResultsPerformance } from "../../hooks/queries/u
 import type { ExamResult } from "../../services/examResultService";
 import {
   GraduationCap,
-  TrendingUp,
-  Award,
-  BarChart3,
   Download,
-  BookOpen,
-  CheckCircle,
-  XCircle,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import { SkeletonTable } from "../../components/common/Skeleton";
 import { QueryErrorFallback } from "../../components/error";
@@ -133,21 +127,6 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
         : "0",
   };
 
-  const getGradeColor = (grade: string) => {
-    switch (grade.toUpperCase()) {
-      case "A":
-      case "A+":
-        return "bg-emerald-100 text-emerald-700";
-      case "B":
-      case "B+":
-        return "bg-blue-100 text-blue-700";
-      case "C":
-        return "bg-amber-100 text-amber-700";
-      default:
-        return "bg-red-100 text-red-700";
-    }
-  };
-
   const getSubjectStats = (subjectResults: ExamResult[]) => {
     const evaluated = subjectResults.filter(
       (r) => !r.isAbsent && r.marksObtained > 0,
@@ -188,59 +167,12 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
         ]}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
-              <p className="text-sm text-slate-500">Total Records</p>
-            </div>
-            <div className="p-3 bg-blue-50 rounded-xl">
-              <GraduationCap className="w-5 h-5 text-blue-500" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-2xl font-bold text-emerald-700">
-                {stats.passed}
-              </p>
-              <p className="text-sm text-emerald-600">Passed</p>
-            </div>
-            <div className="p-3 bg-emerald-100 rounded-xl">
-              <Award className="w-5 h-5 text-emerald-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-red-50 rounded-xl border border-red-200 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-2xl font-bold text-red-700">{stats.failed}</p>
-              <p className="text-sm text-red-600">Failed</p>
-            </div>
-            <div className="p-3 bg-red-100 rounded-xl">
-              <TrendingUp className="w-5 h-5 text-red-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-purple-50 rounded-xl border border-purple-200 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-2xl font-bold text-purple-700">
-                {stats.passPercentage}%
-              </p>
-              <p className="text-sm text-purple-600">Pass rate</p>
-            </div>
-            <div className="p-3 bg-purple-100 rounded-xl">
-              <BarChart3 className="w-5 h-5 text-purple-600" />
-            </div>
-          </div>
-        </div>
-      </div>
+      <ExamResultsStats
+        total={stats.total}
+        passed={stats.passed}
+        failed={stats.failed}
+        passPercentage={stats.passPercentage}
+      />
 
       <FilterBar
         searchTerm={searchTerm}
@@ -295,223 +227,24 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
         <SkeletonTable columns={6} rows={10} />
       ) : filteredResults.length > 0 ? (
         <div className="space-y-4">
-          {Object.entries(resultsBySubject).map(
-            ([groupKey, subjectResults]) => {
-              const subjectStats = getSubjectStats(subjectResults);
-              const isExpanded = expandedSubjects.has(groupKey);
-              
-              const firstResult = subjectResults[0];
-              const actualSubjectName = firstResult?.subjectName || 'Unknown';
-              const classInfo = firstResult?.classSection
-                ? `${firstResult.className} - ${firstResult.classSection}`
-                : firstResult?.className || '';
+          {Object.entries(resultsBySubject).map(([groupKey, subjectResults]) => {
+            const subjectStats = getSubjectStats(subjectResults);
+            const isExpanded = expandedSubjects.has(groupKey);
+            const firstResult = subjectResults[0];
+            const actualSubjectName = firstResult?.subjectName || "Unknown";
+            const perf = performanceData.find((p) => p.subjectName === actualSubjectName);
 
-              const perf = performanceData.find(
-                (p) => p.subjectName === actualSubjectName,
-              );
-
-              return (
-                <div
-                  key={groupKey}
-                  className="bg-white rounded-xl border border-slate-200 overflow-hidden"
-                >
-                  <div
-                    className="px-6 py-4 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors"
-                    onClick={() => toggleSubject(groupKey)}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleSubject(groupKey);
-                          }}
-                        >
-                          {isExpanded ? (
-                            <ChevronDown className="w-5 h-5 text-slate-500" />
-                          ) : (
-                            <ChevronRight className="w-5 h-5 text-slate-500" />
-                          )}
-                        </div>
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <BookOpen className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-lg text-slate-900">
-                              {actualSubjectName}
-                            </h3>
-                            {perf?.subjectCode && (
-                              <span className="text-xs text-slate-400">
-                                {perf.subjectCode}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-slate-500">
-                            {classInfo} • {subjectStats.total} students
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-full">
-                          <CheckCircle className="w-4 h-4" />
-                          {subjectStats.evaluated} Evaluated
-                        </span>
-                        {subjectStats.absent > 0 && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-700 text-sm font-medium rounded-full">
-                            <XCircle className="w-4 h-4" />
-                            {subjectStats.absent} Absent
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {isExpanded && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-white border-b border-slate-200">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                              Roll No
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                              Student Name
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
-                              Admission No
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
-                              Marks
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
-                              Grade
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
-                              Status
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {subjectResults.map((result) => (
-                            <tr
-                              key={result.id}
-                              className="hover:bg-slate-50/50 transition-colors"
-                            >
-                              <td className="px-6 py-4 text-sm font-medium text-slate-700">
-                                {result.rollNumber || "-"}
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-xs font-bold text-slate-600">
-                                    {result.studentName
-                                      .split(" ")
-                                      .map((n) => n[0])
-                                      .join("")
-                                      .substring(0, 2)
-                                      .toUpperCase()}
-                                  </div>
-                                  <span className="text-sm font-semibold text-slate-900">
-                                    {result.studentName}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 text-sm text-slate-600 font-mono">
-                                {result.admissionNumber}
-                              </td>
-                              <td className="px-6 py-4 text-center">
-                                <span
-                                  className={`text-sm font-semibold ${result.isAbsent ? "text-red-500" : "text-slate-900"}`}
-                                >
-                                  {result.isAbsent
-                                    ? "-"
-                                    : `${result.marksObtained}/${result.maxMarks}`}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 text-center">
-                                {result.isAbsent ? (
-                                  <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">
-                                    AB
-                                  </span>
-                                ) : (
-                                  <span
-                                    className={`px-3 py-1 text-xs font-bold rounded-full ${getGradeColor(result.grade)}`}
-                                  >
-                                    {result.grade}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 text-center">
-                                {result.isAbsent ? (
-                                  <span className="inline-flex items-center gap-1 text-red-600 text-sm font-medium">
-                                    <XCircle className="w-4 h-4" /> Absent
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-emerald-600 text-sm font-medium">
-                                    <CheckCircle className="w-4 h-4" />{" "}
-                                    Evaluated
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {perf && (
-                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
-                      <div className="flex flex-wrap items-center gap-6">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg">
-                            {Number(perf.maxMarks).toFixed(2)} marks
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-slate-500">
-                            Average:
-                          </span>
-                          <span className="text-sm font-bold text-slate-900">
-                            {perf.averageMarks != null &&
-                            !isNaN(perf.averageMarks)
-                              ? Number(perf.averageMarks).toFixed(1)
-                              : "-"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-slate-500">
-                            Highest:
-                          </span>
-                          <span className="text-sm font-bold text-emerald-600">
-                            {perf.highestMarks || "-"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-slate-500">
-                            Lowest:
-                          </span>
-                          <span className="text-sm font-bold text-red-600">
-                            {perf.lowestMarks || "-"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-slate-500">
-                            Evaluated:
-                          </span>
-                          <span className="text-sm font-bold text-slate-900">
-                            {subjectStats.evaluated}/{subjectStats.total}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            },
-          )}
+            return (
+              <SubjectResultCard
+                key={groupKey}
+                subjectResults={subjectResults}
+                subjectStats={subjectStats}
+                isExpanded={isExpanded}
+                performance={perf}
+                onToggle={() => toggleSubject(groupKey)}
+              />
+            );
+          })}
         </div>
       ) : (
         <EmptyState

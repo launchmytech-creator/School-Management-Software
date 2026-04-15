@@ -1,4 +1,5 @@
 export { StudentClassGroup } from './StudentClassGroup';
+export { ParentSection } from './ParentSection';
 export { default as SubjectCard } from './SubjectCard';
 export { default as AttendanceSummary } from './AttendanceSummary';
 export { default as AttendanceLegend } from './AttendanceLegend';
