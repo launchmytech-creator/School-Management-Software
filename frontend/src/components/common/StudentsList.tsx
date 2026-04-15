@@ -5,14 +5,15 @@ import FilterBar from "../../components/common/FilterBar";
 import EmptyState from "../../components/common/EmptyState";
 import StudentFilters from "../../components/Admin/StudentFilters";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
-import { StudentClassGroup } from "../../components/students";
-import StatusBadge, { getStatusBadge } from "../../components/common/StatusBadge";
+import {
+  StudentClassGroup,
+  TeacherStudentRow,
+  AdminStudentRow,
+  AccountantStudentRow,
+} from "../../components/students";
 import { AdminStatCard } from "../../components/dashboard";
 import {
   Plus,
-  Eye,
-  Edit2,
-  Trash2,
   Search,
   Users,
   AlertTriangle,
@@ -20,10 +21,8 @@ import {
   Clock,
   ChevronDown,
   ChevronRight,
-  ExternalLink,
   BookOpen,
 } from "lucide-react";
-import { formatCurrency } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useAuth } from "../../context/AuthContext";
@@ -315,187 +314,6 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
       ? "/accountant"
       : "/teacher";
 
-  const renderStudentRow = (student: EnrichedStudent) => {
-    if (isTeacher) {
-      return (
-        <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
-          <td className="pl-10 pr-6 py-4">
-            <div className="flex items-center gap-4">
-              <div className="size-10 rounded-xl overflow-hidden border-2 border-slate-100 bg-slate-50 shadow-sm">
-                <img
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.id}`}
-                  alt={student.fullName}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div>
-                <span className="font-semibold text-slate-900 block">
-                  {student.fullName}
-                </span>
-                <span className="text-xs text-slate-400">
-                  ADM: {student.admissionNumber}
-                  {student.rollNumber && ` | Roll: ${student.rollNumber}`}
-                </span>
-              </div>
-            </div>
-          </td>
-          <td className="px-6 py-4 text-sm text-slate-600">
-            {student.parentName || "—"}
-          </td>
-          <td className="px-6 py-4 text-sm text-slate-500">
-            {student.parentPhone || "—"}
-          </td>
-          <td className="py-4 ">
-            <button
-              onClick={() => navigate(`${basePath}/students/${student.id}`)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-sm  font-medium hover:bg-blue-100 transition-colors"
-            >
-              <ExternalLink className="w-4 h-4" />
-              View Profile
-            </button>
-          </td>
-        </tr>
-      );
-    } else if (isAdmin) {
-      return (
-        <tr
-          key={student.id}
-          className="hover:bg-slate-50/50 transition-colors group"
-        >
-          <td className="pl-10 pr-6 py-4">
-            <div className="flex items-center gap-4">
-              <div className="size-10 rounded-xl overflow-hidden border-2 border-slate-100 bg-slate-50 shadow-sm transition-transform group-hover:scale-110">
-                <img
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.id}`}
-                  alt={student.fullName}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div>
-                <span className="font-semibold text-slate-900 block">
-                  {student.fullName}
-                </span>
-                <span className="text-xs text-slate-400">
-                  ID: STU-{student.id.toString().padStart(4, "0")}
-                </span>
-              </div>
-            </div>
-          </td>
-          <td className="px-6 py-4 text-sm text-slate-600">
-            {student.parentName}
-          </td>
-          <td className="px-6 py-4 text-center">
-            <StatusBadge
-              status={student.feeStatus || "N/A"}
-            />
-          </td>
-          <td className="pl-6 pr-10 py-4">
-            <div className="flex items-center justify-end gap-2">
-              <button
-                onClick={() => navigate(`${basePath}/students/${student.id}`)}
-                className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
-              >
-                <Eye className="size-4" />
-              </button>
-              <button
-                onClick={() =>
-                  navigate(`${basePath}/students/${student.id}/edit`)
-                }
-                className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all"
-              >
-                <Edit2 className="size-4" />
-              </button>
-              <button
-                onClick={() =>
-                  setDeleteDialog({ isOpen: true, studentId: student.id })
-                }
-                className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-              >
-                <Trash2 className="size-4" />
-              </button>
-            </div>
-          </td>
-        </tr>
-      );
-    } else {
-      return (
-        <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
-          <td className="px-6 py-4">
-            <div className="flex items-center gap-3">
-              <div className="size-10 rounded-full bg-blue-50 flex items-center justify-center">
-                <span className="text-blue-600 font-bold text-sm">
-                  {student.fullName?.charAt(0) || "?"}
-                </span>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">
-                  {student.fullName}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {student.admissionNumber}
-                </p>
-              </div>
-            </div>
-          </td>
-          <td className="px-6 py-4">
-            <div className="text-sm text-slate-600">{student.parentName}</div>
-            {student.parentPhone && (
-              <div className="text-xs text-slate-400">
-                {student.parentPhone}
-              </div>
-            )}
-          </td>
-          <td className="px-6 py-4 text-right text-sm font-semibold text-slate-900">
-            {formatCurrency(student.totalDue || 0)}
-          </td>
-          <td className="px-6 py-4 text-right text-sm font-semibold text-emerald-600">
-            {formatCurrency(student.totalPaid || 0)}
-          </td>
-          <td className="px-6 py-4 text-right">
-            <span
-              className={`text-sm font-bold ${
-                (student.balance || 0) > 0
-                  ? "text-rose-600"
-                  : "text-emerald-600"
-              }`}
-            >
-              {formatCurrency(student.balance || 0)}
-            </span>
-          </td>
-          <td className="px-6 py-4 text-center">
-            {getStatusBadge(student.feeStatusLocal || "pending")}
-          </td>
-          <td className="px-6 py-4">
-            <div className="flex items-center justify-end gap-2">
-              <button
-                onClick={() => navigate(`${basePath}/students/${student.id}`)}
-                className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
-              >
-                <Eye className="size-4" />
-              </button>
-              <button
-                onClick={() =>
-                  navigate(`${basePath}/students/${student.id}/edit`)
-                }
-                className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all"
-              >
-                <Edit2 className="size-4" />
-              </button>
-              <button
-                onClick={() =>
-                  setDeleteDialog({ isOpen: true, studentId: student.id })
-                }
-                className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-              >
-                <Trash2 className="size-4" />
-              </button>
-            </div>
-          </td>
-        </tr>
-      );
-    }
-  };
-
   const handleDeleteStudent = async () => {
     if (!deleteDialog.studentId) return;
     try {
@@ -718,7 +536,32 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {students.map(renderStudentRow)}
+                      {students.map((student) =>
+                        isTeacher ? (
+                          <TeacherStudentRow
+                            key={student.id}
+                            student={student}
+                            navigate={navigate}
+                            basePath={basePath}
+                          />
+                        ) : isAdmin ? (
+                          <AdminStudentRow
+                            key={student.id}
+                            student={student}
+                            navigate={navigate}
+                            basePath={basePath}
+                            onDelete={(id) => setDeleteDialog({ isOpen: true, studentId: id })}
+                          />
+                        ) : (
+                          <AccountantStudentRow
+                            key={student.id}
+                            student={student}
+                            navigate={navigate}
+                            basePath={basePath}
+                            onDelete={(id) => setDeleteDialog({ isOpen: true, studentId: id })}
+                          />
+                        )
+                      )}
                     </tbody>
                   </table>
                 ) : (

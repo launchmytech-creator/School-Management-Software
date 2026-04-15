@@ -2,3 +2,8 @@ export { StudentClassGroup } from './StudentClassGroup';
 export { default as SubjectCard } from './SubjectCard';
 export { default as AttendanceSummary } from './AttendanceSummary';
 export { default as ExamTypeFilter } from './ExamTypeFilter';
+export { default as StudentAvatar } from './StudentAvatar';
+export { default as StudentRowActions } from './StudentRowActions';
+export { default as TeacherStudentRow } from './TeacherStudentRow';
+export { default as AdminStudentRow } from './AdminStudentRow';
+export { default as AccountantStudentRow } from './AccountantStudentRow';
