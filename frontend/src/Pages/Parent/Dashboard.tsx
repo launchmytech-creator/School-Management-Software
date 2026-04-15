@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useParentDashboard } from "../../hooks/queries";
+import { useScrollableTabs } from "../../hooks/useScrollableTabs";
 import {
   announcementService,
   type Announcement,
@@ -92,9 +93,7 @@ const ParentDashboard: React.FC = () => {
   const { data, isLoading } = useParentDashboard(user?.id ?? 0);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-  const tabsRef = React.useRef<HTMLDivElement>(null);
+  const { canScrollLeft, canScrollRight, tabsRef, scrollBy } = useScrollableTabs();
 
   const children = data?.children ?? [];
 
@@ -142,34 +141,6 @@ const ParentDashboard: React.FC = () => {
     selectedChild &&
     (parseFloat(selectedChild.fee_summary.pending_fees) > 0 ||
       parseFloat(selectedChild.fee_summary.total_due) > 0);
-
-  const scrollTabs = (direction: "left" | "right") => {
-    if (tabsRef.current) {
-      const scrollAmount = 300;
-      tabsRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      });
-      setTimeout(() => updateScrollState(), 300);
-    }
-  };
-
-  const updateScrollState = () => {
-    if (tabsRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-    }
-  };
-
-  useEffect(() => {
-    if (tabsRef.current) {
-      updateScrollState();
-      tabsRef.current.addEventListener("scroll", updateScrollState);
-      return () =>
-        tabsRef.current?.removeEventListener("scroll", updateScrollState);
-    }
-  }, [children]);
 
   if (isLoading) {
     return (
@@ -231,7 +202,7 @@ const ParentDashboard: React.FC = () => {
         </div>
         {canScrollLeft && (
           <button
-            onClick={() => scrollTabs("left")}
+            onClick={() => scrollBy("left")}
             className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
           >
             <span
@@ -244,7 +215,7 @@ const ParentDashboard: React.FC = () => {
         )}
         {canScrollRight && (
           <button
-            onClick={() => scrollTabs("right")}
+            onClick={() => scrollBy("right")}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
           >
             <span

@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useParentChildren, useParentAttendance, useParentHolidays, useSchoolOpenDays } from '../../hooks/queries';
+import { useScrollableTabs } from '../../hooks/useScrollableTabs';
 import type { LinkedStudent } from '../../types/parent';
 
 const MONTHS = [
@@ -61,7 +62,6 @@ const EMPTY_CHILDREN: LinkedStudent[] = [];
 const ParentAttendance: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const tabsRef = useRef<HTMLDivElement>(null);
 
   const [viewYear, setViewYear]   = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -70,8 +70,7 @@ const ParentAttendance: React.FC = () => {
   const children = childrenData || EMPTY_CHILDREN;
 
   const [selected, setSelected] = useState<LinkedStudent | null>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  const { canScrollLeft, canScrollRight, tabsRef, scrollBy } = useScrollableTabs({ rightThreshold: 1 });
 
   const monthStart = toDateStr(viewYear, viewMonth, 1);
   const monthEnd = toDateStr(viewYear, viewMonth, getDaysInMonth(viewYear, viewMonth));
@@ -132,32 +131,7 @@ const ParentAttendance: React.FC = () => {
     else setViewMonth(m => m + 1);
   };
 
-  const scrollTabs = (direction: 'left' | 'right') => {
-    if (tabsRef.current) {
-      const scrollAmount = 200;
-      tabsRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
-      });
-      setTimeout(() => updateScrollState(), 300);
-    }
-  };
 
-  const updateScrollState = () => {
-    if (tabsRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
-    }
-  };
-
-  React.useEffect(() => {
-    if (tabsRef.current) {
-      tabsRef.current.addEventListener('scroll', updateScrollState);
-      updateScrollState();
-      return () => tabsRef.current?.removeEventListener('scroll', updateScrollState);
-    }
-  }, [children.length]);
 
   if (childrenLoading) {
     return (
@@ -184,7 +158,7 @@ const ParentAttendance: React.FC = () => {
           <div className="relative">
             {canScrollLeft && (
               <button
-                onClick={() => scrollTabs('left')}
+                onClick={() => scrollBy('left', 200)}
                 className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
               >
                 <span
@@ -215,7 +189,7 @@ const ParentAttendance: React.FC = () => {
             </div>
             {canScrollRight && (
               <button
-                onClick={() => scrollTabs('right')}
+                onClick={() => scrollBy('right', 200)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
               >
                 <span

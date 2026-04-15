@@ -9,6 +9,7 @@ import type { FeeTransaction } from '../../services/feeService';
 import { computeFeeSummary } from '../../lib/fee-utils';
 import type { SchoolSettings } from '../../services/schoolSettingsService';
 import StatusBadge from '../../components/common/StatusBadge';
+import { useScrollableTabs } from '../../hooks/useScrollableTabs';
 
 const fmt = (n: number) =>
   '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
@@ -70,11 +71,9 @@ const ParentFeeStatus: React.FC = () => {
   const { data: childrenData, isLoading: childrenLoading } = useParentChildren(Number(user?.id));
   const children = childrenData || EMPTY_CHILDREN;
   const [selected, setSelected] = useState<LinkedStudent | null>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const statementRef = useRef<HTMLDivElement>(null);
-  const tabsRef = useRef<HTMLDivElement>(null);
+  const { canScrollLeft, canScrollRight, tabsRef, scrollBy } = useScrollableTabs();
 
   const { data: settings } = useQuery<SchoolSettings>({
     queryKey: ['school-settings'],
@@ -94,35 +93,6 @@ const ParentFeeStatus: React.FC = () => {
       setSelected(children[0]);
     }
   }, [children, selected]);
-
-  React.useEffect(() => {
-    const updateScrollState = () => {
-      if (tabsRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
-        setCanScrollLeft(scrollLeft > 0);
-        setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-      }
-    };
-
-    if (tabsRef.current) {
-      updateScrollState();
-      tabsRef.current.addEventListener('scroll', updateScrollState);
-      return () => tabsRef.current?.removeEventListener('scroll', updateScrollState);
-    }
-  }, [children]);
-
-  const handleScrollTabs = (direction: 'left' | 'right') => {
-    if (tabsRef.current) {
-      tabsRef.current.scrollBy({ left: direction === 'left' ? -300 : 300, behavior: 'smooth' });
-      setTimeout(() => {
-        if (tabsRef.current) {
-          const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
-          setCanScrollLeft(scrollLeft > 0);
-          setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-        }
-      }, 300);
-    }
-  };
 
   const urgentTx = transactions.find(t => t.status === 'pending' || t.status === 'partial');
   const totalAnnual = feeSummary?.totalAmount ?? 0;
@@ -207,7 +177,7 @@ const ParentFeeStatus: React.FC = () => {
             </div>
             {canScrollLeft && (
               <button
-                onClick={() => handleScrollTabs('left')}
+                onClick={() => scrollBy('left')}
                 className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-slate-600" style={{ fontVariationSettings: "'FILL' 1" }}>chevron_left</span>
@@ -215,7 +185,7 @@ const ParentFeeStatus: React.FC = () => {
             )}
             {canScrollRight && (
               <button
-                onClick={() => handleScrollTabs('right')}
+                onClick={() => scrollBy('right')}
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-slate-600" style={{ fontVariationSettings: "'FILL' 1" }}>chevron_right</span>

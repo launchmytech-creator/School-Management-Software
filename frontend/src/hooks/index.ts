@@ -8,3 +8,7 @@ export * from './mutations';
 export { useDebounce } from './useDebounce';
 export { usePagination } from './usePagination';
 export { useModal } from './useModal';
+export { useScrollableTabs } from './useScrollableTabs';
+export type { UseScrollableTabsOptions } from './useScrollableTabs';
+export { useCalendar } from './useCalendar';
+export type { AttendanceCalendarDay, HolidaysCalendarDay } from './useCalendar';

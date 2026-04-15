@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useParentChildren, useStudentResults } from "../../hooks/queries";
+import { useScrollableTabs } from "../../hooks/useScrollableTabs";
 import type { LinkedStudent } from "../../types/parent";
 import type { StudentResult } from "../../services/examResultService";
 import {
@@ -102,9 +103,7 @@ const ParentExamResults: React.FC = () => {
   const [selected, setSelected] = useState<LinkedStudent | null>(null);
   const [activeType, setActiveType] = useState("All");
   const [activeSubject, setActiveSubject] = useState("Mathematics");
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-  const tabsRef = useRef<HTMLDivElement>(null);
+  const { canScrollLeft, canScrollRight, tabsRef, scrollBy } = useScrollableTabs();
 
   // set initial child
   useEffect(() => {
@@ -116,29 +115,6 @@ const ParentExamResults: React.FC = () => {
   const { data: results = [] } = useStudentResults(selected?.id ? selected.id : 0, {
     academicYearId: selectedYear?.id ? Number(selectedYear.id) : undefined,
   });
-
-  const scrollTabs = (direction: "left" | "right") => {
-    if (tabsRef.current) {
-      tabsRef.current.scrollBy({ left: direction === "left" ? -300 : 300, behavior: "smooth" });
-      setTimeout(() => updateScrollState(), 300);
-    }
-  };
-
-  const updateScrollState = () => {
-    if (tabsRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-    }
-  };
-
-  useEffect(() => {
-    if (tabsRef.current) {
-      updateScrollState();
-      tabsRef.current.addEventListener("scroll", updateScrollState);
-      return () => tabsRef.current?.removeEventListener("scroll", updateScrollState);
-    }
-  }, [children]);
 
   // derived
   const filtered = results.filter(
@@ -244,7 +220,7 @@ const ParentExamResults: React.FC = () => {
             </div>
             {canScrollLeft && (
               <button
-                onClick={() => scrollTabs("left")}
+                onClick={() => scrollBy("left")}
                 className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-slate-600" style={{ fontVariationSettings: "'FILL' 1" }}>chevron_left</span>
@@ -252,7 +228,7 @@ const ParentExamResults: React.FC = () => {
             )}
             {canScrollRight && (
               <button
-                onClick={() => scrollTabs("right")}
+                onClick={() => scrollBy("right")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-slate-600" style={{ fontVariationSettings: "'FILL' 1" }}>chevron_right</span>
