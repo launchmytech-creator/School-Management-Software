@@ -10,18 +10,14 @@ import {
   TeacherStudentRow,
   AdminStudentRow,
   AccountantStudentRow,
+  StudentStatsRow,
+  StudentListSkeleton,
 } from "../../components/students";
-import { AdminStatCard } from "../../components/dashboard";
 import {
   Plus,
   Search,
-  Users,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
   ChevronDown,
   ChevronRight,
-  BookOpen,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { useAcademicYear } from "../../context/AcademicYearContext";
@@ -329,59 +325,19 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
   const renderContent = () => (
     <div className="space-y-6 pb-12">
       {isTeacher && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <AdminStatCard
-            label="Classes Assigned"
-            value={stats.totalClasses}
-            icon={Users}
-          />
-          <AdminStatCard
-            label="Total Students"
-            value={stats.totalLoadedStudents}
-            icon={Users}
-            variant="default"
-          />
-          <AdminStatCard
-            label="Subject Allocations"
-            value={allocations.length || 0}
-            icon={BookOpen}
-            variant="purple"
-          />
-        </div>
+        <StudentStatsRow
+          layout="teacher"
+          stats={stats}
+          allocationsCount={allocations.length || 0}
+        />
       )}
 
       {isAccountant && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <AdminStatCard
-            label="Total Classes"
-            value={stats.totalClasses}
-            icon={Users}
-          />
-          <AdminStatCard
-            label="Fee Paid"
-            value={stats.paid}
-            icon={CheckCircle}
-            variant="emerald"
-          />
-          <AdminStatCard
-            label="Partial Payment"
-            value={stats.partial}
-            icon={Clock}
-            variant="blue"
-          />
-          <AdminStatCard
-            label="Pending"
-            value={stats.pending}
-            icon={AlertTriangle}
-            variant="amber"
-          />
-          <AdminStatCard
-            label="Students Loaded"
-            value={stats.totalLoadedStudents}
-            icon={Users}
-            variant="default"
-          />
-        </div>
+        <StudentStatsRow
+          layout="accountant"
+          stats={stats}
+          allocationsCount={0}
+        />
       )}
 
       {isAdmin && (
@@ -444,22 +400,7 @@ const StudentsList: React.FC<StudentsListProps> = ({ layout }) => {
       </FilterBar>
 
       {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="bg-white rounded-xl border border-slate-200 p-6 animate-pulse"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-slate-200 rounded-lg" />
-                <div className="space-y-2">
-                  <div className="h-4 w-32 bg-slate-200 rounded" />
-                  <div className="h-3 w-20 bg-slate-100 rounded" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <StudentListSkeleton />
       ) : classGroups.length > 0 ? (
         <div className="space-y-4">
           {classGroups.map((group) => {

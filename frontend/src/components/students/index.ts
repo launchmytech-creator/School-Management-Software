@@ -1,5 +1,7 @@
 export { StudentClassGroup } from './StudentClassGroup';
 export { ParentSection } from './ParentSection';
+export { StudentStatsRow } from './StudentStatsRow';
+export { StudentListSkeleton } from './StudentListSkeleton';
 export { default as SubjectCard } from './SubjectCard';
 export { default as AttendanceSummary } from './AttendanceSummary';
 export { default as AttendanceLegend } from './AttendanceLegend';
@@ -9,3 +11,5 @@ export { default as StudentRowActions } from './StudentRowActions';
 export { default as TeacherStudentRow } from './TeacherStudentRow';
 export { default as AdminStudentRow } from './AdminStudentRow';
 export { default as AccountantStudentRow } from './AccountantStudentRow';
+export { StudentProfileCard } from './StudentProfileCard';
+export { AttendanceCalendar } from './AttendanceCalendar';
