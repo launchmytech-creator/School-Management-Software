@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import AttendanceStatsGrid from '../../components/common/AttendanceStatsGrid';
+import { AttendanceTable } from './AttendanceTable';
+import { AttendanceConfirmModal } from './AttendanceConfirmModal';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { useAuth } from '../../context/AuthContext';
@@ -11,10 +13,10 @@ import { useAllStudents } from '../../hooks/queries/useStudents';
 import { useClassAttendance, useMarkAttendance } from '../../hooks/queries/useAttendance';
 import { useHolidays } from '../../hooks/queries/useHolidays';
 import { type Class } from '../../types/class';
+import { type Student } from '../../types/student';
 import { type MarkAttendanceDto } from '../../services/attendanceService';
-import { Users, CheckCircle, XCircle, AlertCircle, CalendarCheck, Loader2, ShieldOff } from 'lucide-react';
-import { formatDate, getLocalDateString } from '../../lib/utils';
-import { BaseModal } from '../../components/common/BaseModal';
+import { Users, CheckCircle, AlertCircle, CalendarCheck, ShieldOff } from 'lucide-react';
+import { getLocalDateString } from '../../lib/utils';
 import { QueryErrorFallback } from '../../components/error';
 
 type AttendanceStatus = 'present' | 'absent';
@@ -126,17 +128,6 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
     });
     setAttendanceRecords(newRecords);
     setHasChanges(true);
-  };
-
-  const getStatusIcon = (status: AttendanceStatus) => {
-    switch (status) {
-      case 'present':
-        return <CheckCircle className="w-4 h-4 text-emerald-500" />;
-      case 'absent':
-        return <XCircle className="w-4 h-4 text-rose-500" />;
-      default:
-        return null;
-    }
   };
 
   const stats = useMemo(() => {
@@ -352,94 +343,17 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
 
       {hasSelectedClass ? (
         students.length > 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Roll No.</th>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Student Name</th>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Quick Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {students.map((student) => {
-                    const currentStatus = attendanceRecords.get(student.id) || 'present';
-                    return (
-                      <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4">
-                          <span className="text-sm font-medium text-slate-600">
-                            {student.rollNumber || '-'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-xs font-bold text-slate-600">
-                              {student.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
-                            </div>
-                            <span className="text-sm font-medium text-slate-900">
-                              {student.fullName}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${
-                            currentStatus === 'present' ? 'bg-emerald-100 text-emerald-700' :
-                            'bg-rose-100 text-rose-700'
-                          }`}>
-                            {getStatusIcon(currentStatus)}
-                            {currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-1">
-                            {(['present', 'absent'] as AttendanceStatus[]).map((status) => (
-                              <button
-                                key={status}
-                                onClick={() => handleStatusChange(student.id, status)}
-                                className={`p-2 rounded-lg transition-colors ${
-                                  currentStatus === status 
-                                    ? 'bg-blue-100 text-blue-600' 
-                                    : 'hover:bg-slate-100 text-slate-400'
-                                }`}
-                                title={status.charAt(0).toUpperCase() + status.slice(1)}
-                              >
-                                {status === 'present' && <CheckCircle className="w-4 h-4" />}
-                                {status === 'absent' && <XCircle className="w-4 h-4" />}
-                              </button>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-              <button
-                onClick={handleMarkAllPresent}
-                className="px-4 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-                disabled={!hasChanges}
-              >
-                Reset to All Present
-              </button>
-              <button
-                onClick={() => setShowConfirmModal(true)}
-                disabled={!hasChanges || isDateInFuture || cannotMarkAttendance || markAttendance.isPending}
-                className={`px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${
-                  hasChanges && !isDateInFuture && !cannotMarkAttendance
-                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                {markAttendance.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                {existingAttendance.length > 0 ? 'Update Attendance' : 'Mark Attendance'}
-              </button>
-            </div>
-          </div>
+          <AttendanceTable
+            students={students as Student[]}
+            attendanceRecords={attendanceRecords}
+            hasChanges={hasChanges}
+            isDateInFuture={isDateInFuture}
+            existingAttendanceCount={existingAttendance.length}
+            isPending={markAttendance.isPending}
+            onStatusChange={handleStatusChange}
+            onMarkAllPresent={handleMarkAllPresent}
+            onConfirm={() => setShowConfirmModal(true)}
+          />
         ) : (
           <EmptyState
             icon={Users}
@@ -463,57 +377,16 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
         ) : null
       )}
 
-      <BaseModal
+      <AttendanceConfirmModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
-        title="Confirm Attendance"
-        size="md"
-      >
-        <div className="p-6 space-y-4">
-          <p className="text-sm text-slate-600">
-            You are about to mark attendance for <span className="font-semibold">{formatDate(selectedDate)}</span> in <span className="font-semibold">{currentClassName}</span>.
-          </p>
-          
-          <div className="bg-slate-50 rounded-xl p-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Total Students:</span>
-              <span className="font-semibold">{stats.total}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-emerald-600">Present:</span>
-              <span className="font-semibold text-emerald-700">{stats.present}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-rose-600">Absent:</span>
-              <span className="font-semibold text-rose-700">{stats.absent}</span>
-            </div>
-          </div>
-
-          {existingAttendance.length > 0 && (
-            <p className="text-sm text-amber-600">
-              This will update the existing attendance record.
-            </p>
-          )}
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
-            <button
-              onClick={() => setShowConfirmModal(false)}
-              className="px-4 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-              disabled={markAttendance.isPending}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveAttendance}
-              disabled={markAttendance.isPending}
-              className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              {markAttendance.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              {markAttendance.isPending ? 'Saving...' : 'Confirm & Save'}
-            </button>
-          </div>
-        </div>
-      </BaseModal>
+        onConfirm={handleSaveAttendance}
+        selectedDate={selectedDate}
+        currentClassName={currentClassName}
+        stats={stats}
+        existingAttendanceCount={existingAttendance.length}
+        isPending={markAttendance.isPending}
+      />
     </div>
     </QueryErrorFallback>
   );
