@@ -74,6 +74,7 @@ class ParentDashboardService {
     query += ` ORDER BY sa.attendance_date DESC`;
 
     const result = await pool.query(query, params);
+    console.log(result);
     return result.rows;
   }
 
@@ -211,17 +212,19 @@ class ParentDashboardService {
           // Get fee summary
           const feeSummary = await pool.query(
             `SELECT 
-              COUNT(*) as total_fees,
-              COUNT(CASE WHEN status = 'paid' THEN 1 END) as paid_fees,
-              COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_fees,
-              SUM(CASE WHEN status = 'pending' THEN amount_due ELSE 0 END) as total_due
+              COALESCE(SUM(original_amount), 0) as total_fee,
+              COALESCE(AVG(original_amount), 0) as per_term_fee,
+              COALESCE(SUM(CASE WHEN status = 'paid' THEN amount_paid ELSE 0 END), 0) as total_paid,
+              COALESCE(SUM(CASE WHEN status = 'pending' THEN amount_due ELSE 0 END), 0) as total_due,
+              COALESCE(COUNT(CASE WHEN status = 'paid' THEN 1 END), 0) as terms_paid,
+              COALESCE(COUNT(CASE WHEN status = 'pending' THEN 1 END), 0) as terms_left
             FROM fee_transactions
             WHERE student_id = $1 AND school_id = $2`,
             [child.id, schoolId],
           );
 
           // Get recent attendance
-          const recentAttendance = await pool.query(
+          const recentAttendanceResult = await pool.query(
             `SELECT status, attendance_date
             FROM student_attendance
             WHERE student_id = $1 AND school_id = $2
@@ -229,11 +232,91 @@ class ParentDashboardService {
             LIMIT 5`,
             [child.id, schoolId],
           );
+          const recentAttendance = recentAttendanceResult.rows || [];
 
+          // Get attendance summary (all-time)
+          const attendanceSummaryQuery = await pool.query(
+            `SELECT 
+              COUNT(*) as total_days,
+              COUNT(CASE WHEN status = 'present' THEN 1 END) as present_days,
+              COUNT(CASE WHEN status = 'absent' THEN 1 END) as absent_days,
+              COUNT(CASE WHEN status = 'late' THEN 1 END) as late_days
+            FROM student_attendance
+            WHERE student_id = $1 AND school_id = $2`,
+            [child.id, schoolId],
+          );
+          const attSummary = attendanceSummaryQuery.rows[0] || {};
+          const totalAttDays = parseInt(attSummary?.total_days) || 0;
+          const presentAttDays = parseInt(attSummary.present_days) || 0;
+          const attendancePercentage = totalAttDays > 0 
+            ? ((presentAttDays / totalAttDays) * 100).toFixed(1) 
+            : "0.0";
+
+          // Get last exam result
+          const lastExamResult = await pool.query(
+            `SELECT 
+              e.id as exam_id,
+              e.name as exam_name,
+              e.exam_type,
+              e.start_date,
+              s.id as subject_id,
+              s.name as subject_name,
+              er.marks_obtained,
+              es.max_marks,
+              er.grade,
+              er.is_absent
+            FROM exam_results er
+            JOIN exam_subjects es ON er.exam_subject_id = es.id
+            JOIN exams e ON es.exam_id = e.id
+            JOIN subjects s ON es.subject_id = s.id
+            WHERE er.student_id = $1 AND er.school_id = $2
+            ORDER BY e.start_date DESC, es.subject_id`,
+            [child.id, schoolId],
+          );
+
+          const examData = lastExamResult.rows;
+          const totalMarks = examData.reduce(
+            (sum, r) => sum + parseFloat(r.max_marks || 0),
+            0,
+          );
+          const obtainedMarks = examData.reduce(
+            (sum, r) => sum + parseFloat(r.marks_obtained || 0),
+            0,
+          );
+          const overallPercentage =
+            totalMarks > 0 ? Math.round((obtainedMarks / totalMarks) * 100) : 0;
+
+          const examResult =
+            examData.length > 0
+              ? {
+                  examId: examData[0].exam_id,
+                  examName: examData[0].exam_name,
+                  examType: examData[0].exam_type,
+                  examDate: examData[0].start_date,
+                  subjects: examData.map((r) => ({
+                    subjectId: r.subject_id,
+                    subjectName: r.subject_name,
+                    marksObtained: parseFloat(r.marks_obtained) || 0,
+                    maxMarks: parseFloat(r.max_marks) || 0,
+                    grade: r.grade,
+                    isAbsent: r.is_absent,
+                  })),
+                  overallPercentage,
+                }
+              : null;
+          console.log(examResult);
           return {
             student: child,
-            fee_summary: feeSummary.rows[0],
-            recent_attendance: recentAttendance.rows,
+            fee_summary: feeSummary.rows[0] || {},
+            recent_attendance: recentAttendance,
+            attendance_summary: {
+              total_days: parseInt(attSummary?.total_days) || 0,
+              present_days: presentAttDays,
+              absent_days: parseInt(attSummary?.absent_days) || 0,
+              late_days: parseInt(attSummary?.late_days) || 0,
+              attendance_percentage: attendancePercentage,
+            },
+            exam_result: examResult,
           };
         }),
       ),
@@ -242,7 +325,6 @@ class ParentDashboardService {
         `SELECT id, title, message, target_role, created_at
         FROM announcements
         WHERE school_id = $1
-          AND (target_role = 'all' OR target_role = 'parent')
         ORDER BY created_at DESC
         LIMIT 5`,
         [schoolId],
@@ -254,8 +336,9 @@ class ParentDashboardService {
       recentAnnouncements: announcementsResult.rows.map((a) => ({
         id: a.id,
         title: a.title,
-        message: a.message,
-        targetRole: a.target_role,
+        message: a.message || '',
+        targetRole: a.target_role || 'all',
+        priority: 'medium',
         createdAt: a.created_at,
       })),
     };

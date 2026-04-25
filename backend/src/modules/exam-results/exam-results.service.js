@@ -241,6 +241,7 @@ class ExamResultsService {
           es.max_marks,
           er.marks_obtained,
           er.is_absent,
+          er.student_id,
           CASE WHEN er.is_absent = false AND er.marks_obtained IS NOT NULL 
                AND er.marks_obtained >= (es.max_marks * 0.4) 
                THEN 1 ELSE 0 END as passed,
@@ -266,6 +267,7 @@ class ExamResultsService {
         max_marks,
         marks_obtained,
         is_absent,
+        student_id,
         passed,
         evaluated
       FROM exam_data
@@ -309,7 +311,10 @@ class ExamResultsService {
       for (const studentId of uniqueStudentIds) {
         const studentRows = evaluatedRows.filter(r => r.student_id === studentId);
         if (studentRows.length > 0) {
-          const avg = studentRows.reduce((sum, r) => sum + (r.marks_obtained || 0), 0) / studentRows.length;
+          const avg = studentRows.reduce((sum, r) => {
+            const marks = parseFloat(r.marks_obtained) || 0;
+            return sum + marks;
+          }, 0) / studentRows.length;
           studentAverages.push(avg);
         }
       }
@@ -345,13 +350,15 @@ class ExamResultsService {
         const classExamRows = examRows.filter(r => r.class_id === classId);
         const evaluated = classExamRows.filter(r => r.evaluated === 1);
         
-        // Calculate per-student average, then overall average
         const uniqueStudentIds = [...new Set(evaluated.map(r => r.student_id))];
         const studentAverages = [];
         for (const studentId of uniqueStudentIds) {
           const studentRows = evaluated.filter(r => r.student_id === studentId);
           if (studentRows.length > 0) {
-            const avg = studentRows.reduce((sum, r) => sum + (r.marks_obtained || 0), 0) / studentRows.length;
+            const avg = studentRows.reduce((sum, r) => {
+              const marks = parseFloat(r.marks_obtained) || 0;
+              return sum + marks;
+            }, 0) / studentRows.length;
             studentAverages.push(avg);
           }
         }
@@ -455,6 +462,11 @@ class ExamResultsService {
   }
 
   async getClassesForComparison(className, schoolId, academicYearId) {
+    console.log("=== getClassesForComparison DEBUG ===");
+    console.log("className:", className);
+    console.log("schoolId:", schoolId);
+    console.log("academicYearId:", academicYearId);
+    
     let query = `
       SELECT c.id, c.name, c.section
       FROM classes c
@@ -470,8 +482,13 @@ class ExamResultsService {
     }
     
     query += ` ORDER BY c.section NULLS LAST`;
+    
+    console.log("Query:", query);
+    console.log("Params:", params);
 
     const result = await pool.query(query, params);
+    console.log("Result rows:", result.rows.length);
+    console.log("Result:", JSON.stringify(result.rows));
     return result.rows;
   }
 
@@ -509,8 +526,8 @@ class ExamResultsService {
       JOIN exam_subjects es ON e.id = es.exam_id
       JOIN subjects sub ON es.subject_id = sub.id
       JOIN classes c ON e.class_id = c.id
-      JOIN exam_results er ON es.id = er.exam_subject_id
-      JOIN students s ON er.student_id = s.id
+      LEFT JOIN exam_results er ON es.id = er.exam_subject_id
+      LEFT JOIN students s ON er.student_id = s.id
       WHERE e.school_id = $1 ${classFilter} ${academicFilter}
       ORDER BY sub.name, c.name, c.section, s.roll_number
     `;
@@ -518,19 +535,78 @@ class ExamResultsService {
     const result = await pool.query(query, params);
     const rows = result.rows;
 
-    console.log("getClassSubjectComparison - rows returned:", rows.length);
+    console.log("=== getClassSubjectComparison DEBUG ===");
+    console.log("classIds received:", classIds);
+    console.log("schoolId:", schoolId);
+    console.log("academicYearId:", academicYearId);
+    console.log("Total rows returned:", rows.length);
+    
     if (rows.length > 0) {
-      console.log("Sample rows:", rows.slice(0, 3));
+      const uniqueClasses = [...new Set(rows.map(r => ({ id: r.class_id, name: r.class_name, section: r.class_section })))];
+      console.log("Unique classes in result:", JSON.stringify(uniqueClasses));
+      
+      const uniqueSubjects = [...new Set(rows.map(r => r.subject_name))];
+      console.log("Unique subjects:", uniqueSubjects);
+      
+      // Check marks_obtained values
+      const marksStats = rows.reduce((acc, r) => {
+        if (r.marks_obtained !== null) {
+          acc.hasMarks++;
+        } else {
+          acc.nullMarks++;
+        }
+        return acc;
+      }, { hasMarks: 0, nullMarks: 0 });
+      console.log("Rows with marks:", marksStats.hasMarks, "Rows without marks:", marksStats.nullMarks);
+      
+      // Group by class to see individual class data
+      const classData = {};
+      for (const row of rows) {
+        if (!classData[row.class_id]) {
+          classData[row.class_id] = { name: row.class_name, section: row.class_section, count: 0, marks: [] };
+        }
+        classData[row.class_id].count++;
+        if (row.marks_obtained !== null) {
+          classData[row.class_id].marks.push(row.marks_obtained);
+        }
+      }
+      console.log("Class data summary:", JSON.stringify(classData));
+      
+      console.log("Sample rows (first 3):", rows.slice(0, 3).map(r => ({
+        class_id: r.class_id,
+        class_name: r.class_name,
+        section: r.class_section,
+        subject: r.subject_name,
+        student_id: r.student_id,
+        marks_obtained: r.marks_obtained,
+        is_absent: r.is_absent
+      })));
     }
 
     if (rows.length === 0) {
+      console.log("NO ROWS RETURNED - checking if this is the issue");
       return { subjects: [] };
     }
 
     // Group data by subject NAME (case-insensitive), then by class
     const subjectMap = new Map();
+    const allClassesInfo = new Map(); // Track ALL classes info (name, section)
     
-    // First pass: organize data
+    // First pass: collect all classes first
+    for (const row of rows) {
+      const { class_id, class_name, class_section } = row;
+      if (!allClassesInfo.has(class_id)) {
+        allClassesInfo.set(class_id, {
+          classId: class_id,
+          className: class_section 
+            ? `${class_name} - ${class_section}` 
+            : class_name,
+        });
+      }
+    }
+    console.log("All classes found:", Array.from(allClassesInfo.keys()));
+    
+    // Second pass: organize data by subject
     for (const row of rows) {
       const {
         class_id, class_name, class_section,
@@ -544,22 +620,20 @@ class ExamResultsService {
       // Initialize subject if not exists
       if (!subjectMap.has(subjectKey)) {
         subjectMap.set(subjectKey, {
-          subjectId: subjectKey, // Use key as ID
-          subjectName: subject_name, // Keep original name for display
+          subjectId: subjectKey,
+          subjectName: subject_name,
           classes: new Map()
         });
       }
 
       const subject = subjectMap.get(subjectKey);
 
-      // Initialize class within subject if not exists
+      // Initialize class within subject if not exists - create fresh data for this subject
       if (!subject.classes.has(class_id)) {
         subject.classes.set(class_id, {
           classId: class_id,
-          className: class_section 
-            ? `${class_name} - ${class_section}` 
-            : class_name,
-          studentMarks: new Map(),  // student_id -> array of {marks, passed}
+          className: allClassesInfo.get(class_id)?.className || (class_section ? `${class_name} - ${class_section}` : class_name),
+          studentMarks: new Map(),  // Fresh Map for this subject
           totalStudents: 0,
           passedStudents: 0,
           marksSum: 0
@@ -568,20 +642,22 @@ class ExamResultsService {
 
       const classEntry = subject.classes.get(class_id);
 
-      // Only count if evaluated (has marks)
-      if (!row.is_absent && marks_obtained !== null) {
-        // Initialize student if not exists
-        if (!classEntry.studentMarks.has(student_id)) {
-          classEntry.studentMarks.set(student_id, []);
-          classEntry.totalStudents++;
-        }
-        
-        classEntry.studentMarks.get(student_id).push({
-          marks: marks_obtained,
-          passed: passed === 1,
-          maxMarks: max_marks
-        });
+      // Skip rows without exam result data (LEFT JOIN result means no result exists)
+      if (student_id === null || marks_obtained === null) {
+        continue;
       }
+      
+      // Only count if evaluated (has marks)
+      if (!classEntry.studentMarks.has(student_id)) {
+        classEntry.studentMarks.set(student_id, []);
+        classEntry.totalStudents++;
+      }
+      
+      classEntry.studentMarks.get(student_id).push({
+        marks: parseFloat(marks_obtained) || 0,
+        passed: passed === 1,
+        maxMarks: max_marks
+      });
     }
 
     // Second pass: calculate averages
@@ -589,23 +665,30 @@ class ExamResultsService {
     for (const [subjectId, subject] of subjectMap) {
       const classResults = [];
 
+      console.log(`\n=== Processing subject: ${subject.subjectName} ===`);
+      console.log(`Classes in this subject: ${Array.from(subject.classes.keys())}`);
+
       for (const [classId, classEntry] of subject.classes) {
+        console.log(`\n  Class ${classId} (${classEntry.className}):`);
+        console.log(`    totalStudents=${classEntry.totalStudents}, studentMarks.size=${classEntry.studentMarks.size}`);
+        
         // Calculate per-student average marks, then class average
         const studentAverages = [];
         let studentsWhoPassedAll = true;
 
         for (const [studentId, marksList] of classEntry.studentMarks) {
-          // Average marks for this student in this subject
           const avgMarks = marksList.reduce((sum, m) => sum + m.marks, 0) / marksList.length;
+          console.log(`    Student ${studentId}: marks=${marksList.map(m => m.marks).join(',')}, avg=${avgMarks}`);
           studentAverages.push(avgMarks);
 
-          // Check if this student passed this subject
           const passedThisSubject = marksList.some(m => m.passed);
           if (!passedThisSubject) {
             studentsWhoPassedAll = false;
           }
         }
 
+        console.log(`    studentAverages array: [${studentAverages.join(', ')}]`);
+        
         // For pass rate: % of students who passed this subject
         const passedThisSubject = [...classEntry.studentMarks.values()].filter(
           marksList => marksList.some(m => m.passed)
@@ -619,6 +702,8 @@ class ExamResultsService {
         const averageMarks = studentAverages.length > 0
           ? studentAverages.reduce((a, b) => a + b, 0) / studentAverages.length
           : 0;
+        
+        console.log(`    Calculated: averageMarks=${averageMarks}, passRate=${passRate}`);
 
         classResults.push({
           classId,
@@ -639,6 +724,7 @@ class ExamResultsService {
 
     return { subjects };
   }
+
 }
 
 module.exports = new ExamResultsService();

@@ -33,7 +33,6 @@ class ClassSubjectsController {
         schoolId,
         academicYearId,
       );
-
       return ApiResponse.success(
         res,
         subjects,
@@ -160,7 +159,11 @@ class ClassSubjectsController {
       const { classIds, subjectId, academicYearId } = req.body;
 
       if (!classIds || !Array.isArray(classIds) || classIds.length === 0) {
-        return ApiResponse.error(res, "At least one class must be selected", 400);
+        return ApiResponse.error(
+          res,
+          "At least one class must be selected",
+          400,
+        );
       }
 
       if (!subjectId) {
@@ -175,10 +178,14 @@ class ClassSubjectsController {
         classIds,
         subjectId,
         academicYearId,
-        req.user.schoolId
+        req.user.schoolId,
       );
 
-      return ApiResponse.success(res, result, `Subject assigned to ${result.length} class(es) successfully`);
+      return ApiResponse.success(
+        res,
+        result,
+        `Subject assigned to ${result.length} class(es) successfully`,
+      );
     } catch (error) {
       next(error);
     }
@@ -197,7 +204,10 @@ class ClassSubjectsController {
         return ApiResponse.error(res, "Class IDs are required", 400);
       }
 
-      const classIdArray = classIds.split(",").map(id => parseInt(id)).filter(id => !isNaN(id));
+      const classIdArray = classIds
+        .split(",")
+        .map((id) => parseInt(id))
+        .filter((id) => !isNaN(id));
 
       if (classIdArray.length === 0) {
         return ApiResponse.error(res, "Invalid class IDs", 400);
@@ -206,7 +216,7 @@ class ClassSubjectsController {
       const result = await classSubjectsService.checkExistingAssignments(
         classIdArray,
         academicYearId ? parseInt(academicYearId) : null,
-        req.user.schoolId
+        req.user.schoolId,
       );
 
       return ApiResponse.success(res, result);

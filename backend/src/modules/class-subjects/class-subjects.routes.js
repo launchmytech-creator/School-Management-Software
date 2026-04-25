@@ -41,6 +41,13 @@ router.get(
 );
 
 router.get(
+  "/check-existing",
+  authenticate,
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
+  classSubjectsController.checkExistingAssignments,
+);
+
+router.get(
   "/:id",
   authenticate,
   authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
@@ -69,14 +76,6 @@ router.post(
   authenticate,
   authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
   classSubjectsController.assignSubjectToMultipleClasses,
-);
-
-// Check existing class-subject assignments. [NEW] Query: ?classIds=1,2&academicYearId=1
-router.get(
-  "/check-existing",
-  authenticate,
-  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT),
-  classSubjectsController.checkExistingAssignments,
 );
 
 module.exports = router;
