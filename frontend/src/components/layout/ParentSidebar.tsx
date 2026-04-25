@@ -27,7 +27,7 @@ const ParentSidebar: React.FC = () => {
   };
 
   return (
-    <div className="w-56 bg-[#1E3A5F] h-screen flex flex-col text-white/60 relative z-20 shadow-2xl flex-shrink-0">
+    <div className="w-72 bg-[#1E3A5F] h-screen flex flex-col text-white/60 relative z-20 shadow-2xl flex-shrink-0">
       {/* Brand */}
       <div className="p-5 pt-7 flex items-center gap-3 border-b border-white/5">
         <div className="w-9 h-9 bg-[#4A9FD4] rounded-xl flex items-center justify-center shadow-lg shadow-[#4A9FD4]/20 flex-shrink-0">

@@ -1,5 +1,6 @@
 import React from "react";
-import { BookOpen, Plus, ChevronRight, Loader, Trash2 } from "lucide-react";
+import { Plus, ChevronRight, Loader, Trash2 } from "lucide-react";
+import { subjectIcon } from "../../lib/subject-utils";
 import type { ClassSubject, Chapter } from "../../services/subjectService";
 
 interface SubjectCardProps {
@@ -23,6 +24,8 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   onDeleteSubject,
   onDeleteChapter,
 }) => {
+  const { icon: subjectIconName, bg: iconBg, text: iconText } = subjectIcon(classSubject.subjectName);
+  
   return (
     <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
       <div
@@ -30,7 +33,14 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
         onClick={onToggle}
       >
         <div className="flex items-center gap-3 flex-1">
-          <BookOpen className="size-4 text-indigo-500" />
+          <div className={`p-1.5 rounded-lg ${iconBg}`}>
+            <span
+              className={`material-symbols-outlined text-sm ${iconText}`}
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              {subjectIconName}
+            </span>
+          </div>
           <span className="font-medium text-slate-700">{classSubject.subjectName}</span>
           <span className="text-xs text-slate-400">({chapters.length} chapters)</span>
         </div>

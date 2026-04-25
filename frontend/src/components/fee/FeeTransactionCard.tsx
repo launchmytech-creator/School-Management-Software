@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle, Clock, XCircle } from "lucide-react";
+import { Download, CheckCircle, Clock, XCircle } from "lucide-react";
 
 interface FeeTransactionCardProps {
   termNumber?: number | null;
@@ -8,12 +8,30 @@ interface FeeTransactionCardProps {
   originalAmount: number | null;
   amountPaid: number | null;
   amountPending: number | null;
-  dueDate: string | null;
+  dueDate?: string | null;
   waiverAmount?: number | null;
   paymentDate?: string | null;
   paymentMode?: string | null;
   receiptNumber?: string | null;
+  studentName?: string;
+  className?: string;
+  onDownloadReceipt?: () => void;
 }
+
+const formatINR = (amount: number | string | null | undefined): string => {
+  const num = typeof amount === 'string' ? parseFloat(amount) : (amount ?? 0);
+  return '₹' + new Intl.NumberFormat('en-IN', {
+    maximumFractionDigits: 0,
+  }).format(num);
+};
+
+const formatDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return '—';
+  const [y, m, day] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, day).toLocaleDateString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric',
+  });
+};
 
 const FeeTransactionCard: React.FC<FeeTransactionCardProps> = ({
   termNumber,
@@ -27,6 +45,7 @@ const FeeTransactionCard: React.FC<FeeTransactionCardProps> = ({
   paymentDate,
   paymentMode,
   receiptNumber,
+  onDownloadReceipt,
 }) => {
   return (
     <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
@@ -67,7 +86,7 @@ const FeeTransactionCard: React.FC<FeeTransactionCardProps> = ({
             Original
           </p>
           <p className="font-bold text-slate-700">
-            ${Number(originalAmount).toFixed(2)}
+            {formatINR(originalAmount)}
           </p>
         </div>
         <div>
@@ -75,7 +94,7 @@ const FeeTransactionCard: React.FC<FeeTransactionCardProps> = ({
             Paid
           </p>
           <p className="font-bold text-emerald-600">
-            ${Number(amountPaid).toFixed(2)}
+            {formatINR(amountPaid)}
           </p>
         </div>
         <div>
@@ -83,7 +102,7 @@ const FeeTransactionCard: React.FC<FeeTransactionCardProps> = ({
             Pending
           </p>
           <p className="font-bold text-rose-600">
-            ${Number(amountPending).toFixed(2)}
+            {formatINR(amountPending)}
           </p>
         </div>
         <div>
@@ -91,7 +110,7 @@ const FeeTransactionCard: React.FC<FeeTransactionCardProps> = ({
             Due Date
           </p>
           <p className="font-bold text-slate-700">
-            {dueDate ? new Date(dueDate).toLocaleDateString() : "—"}
+            {formatDate(dueDate)}
           </p>
         </div>
         {Number(waiverAmount) > 0 && (
@@ -100,27 +119,25 @@ const FeeTransactionCard: React.FC<FeeTransactionCardProps> = ({
               Waiver
             </p>
             <p className="font-bold text-purple-600">
-              -${Number(waiverAmount).toFixed(2)}
+              -{formatINR(waiverAmount)}
             </p>
           </div>
         )}
       </div>
 
-      {status !== "pending" && paymentDate && (
-        <div className="pt-3 border-t border-slate-200 flex flex-wrap gap-3 text-[10px]">
-          <div>
-            <span className="text-slate-400">
-              Paid:{" "}
-            </span>
-            <span className="font-bold text-slate-700">
-              {new Date(paymentDate).toLocaleDateString()}
-            </span>
-          </div>
+      <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+        <div className="flex flex-wrap gap-3 text-[10px]">
+          {status !== "pending" && paymentDate && (
+            <div>
+              <span className="text-slate-400">Paid: </span>
+              <span className="font-bold text-slate-700">
+                {formatDate(paymentDate)}
+              </span>
+            </div>
+          )}
           {paymentMode && (
             <div>
-              <span className="text-slate-400">
-                Mode:{" "}
-              </span>
+              <span className="text-slate-400">Mode: </span>
               <span className="font-bold text-slate-700 capitalize">
                 {paymentMode.replace(/_/g, " ")}
               </span>
@@ -128,16 +145,22 @@ const FeeTransactionCard: React.FC<FeeTransactionCardProps> = ({
           )}
           {receiptNumber && (
             <div>
-              <span className="text-slate-400">
-                Receipt:{" "}
-              </span>
-              <span className="font-bold text-slate-700">
-                {receiptNumber}
-              </span>
+              <span className="text-slate-400">Receipt: </span>
+              <span className="font-bold text-slate-700">{receiptNumber}</span>
             </div>
           )}
         </div>
-      )}
+        
+        {receiptNumber && status === "paid" && onDownloadReceipt && (
+          <button
+            onClick={onDownloadReceipt}
+            className="flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-700"
+          >
+            <Download size={12} />
+            Receipt
+          </button>
+        )}
+      </div>
     </div>
   );
 };

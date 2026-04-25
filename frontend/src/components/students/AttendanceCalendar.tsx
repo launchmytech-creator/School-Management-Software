@@ -7,6 +7,7 @@ interface CalendarDay {
   dateStr: string;
   status: "present" | "absent" | "holiday" | "sunday" | "none";
   isCurrentMonth: boolean;
+  isToday?: boolean;
   holiday?: { description: string } | undefined;
 }
 
@@ -23,6 +24,7 @@ interface AttendanceCalendarProps {
 const DAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 const getDayClass = (day: CalendarDay): string => {
+  if (day.isToday) return "ring-2 ring-inset ring-[#4A9FD4]";
   if (day.status === "present")
     return "bg-emerald-500 text-white shadow-md shadow-emerald-500/10";
   if (day.status === "absent")
@@ -33,6 +35,24 @@ const getDayClass = (day: CalendarDay): string => {
     return "bg-red-50 text-red-400 border border-red-100";
   if (!day.isCurrentMonth) return "bg-transparent text-slate-200";
   return "bg-slate-50 text-slate-300";
+};
+
+const getDayLabel = (day: CalendarDay): React.ReactNode => {
+  if (day.isToday) {
+    return (
+      <span className="text-[8px] font-black bg-[#4A9FD4] text-white px-1 py-0.5 rounded leading-none">
+        TODAY
+      </span>
+    );
+  }
+  if (day.status === "holiday" && day.holiday) {
+    return (
+      <span className="text-[6px] font-bold mt-0.5 px-1 text-center leading-tight truncate max-w-full">
+        {truncateHoliday(day.holiday.description)}
+      </span>
+    );
+  }
+  return null;
 };
 
 const getDayTitle = (day: CalendarDay): string => {
@@ -101,15 +121,13 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
           {calendarDays.map((day, index) => (
             <div
               key={index}
-              className={`aspect-square rounded-2xl flex flex-col items-center justify-center text-sm font-black transition-all cursor-default relative ${getDayClass(day)}`}
+              className={`aspect-square rounded-2xl flex flex-col items-center justify-center text-sm font-black transition-all cursor-default relative ${getDayClass(day)} ${
+                day.isToday ? "text-[#4A9FD4]" : ""
+              }`}
               title={getDayTitle(day)}
             >
               <span>{day.date.getDate()}</span>
-              {day.status === "holiday" && day.holiday && (
-                <span className="text-[6px] font-bold mt-0.5 px-1 text-center leading-tight truncate max-w-full">
-                  {truncateHoliday(day.holiday.description)}
-                </span>
-              )}
+              {getDayLabel(day)}
             </div>
           ))}
         </div>

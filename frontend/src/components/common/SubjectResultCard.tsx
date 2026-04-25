@@ -1,11 +1,11 @@
 import React from "react";
 import {
-  BookOpen,
   CheckCircle,
   XCircle,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
+import { subjectIcon } from "../../lib/subject-utils";
 import type { ExamResult, ClassPerformance } from "../../services/examResultService";
 
 interface SubjectStats {
@@ -50,6 +50,7 @@ export const SubjectResultCard: React.FC<SubjectResultCardProps> = ({
   const classInfo = firstResult?.classSection
     ? `${firstResult.className} - ${firstResult.classSection}`
     : firstResult?.className || "";
+  const { icon: subjectIconName, bg: iconBg, text: iconText } = subjectIcon(actualSubjectName);
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -72,8 +73,13 @@ export const SubjectResultCard: React.FC<SubjectResultCardProps> = ({
                 <ChevronRight className="w-5 h-5 text-slate-500" />
               )}
             </div>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <BookOpen className="w-5 h-5 text-blue-600" />
+            <div className={`p-2 rounded-lg ${iconBg}`}>
+              <span
+                className={`material-symbols-outlined text-lg ${iconText}`}
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                {subjectIconName}
+              </span>
             </div>
             <div>
               <div className="flex items-center gap-2">

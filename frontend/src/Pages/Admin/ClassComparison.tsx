@@ -48,7 +48,7 @@ const ClassComparison: React.FC = () => {
   const classIds = useMemo(() => sections.map(s => s.id), [sections]);
 
   const { data: comparisonData, isLoading } = useClassSubjectComparison(
-    classIds.length > 0 ? classIds : [0],
+    classIds,
     selectedYear?.id ? parseInt(selectedYear.id) : undefined
   );
 

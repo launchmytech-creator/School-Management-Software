@@ -6,6 +6,7 @@ interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   onToggleEye?: () => void;
   inputClassName?: string;
   error?: string;
+  type?: 'text' | 'password' | 'email' | 'number' | 'date' | 'time';
 }
 
 const InputField: React.FC<InputFieldProps> = ({ label, icon, onToggleEye, inputClassName, error, ...props }) => (

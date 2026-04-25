@@ -17,11 +17,20 @@ export const useClasses = (academicYearId?: string | number) => {
 
 export const useClassById = (id: string | number) => {
   const { user } = useAuth();
-  
+
   return useQuery<Class>({
     queryKey: ['classes', { schoolId: user?.schoolId ?? null, id: String(id) }],
     queryFn: () => classService.getClassById(id),
     staleTime: QUERY_STALE_TIME.REFERENCE,
     enabled: !!id,
+  });
+};
+
+export const useClassesByIncharge = (teacherId: number, academicYearId?: string | number) => {
+  return useQuery<Class[]>({
+    queryKey: ['classes', 'incharge', teacherId, academicYearId],
+    queryFn: () => classService.getClassesByIncharge(teacherId, academicYearId),
+    staleTime: QUERY_STALE_TIME.REFERENCE,
+    enabled: !!teacherId,
   });
 };

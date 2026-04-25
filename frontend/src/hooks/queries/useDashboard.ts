@@ -95,7 +95,26 @@ interface TeacherDashboardData {
   totalAllocations: number;
 }
 
-interface ChildOverview {
+export interface ChildExamResult {
+  examName: string;
+  examDate: string;
+  overallPercentage: number;
+  subjects: Array<{
+    subjectId: number;
+    subjectName: string;
+    marksObtained: number;
+    maxMarks: number;
+    grade: string;
+  }>;
+}
+
+export interface ChildFeeSummary {
+  total_fees: string;
+  paid_fees: string;
+  pending_fees: string;
+}
+
+export interface ChildOverview {
   student: {
     id: number;
     admission_number: string;
@@ -105,14 +124,24 @@ interface ChildOverview {
   };
   fee_summary: {
     total_fees: string;
+    per_term_fee: string;
     paid_fees: string;
     pending_fees: string;
-    total_due: string;
+    terms_paid: string;
+    terms_left: string;
   };
   recent_attendance: Array<{
     status: string;
     attendance_date: string;
   }>;
+  attendance_summary: {
+    total_days: number;
+    present_days: number;
+    absent_days: number;
+    late_days: number;
+    attendance_percentage: string;
+  };
+  exam_result: ChildExamResult | null;
 }
 
 interface ParentDashboardData {
@@ -122,6 +151,7 @@ interface ParentDashboardData {
     title: string;
     message: string;
     targetRole: string | null;
+    priority: string;
     createdAt: string;
   }>;
 }

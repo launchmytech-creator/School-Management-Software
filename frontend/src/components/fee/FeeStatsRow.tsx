@@ -1,5 +1,12 @@
 import React from "react";
 
+const formatINR = (amount: number | string | null | undefined): string => {
+  const num = typeof amount === 'string' ? parseFloat(amount) : (amount ?? 0);
+  return '₹' + new Intl.NumberFormat('en-IN', {
+    maximumFractionDigits: 0,
+  }).format(num);
+};
+
 interface FeeStatsRowProps {
   totalAmount: number;
   totalPaid: number;
@@ -20,7 +27,7 @@ const FeeStatsRow: React.FC<FeeStatsRowProps> = ({
           Total Fee
         </p>
         <p className="text-xl font-black text-blue-700">
-          ${Number(totalAmount).toFixed(2)}
+          {formatINR(totalAmount)}
         </p>
       </div>
       <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
@@ -28,7 +35,7 @@ const FeeStatsRow: React.FC<FeeStatsRowProps> = ({
           Total Paid
         </p>
         <p className="text-xl font-black text-emerald-700">
-          ${Number(totalPaid).toFixed(2)}
+          {formatINR(totalPaid)}
         </p>
       </div>
       <div className="bg-rose-50 rounded-xl p-4 border border-rose-100">
@@ -36,7 +43,7 @@ const FeeStatsRow: React.FC<FeeStatsRowProps> = ({
           Pending
         </p>
         <p className="text-xl font-black text-rose-700">
-          ${Number(totalPending).toFixed(2)}
+          {formatINR(totalPending)}
         </p>
       </div>
       <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">

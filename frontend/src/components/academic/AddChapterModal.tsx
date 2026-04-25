@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BaseModal } from "../common/BaseModal";
 import { Button } from "../ui/button";
 import InputField from "../ui/InputField";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createChapterSchema, type CreateChapterFormData } from "../../schemas/subject.schema";
+import {
+  createChapterSchema,
+  type CreateChapterFormData,
+} from "../../schemas/subject.schema";
 
 interface AddChapterModalProps {
   isOpen: boolean;
@@ -37,8 +40,19 @@ export const AddChapterModal: React.FC<AddChapterModalProps> = ({
     onClose();
   };
 
+  useEffect(() => {
+    if (!isOpen) {
+      reset();
+    }
+  }, [isOpen, reset]);
+
   return (
-    <BaseModal isOpen={isOpen} onClose={handleClose} title="Add New Chapter" size="md">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Add New Chapter"
+      size="md"
+    >
       <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
         <InputField
           label="Chapter Name"

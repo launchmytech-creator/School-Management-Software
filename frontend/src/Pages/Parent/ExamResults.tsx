@@ -1,38 +1,43 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
+import { useSelectedChild } from "../../context/SelectedChildContext";
 import { useParentChildren, useStudentResults } from "../../hooks/queries";
-import { useScrollableTabs } from "../../hooks/useScrollableTabs";
 import type { LinkedStudent } from "../../types/parent";
 import type { StudentResult } from "../../services/examResultService";
 import PerformanceTrendChart from "../../components/charts/PerformanceTrendChart";
 import SubjectCard from "../../components/students/SubjectCard";
 import ExamTypeFilter from "../../components/students/ExamTypeFilter";
+import PageHeader from "../../components/common/PageHeader";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 
 // ── main ──────────────────────────────────────────────────────────────────────
 
 const EMPTY_CHILDREN: LinkedStudent[] = [];
 
+/** Parent Exam Results Page
+ * 
+ * Displays child's exam results grouped by term/semester.
+ * Shows subject-wise marks, grades, and overall percentage.
+ * Uses SelectedChildContext for child selection.
+ */
 const ParentExamResults: React.FC = () => {
   const { user } = useAuth();
   const { selectedYear } = useAcademicYear();
-  const navigate = useNavigate();
+  const { selectedChildId } = useSelectedChild();
 
   const { data: childrenData, isLoading: childrenLoading } = useParentChildren(Number(user?.id));
   const children = childrenData || EMPTY_CHILDREN;
 
-  const [selected, setSelected] = useState<LinkedStudent | null>(null);
+  const selected = useMemo(() => {
+    if (selectedChildId && children.length > 0) {
+      return children.find(c => c.id === selectedChildId) || children[0] || null;
+    }
+    return children[0] || null;
+  }, [children, selectedChildId]);
+
   const [activeType, setActiveType] = useState("All");
   const [activeSubject, setActiveSubject] = useState("Mathematics");
-  const { canScrollLeft, canScrollRight, tabsRef, scrollBy } = useScrollableTabs();
-
-  // set initial child
-  useEffect(() => {
-    if (children.length > 0 && !selected) {
-      setSelected(children[0]);
-    }
-  }, [children, selected]);
 
   const { data: results = [] } = useStudentResults(selected?.id ? selected.id : 0, {
     academicYearId: selectedYear?.id ? Number(selectedYear.id) : undefined,
@@ -97,108 +102,47 @@ const ParentExamResults: React.FC = () => {
 
   if (childrenLoading) {
     return (
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="w-10 h-10 border-4 border-[#4A9FD4] border-t-transparent rounded-full animate-spin" />
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <LoadingSpinner size="lg" message="Loading..." />
+      </div>
     );
   }
 
   return (
-      <div className="p-6 max-w-5xl mx-auto space-y-5 pb-10">
-        {/* Back */}
-        <button
-          onClick={() => navigate("/parent/dashboard")}
-          className="flex items-center gap-1 text-slate-500 hover:text-slate-800 text-sm font-semibold transition-colors"
-        >
-          <span className="material-symbols-outlined text-[18px]">
-            arrow_back
-          </span>
-          Results &amp; Marks
-        </button>
+    <div className="max-w-7xl mx-auto space-y-6 pb-10">
+      <PageHeader
+        title="Marks & Academic Performance"
+        subtitle={selected ? `${selected.fullName} • ${selected.className || 'N/A'} • ${selectedYear?.name || ''} Session` : undefined}
+        breadcrumb={{
+          links: [
+            { label: 'Dashboard', href: '/parent/dashboard' },
+            { label: 'Results & Marks', active: true },
+          ],
+        }}
+      />
 
-        {/* Child tabs */}
-        {children.length > 1 && (
-          <div className="relative">
-            <div ref={tabsRef} className="flex gap-2 overflow-x-auto scrollbar-hide px-10">
-              {children.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setSelected(c)}
-                  className={`flex items-center gap-2 px-5 py-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap flex-shrink-0 ${
-                    selected?.id === c.id
-                      ? "border-[#4A9FD4] text-[#4A9FD4]"
-                      : "border-transparent text-slate-400 hover:text-slate-600"
-                  }`}
-                >
-                  <span
-                    className="material-symbols-outlined text-[16px]"
-                    style={{ fontVariationSettings: "'FILL' 1" }}
-                  >
-                    account_circle
-                  </span>
-                  {c.fullName.split(" ")[0]}
-                </button>
+{/* Subject cards */}
+        <div>
+          <h3 className="text-xl font-black text-slate-900 tracking-tight mb-6">Academic Performance</h3>
+          
+          <ExamTypeFilter
+            activeType={activeType}
+            onChange={setActiveType}
+          />
+
+          {subjectCards.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-slate-500">No exam results found</p>
+              <p className="text-xs text-slate-400 mt-1">Results will appear here once exams are graded.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+              {subjectCards.map((r) => (
+                <SubjectCard key={r.id} result={r} />
               ))}
             </div>
-            {canScrollLeft && (
-              <button
-                onClick={() => scrollBy("left")}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-slate-600" style={{ fontVariationSettings: "'FILL' 1" }}>chevron_left</span>
-              </button>
-            )}
-            {canScrollRight && (
-              <button
-                onClick={() => scrollBy("right")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-sm flex items-center justify-center z-20 hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-slate-600" style={{ fontVariationSettings: "'FILL' 1" }}>chevron_right</span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Header */}
-        {selected && (
-          <div>
-            <h2 className="text-2xl font-black text-slate-900">
-              Marks &amp; Academic Performance
-            </h2>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Viewing report for {selected.fullName.split(" ")[0]} &bull;{" "}
-              {selected.className || "N/A"} &bull; {selectedYear?.name || ""}{" "}
-              Session
-            </p>
-          </div>
-        )}
-
-        {/* Exam type filter */}
-        <ExamTypeFilter
-          activeType={activeType}
-          onChange={setActiveType}
-        />
-
-        {/* Subject cards */}
-        {subjectCards.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 text-center">
-            <span className="material-symbols-outlined text-5xl text-slate-200 block mb-3">
-              quiz
-            </span>
-            <p className="text-slate-500 font-semibold">
-              No exam results found
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              Results will appear here once exams are graded.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {subjectCards.map((r) => (
-              <SubjectCard key={r.id} result={r} />
-            ))}
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Performance Trend */}
         {trendData.length > 0 && (

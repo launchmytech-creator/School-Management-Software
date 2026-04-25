@@ -32,7 +32,7 @@ const TeacherRoutes = () => (
         element={
           <PlanGuard feature="syllabus_tracking">
             <RequiresActiveYear>
-              <TeacherSyllabus />
+              <TeacherSyllabus isEditable={true} />
             </RequiresActiveYear>
           </PlanGuard>
         }

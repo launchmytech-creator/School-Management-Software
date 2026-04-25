@@ -1,11 +1,10 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useNotification } from "../../context/NotificationContext";
 import { holidayService, type Holiday } from "../../services/holidayService";
-import { academicYearService } from "../../services/academicYearService";
 import { Plus, ChevronLeft, ChevronRight, Search, Trash2 } from "lucide-react";
 import { formatDate, getLocalDateString } from "../../lib/utils";
 import { BaseModal } from "../../components/common/BaseModal";
@@ -16,7 +15,7 @@ import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import PageHeader from "../../components/common/PageHeader";
 import { HolidayCard } from "../../components/common/HolidayCard";
 import { WorkingDaysSummary } from "../../components/common/WorkingDaysSummary";
-import { useHolidays } from "../../hooks/queries";
+import { useHolidays, useCurrentAcademicYear } from "../../hooks/queries";
 import { holidaySchema, type HolidayFormData } from "../../schemas/academic.schema";
 
 interface CalendarDay {
@@ -32,7 +31,7 @@ const Holidays: React.FC = () => {
   const queryClient = useQueryClient();
   
   const { data: holidays = [], isLoading } = useHolidays();
-  const [currentYearId, setCurrentYearId] = useState<number | null>(null);
+  const { data: currentYear } = useCurrentAcademicYear();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -53,32 +52,20 @@ const Holidays: React.FC = () => {
     resolver: zodResolver(holidaySchema),
   });
 
-  useEffect(() => {
-    const fetchCurrentYear = async () => {
-      try {
-        const year = await academicYearService.getCurrentYear();
-        if (year) {
-          setCurrentYearId(Number(year.id));
-        }
-      } catch {
-        // Ignore - year might not exist
-      }
-    };
-    fetchCurrentYear();
-  }, []);
+  
 
   const onSubmit = async (data: HolidayFormData) => {
-    if (!currentYearId) {
-      showNotification("No academic year selected", "error");
+    if (!currentYear) {
+      showNotification("No academic year available", "error");
       return;
     }
 
     try {
       setCreating(true);
       await holidayService.createHoliday({
-        holidayDate: data.date,
-        description: data.name,
-        academicYearId: currentYearId,
+        holidayDate: data.holidayDate,
+        description: data.description,
+        academicYearId: Number(currentYear.id),
       });
       showNotification("Holiday created successfully", "success");
       setShowCreateModal(false);
@@ -457,14 +444,14 @@ const Holidays: React.FC = () => {
           <FormField
             label="Date"
             type="date"
-            registration={register('date')}
-            error={errors.date}
+            registration={register('holidayDate')}
+            error={errors.holidayDate}
           />
           <FormField
-            label="Description"
+            label="Holiday Name"
             placeholder="e.g., Independence Day"
-            registration={register('name')}
-            error={errors.name}
+            registration={register('description')}
+            error={errors.description}
           />
           <div className="flex gap-3 pt-4">
             <Button

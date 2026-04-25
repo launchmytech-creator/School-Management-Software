@@ -2,7 +2,6 @@ import React, { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Award,
-  DollarSign,
 } from "lucide-react";
 import PerformanceTrendChart from "../../components/charts/PerformanceTrendChart";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
@@ -43,6 +42,7 @@ interface CalendarDay {
   dateStr: string;
   status: AttendanceStatus;
   isCurrentMonth: boolean;
+  isToday?: boolean;
   holiday?: { description: string } | undefined;
 }
 
@@ -127,6 +127,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
+    const todayStr = getLocalDateString(new Date());
 
     const days: CalendarDay[] = [];
 
@@ -138,6 +139,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
         dateStr: getLocalDateString(date),
         status: "none",
         isCurrentMonth: false,
+        isToday: false,
       });
     }
 
@@ -166,6 +168,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
         dateStr,
         status,
         isCurrentMonth: true,
+        isToday: dateStr === todayStr,
         holiday,
       });
     }
@@ -382,10 +385,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
 
               {activeTab === "Fee Status" && (
                 <div>
-                  <div className="flex items-center gap-4 mb-8">
-                    <DollarSign size={24} className="text-blue-500" />
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Fee Status</h3>
-                  </div>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight mb-6">Fee Status</h3>
 
                   {loadingFee ? (
                     <div className="flex items-center justify-center h-48">
@@ -420,7 +420,6 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                     </>
                   ) : (
                     <div className="text-center py-8">
-                      <DollarSign size={32} className="mx-auto text-slate-300 mb-2" />
                       <p className="text-sm text-slate-500">No fee records found</p>
                     </div>
                   )}

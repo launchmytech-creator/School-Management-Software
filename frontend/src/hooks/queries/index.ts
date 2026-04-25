@@ -1,6 +1,6 @@
 // Query hooks — use these in page components instead of manual useState + useEffect + useCallback
 export { useAcademicYears, useCurrentAcademicYear, useAcademicYearById, useRefreshAcademicYears } from './useAcademicYears';
-export { useClasses, useClassById } from './useClasses';
+export { useClasses, useClassById, useClassesByIncharge } from './useClasses';
 export { useStudents, useAllStudents, useStudentById } from './useStudents';
 export { useTeachers, useTeacherById, useTeacherAllocations, useAllAllocations } from './useTeachers';
 export { useSubjects, useSubjectsByClass, useAllClassSubjects, useChapters, useCheckExistingAssignments } from './useSubjects';
