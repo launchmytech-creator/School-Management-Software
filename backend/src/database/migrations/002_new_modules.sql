@@ -6,23 +6,17 @@
 -- 1. ANNOUNCEMENTS
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS announcements (
-    id SERIAL PRIMARY KEY,
-    school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE,
-    title VARCHAR(200) NOT NULL,
-    content TEXT NOT NULL,
-    priority VARCHAR(20) DEFAULT 'medium',
-    target_roles JSONB,
-    academic_year_id INTEGER REFERENCES academic_years(id) ON DELETE SET NULL,
-    is_active BOOLEAN DEFAULT true,
-    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Add new columns to existing announcements table (idempotent)
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS content TEXT;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'medium';
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_roles JSONB;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS academic_year_id INTEGER REFERENCES academic_years(id) ON DELETE SET NULL;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
-CREATE INDEX idx_announcements_school ON announcements(school_id);
-CREATE INDEX idx_announcements_academic_year ON announcements(academic_year_id);
-CREATE INDEX idx_announcements_created_at ON announcements(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_announcements_school ON announcements(school_id);
+CREATE INDEX IF NOT EXISTS idx_announcements_academic_year ON announcements(academic_year_id);
+CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON announcements(created_at DESC);
 
 -- ============================================
 -- 2. TIMETABLES

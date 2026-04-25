@@ -32,6 +32,7 @@ const parentDashboardRoutes = require("./modules/parent-dashboard/parent-dashboa
 const announcementsRoutes = require("./modules/announcements/announcements.routes");
 const notificationsRoutes = require("./modules/notifications/notifications.routes");
 const dashboardRoutes = require("./modules/dashboard/dashboard.routes");
+const superAdminRoutes = require("./modules/super-admin/super-admin.routes");
 
 
 const app = express();
@@ -103,6 +104,7 @@ app.use(`${apiPrefix}/parent`, parentDashboardRoutes);
 app.use(`${apiPrefix}/announcements`, announcementsRoutes);
 app.use(`${apiPrefix}/notifications`, notificationsRoutes);
 app.use(`${apiPrefix}/dashboard`, dashboardRoutes);
+app.use(`${apiPrefix}/super-admin`, superAdminRoutes);
 // 404 handler
 app.use((req, res) => {
   logger.warn("Route not found", { path: req.path, method: req.method });
