@@ -179,7 +179,7 @@ const FeeCollection: React.FC = () => {
     }
   };
 
-  const selectedClassName = classes.find(c => c.id === parseInt(selectedClass))?.name || '';
+  const selectedClassName = classes.find(c => String(c.id) === selectedClass)?.name || '';
 
   return (
     <AdminLayout title="Fee Collection">

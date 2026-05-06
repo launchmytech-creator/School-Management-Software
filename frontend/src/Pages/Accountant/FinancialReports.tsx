@@ -51,17 +51,34 @@ const FinancialReports: React.FC = () => {
     try {
       setLoading(true);
       
-      const [summaryData, transactionsData] = await Promise.all([
-        feeService.getFeeSummary(selectedClass ? parseInt(selectedClass) : undefined),
-        feeService.getFeeTransactions({
-          classId: selectedClass ? parseInt(selectedClass) : undefined,
-          startDate: dateFrom || undefined,
-          endDate: dateTo || undefined,
-        })
-      ]);
-      
-      setSummary(summaryData);
-      setTransactions(transactionsData);
+      const transactionsData = await feeService.getFeeTransactions({
+        classId: selectedClass ? parseInt(selectedClass) : undefined,
+      });
+
+      const filtered = transactionsData.filter(t => {
+        if (dateFrom && t.paymentDate && t.paymentDate < dateFrom) return false;
+        if (dateTo && t.paymentDate && t.paymentDate > dateTo) return false;
+        return true;
+      });
+
+      const collectedAmount = filtered.filter(t => t.status === 'paid' || t.status === 'partial').reduce((s, t) => s + t.amountPaid, 0);
+      const pendingAmount = filtered.filter(t => t.status !== 'paid').reduce((s, t) => s + t.amountPending, 0);
+      const totalAmount = collectedAmount + pendingAmount;
+      const byStatus = ['paid', 'pending', 'partial', 'waived'].map(status => ({
+        status,
+        count: filtered.filter(t => t.status === status).length,
+        amount: filtered.filter(t => t.status === status).reduce((s, t) => s + t.amountDue, 0),
+      }));
+
+      setSummary({
+        totalStudents: new Set(filtered.map(t => t.studentId)).size,
+        totalAmount,
+        collectedAmount,
+        pendingAmount,
+        collectionPercentage: totalAmount > 0 ? Math.round((collectedAmount / totalAmount) * 100) : 0,
+        byStatus,
+      });
+      setTransactions(filtered);
     } catch {
       showNotification('Failed to fetch report data', 'error');
     } finally {
