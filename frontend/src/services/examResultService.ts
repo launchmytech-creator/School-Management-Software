@@ -1,4 +1,5 @@
 import { apiRequest } from './api';
+import type { PaginatedResponse } from '../types/common';
 
 export interface ExamResult {
   id: number;
@@ -7,6 +8,7 @@ export interface ExamResult {
   studentName: string;
   admissionNumber: string;
   rollNumber: number | null;
+  subjectId?: number;
   maxMarks: number;
   examDate: string;
   subjectName: string;
@@ -144,6 +146,7 @@ interface BackendExamResult {
   student_name: string;
   admission_number: string;
   roll_number: number | null;
+  subject_id?: number;
   max_marks: number;
   exam_date: string;
   subject_name: string;
@@ -204,6 +207,7 @@ const mapExamResult = (data: BackendExamResult): ExamResult => ({
   studentName: data.student_name,
   admissionNumber: data.admission_number,
   rollNumber: data.roll_number,
+  subjectId: data.subject_id,
   maxMarks: data.max_marks,
   examDate: data.exam_date,
   subjectName: data.subject_name,
@@ -264,17 +268,26 @@ export const examResultService = {
     classId?: number;
     subjectId?: number;
     academicYearId?: number;
-  }): Promise<ExamResult[]> => {
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<ExamResult>> => {
     const params = new URLSearchParams();
     if (filters?.studentId) params.append('studentId', String(filters.studentId));
     if (filters?.examId) params.append('examId', String(filters.examId));
     if (filters?.classId) params.append('classId', String(filters.classId));
     if (filters?.subjectId) params.append('subjectId', String(filters.subjectId));
     if (filters?.academicYearId) params.append('academicYearId', String(filters.academicYearId));
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.page) params.append('page', String(filters.page));
+    if (filters?.limit) params.append('limit', String(filters.limit));
     
     const queryString = params.toString();
-    const response = await apiRequest<BackendExamResult[]>(`/exam-results${queryString ? `?${queryString}` : ''}`);
-    return response.map(mapExamResult);
+    const response = await apiRequest<{ data: BackendExamResult[]; pagination: { page: number; limit: number; total: number; totalPages: number } | null }>(`/exam-results${queryString ? `?${queryString}` : ''}`);
+    return {
+      data: response.data.map(mapExamResult),
+      pagination: response.pagination,
+    };
   },
 
   getStudentResults: async (

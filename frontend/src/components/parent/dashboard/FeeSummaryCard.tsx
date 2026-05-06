@@ -1,5 +1,5 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
 interface FeeSummary {
   total_fees: string;
@@ -15,15 +15,30 @@ interface FeeSummaryCardProps {
   studentId: number;
 }
 
-export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ feeSummary, studentId }) => {
+export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({
+  feeSummary,
+  studentId,
+}) => {
   const navigate = useNavigate();
 
-  const termsLeft = feeSummary?.terms_left ? parseInt(feeSummary.terms_left) : 0;
-  const termsPaid = feeSummary?.terms_paid ? parseInt(feeSummary.terms_paid) : 0;
-  const perTermFee = feeSummary?.per_term_fee ? parseFloat(feeSummary.per_term_fee) : 0;
-  const totalFee = feeSummary?.total_fees ? parseFloat(feeSummary.total_fees) : 0;
-  const totalPaid = feeSummary?.paid_fees ? parseFloat(feeSummary.paid_fees) : 0;
-  const totalDue = feeSummary?.pending_fees ? parseFloat(feeSummary.pending_fees) : 0;
+  const termsLeft = feeSummary?.terms_left
+    ? parseInt(feeSummary.terms_left)
+    : 0;
+  const termsPaid = feeSummary?.terms_paid
+    ? parseInt(feeSummary.terms_paid)
+    : 0;
+  const perTermFee = feeSummary?.per_term_fee
+    ? parseFloat(feeSummary.per_term_fee)
+    : 0;
+  const totalFee = feeSummary?.total_fees
+    ? parseFloat(feeSummary.total_fees)
+    : 0;
+  const totalPaid = feeSummary?.paid_fees
+    ? parseFloat(feeSummary.paid_fees)
+    : 0;
+  const totalDue = feeSummary?.pending_fees
+    ? parseFloat(feeSummary.pending_fees)
+    : 0;
 
   const hasPending = termsLeft > 0;
   const totalTerms = termsLeft + termsPaid;
@@ -45,7 +60,7 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ feeSummary, stud
           </div>
           {hasPending && (
             <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">
-              {termsLeft} Term{termsLeft !== 1 ? 's' : ''} Left
+              {termsLeft} Term{termsLeft !== 1 ? "s" : ""} Left
             </span>
           )}
         </div>
@@ -66,7 +81,9 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ feeSummary, stud
             <p className="text-xl font-black text-slate-800">
               ₹{totalFee.toLocaleString()}
             </p>
-            <p className="text-xs font-semibold text-slate-500 mt-1">Total Fee</p>
+            <p className="text-xs font-semibold text-slate-500 mt-1">
+              Total Fee
+            </p>
             <p className="text-[10px] text-slate-400">({totalTerms} Terms)</p>
           </div>
 
@@ -77,13 +94,17 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ feeSummary, stud
               ₹{totalPaid.toLocaleString()}
             </p>
             <p className="text-xs font-semibold text-slate-500 mt-1">Paid</p>
-            <p className="text-[10px] text-slate-400">({termsPaid} Term{termsPaid !== 1 ? 's' : ''})</p>
+            <p className="text-[10px] text-slate-400">
+              ({termsPaid} Term{termsPaid !== 1 ? "s" : ""})
+            </p>
           </div>
 
           <div className="w-px h-12 bg-slate-200" />
 
           <div className="text-center flex-1">
-            <p className={`text-xl font-black ${hasPending ? 'text-rose-500' : 'text-emerald-600'}`}>
+            <p
+              className={`text-xl font-black ${hasPending ? "text-rose-500" : "text-emerald-600"}`}
+            >
               ₹{totalDue.toLocaleString()}
             </p>
             <p className="text-xs font-semibold text-slate-500 mt-1">Balance</p>
@@ -95,18 +116,10 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({ feeSummary, stud
       <div className="px-5 pb-5 flex items-center justify-between">
         <button
           onClick={() => navigate(`/parent/fees?studentId=${studentId}`)}
-          className="text-sm font-semibold text-slate-600 hover:text-[#4A9FD4] transition-colors"
+          className="text-sm font-semibold text-[#4A9FD4] hover:underline transition-colors"
         >
           View Details
         </button>
-        {hasPending && (
-          <button
-            onClick={() => navigate(`/parent/fees/pay?studentId=${studentId}`)}
-            className="px-5 py-2.5 bg-[#4A9FD4] text-white rounded-xl text-sm font-bold hover:bg-[#3d8fc0] transition-colors shadow-md"
-          >
-            Pay Now
-          </button>
-        )}
       </div>
     </div>
   );

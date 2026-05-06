@@ -3,6 +3,18 @@ import { apiRequest } from '../../services/api';
 import { queryKeys } from '../../lib/queryKeys';
 import { QUERY_STALE_TIME } from '../../lib/constants';
 import { useAuth } from '../../context/AuthContext';
+import { handleServiceError } from '../../lib/queryErrorHandler';
+
+const retryConfig = {
+  retry: (failureCount: number, error: unknown): boolean => {
+    if (failureCount >= 3) return false;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('404')) {
+      return false;
+    }
+    return true;
+  },
+};
 
 // ── Response Types ──────────────────────────────────────────────────
 
@@ -163,8 +175,16 @@ export const useAdminDashboard = () => {
   
   return useQuery<AdminDashboardData>({
     queryKey: queryKeys.dashboard.admin(user?.schoolId ?? null),
-    queryFn: () => apiRequest<AdminDashboardData>('/dashboard/admin'),
+    queryFn: async () => {
+      try {
+        return await apiRequest<AdminDashboardData>('/dashboard/admin');
+      } catch (error) {
+        handleServiceError(error, 'DASHBOARD', 'FETCH');
+        throw error;
+      }
+    },
     staleTime: QUERY_STALE_TIME.DASHBOARD,
+    ...retryConfig,
   });
 };
 
@@ -173,8 +193,16 @@ export const useAccountantDashboard = () => {
   
   return useQuery<AccountantDashboardData>({
     queryKey: queryKeys.dashboard.accountant(user?.schoolId ?? null),
-    queryFn: () => apiRequest<AccountantDashboardData>('/dashboard/accountant'),
+    queryFn: async () => {
+      try {
+        return await apiRequest<AccountantDashboardData>('/dashboard/accountant');
+      } catch (error) {
+        handleServiceError(error, 'DASHBOARD', 'FETCH');
+        throw error;
+      }
+    },
     staleTime: QUERY_STALE_TIME.DASHBOARD,
+    ...retryConfig,
   });
 };
 
@@ -183,9 +211,17 @@ export const useTeacherDashboard = (teacherId: number) => {
   
   return useQuery<TeacherDashboardData>({
     queryKey: queryKeys.dashboard.teacher(user?.schoolId ?? null, teacherId),
-    queryFn: () => apiRequest<TeacherDashboardData>(`/dashboard/teacher?teacherId=${teacherId}`),
+    queryFn: async () => {
+      try {
+        return await apiRequest<TeacherDashboardData>(`/dashboard/teacher?teacherId=${teacherId}`);
+      } catch (error) {
+        handleServiceError(error, 'DASHBOARD', 'FETCH');
+        throw error;
+      }
+    },
     staleTime: QUERY_STALE_TIME.DASHBOARD,
     enabled: !!teacherId,
+    ...retryConfig,
   });
 };
 
@@ -194,8 +230,16 @@ export const useParentDashboard = (parentId: string | number) => {
   
   return useQuery<ParentDashboardData>({
     queryKey: queryKeys.dashboard.parent(user?.schoolId ?? null, Number(parentId)),
-    queryFn: () => apiRequest<ParentDashboardData>('/parent/dashboard'),
+    queryFn: async () => {
+      try {
+        return await apiRequest<ParentDashboardData>('/parent/dashboard');
+      } catch (error) {
+        handleServiceError(error, 'DASHBOARD', 'FETCH');
+        throw error;
+      }
+    },
     staleTime: QUERY_STALE_TIME.DASHBOARD,
     enabled: !!parentId,
+    ...retryConfig,
   });
 };

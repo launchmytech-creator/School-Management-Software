@@ -1,10 +1,10 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import type { CreateSchoolRequest, SchoolCreateData, SubscriptionTier, School, FeeTerm, SchoolUpdateData, SchoolAdmin, UpdateSchoolAdminData } from '../../types/school';
+import type { CreateSchoolRequest, SchoolCreateData, SubscriptionTier, School, SchoolUpdateData, SchoolAdmin, UpdateSchoolAdminData, FeeTerm } from '../../types/school';
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
+import MainLayout from '../../layouts/MainLayout';
 import { useNotification } from '../../context/NotificationContext';
-import { useCreateSchool, useUpdateSchool } from '../../hooks/queries/useSchools';
-import { getCurrentAcademicYear, getLocalDateString } from '../../lib/utils';
+import { useCreateSchool, useUpdateSchool, usePurchaseSubscription, useAvailablePlansWithPricing } from '../../hooks/queries/useSchools';
+import { getLocalDateString, getCurrentAcademicYear } from '../../lib/utils';
 import { schoolService } from '../../services/schoolService';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,6 +15,7 @@ import AdminInfoForm from '../../components/superAdmin/CreateSchool/AdminInfoFor
 import SubscriptionSettingsForm from '../../components/superAdmin/CreateSchool/SubscriptionSettingsForm';
 import PlanSelection from '../../components/superAdmin/CreateSchool/PlanSelection';
 import FeeTermsSelection from '../../components/superAdmin/CreateSchool/FeeTermsSelection';
+import PlanChangeDialog from '../../components/superAdmin/SchoolDetail/PlanChangeDialog';
 
 const generateSchoolCode = (name: string): string => {
   const prefix = name.substring(0, 3).toUpperCase();
@@ -28,12 +29,46 @@ const CreateSchool: React.FC = () => {
   const { showNotification } = useNotification();
   const createMutation = useCreateSchool();
   const updateMutation = useUpdateSchool();
+  const purchaseMutation = usePurchaseSubscription();
+  const { data: availablePlans } = useAvailablePlansWithPricing();
   const editSchool = location.state?.school as School | undefined;
   const isEditMode = !!editSchool;
+
+  const planMapping: Record<SubscriptionTier, number> = {
+    'BASIC': 1,
+    'PREMIUM': 2,
+    'BUSINESS': 3,
+  };
+
+  const feeTermMapping: Record<FeeTerm, number> = {
+    'YEARLY': 1,
+    'HALF-YEARLY': 2,
+    'QUARTERLY': 4,
+    'MONTHLY': 12,
+  };
+
+  const originalPlanId = isEditMode ? planMapping[editSchool?.plan || 'BASIC'] : undefined;
 
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier>(editSchool?.plan || 'PREMIUM');
   const [feeTerm, setFeeTerm] = useState<FeeTerm>(editSchool?.feeTerm || 'YEARLY');
   const [schoolAdmin, setSchoolAdmin] = useState<SchoolAdmin | null>(null);
+  const [planChangeDialog, setPlanChangeDialog] = useState<{
+    isOpen: boolean;
+    pendingAdminUpdates?: UpdateSchoolAdminData;
+  }>({ isOpen: false });
+  const [calculationResult, setCalculationResult] = useState<{
+    originalAmount: number;
+    creditApplied: number;
+    existingCreditUsed: number;
+    totalCreditApplied: number;
+    payableAmount: number;
+    remainingDays: number;
+    newPlanName: string;
+    currentPlanName: string;
+    feeTerm: string;
+    newEndDate: string;
+  } | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
 
   const defaultValues = isEditMode ? {
     isEditMode: true as const,
@@ -47,7 +82,6 @@ const CreateSchool: React.FC = () => {
       d.setFullYear(d.getFullYear() + 1);
       return getLocalDateString(d);
     })(),
-    academicYear: editSchool?.academicYear || getCurrentAcademicYear(),
   } : {
     isEditMode: false as const,
     name: '',
@@ -88,37 +122,34 @@ const CreateSchool: React.FC = () => {
     }
   }, [isEditMode, editSchool?.id]);
 
-  const planMapping: Record<SubscriptionTier, number> = {
-    'BASIC': 1,
-    'PREMIUM': 2,
-    'BUSINESS': 3,
+  const handlePlanChange = (plan: SubscriptionTier) => {
+    setSelectedPlan(plan);
+    if (plan === 'BASIC' && feeTerm !== 'YEARLY') {
+      setFeeTerm('YEARLY');
+    }
   };
 
-  const feeTermsNumeric = [
-    { id: 'YEARLY', numericId: 1 },
-    { id: 'HALF-YEARLY', numericId: 2 },
-    { id: 'QUARTERLY', numericId: 4 },
-    { id: 'MONTHLY', numericId: 12 },
-  ];
+  const getPlanPricing = (planId: number) => {
+    const plan = availablePlans?.find((p: Record<string, unknown>) => p.id === planId);
+    if (!plan) return { yearly: 0, halfYearly: 0, quarterly: 0, monthly: 0 };
+    return {
+      yearly: Number(plan.price_yearly) || 0,
+      halfYearly: Number(plan.price_half_yearly) || 0,
+      quarterly: Number(plan.price_quarterly) || 0,
+      monthly: Number(plan.price_monthly) || 0,
+    };
+  };
+
+  const selectedPlanPricing = getPlanPricing(planMapping[selectedPlan]);
 
   const onSubmit = async (data: z.infer<typeof createSchoolFormSchema>) => {
     try {
-      const currentFeeTermObj = feeTermsNumeric.find(t => t.id === feeTerm);
-      
       if (data.isEditMode && editSchool) {
-        const payload: SchoolUpdateData = {
-          name: data.name,
-          address: data.address,
-          contactPhone: data.phone,
-          contactEmail: data.email,
-          subscriptionPlanId: planMapping[selectedPlan],
-          subscriptionStatus: data.subscriptionStatus,
-          subscriptionEndDate: data.subscriptionEndDate,
-        };
-        await updateMutation.mutateAsync({ id: editSchool.id, data: payload });
+        const newPlanId = planMapping[selectedPlan];
+        const planChanged = originalPlanId !== newPlanId;
 
+        const adminUpdates: UpdateSchoolAdminData = {};
         if (schoolAdmin && data.adminFullName) {
-          const adminUpdates: UpdateSchoolAdminData = {};
           if (data.adminFullName !== schoolAdmin.fullName) {
             adminUpdates.fullName = data.adminFullName;
           }
@@ -131,9 +162,31 @@ const CreateSchool: React.FC = () => {
           if (data.adminPassword) {
             adminUpdates.password = data.adminPassword;
           }
-          if (Object.keys(adminUpdates).length > 0) {
+        }
+
+        const nonPlanPayload: SchoolUpdateData = {
+          name: data.name,
+          address: data.address,
+          contactPhone: data.phone,
+          contactEmail: data.email,
+          subscriptionStatus: data.subscriptionStatus,
+          subscriptionEndDate: data.subscriptionEndDate,
+        };
+
+        if (planChanged) {
+          if (Object.keys(nonPlanPayload).length > 0) {
+            await updateMutation.mutateAsync({ id: editSchool.id, data: nonPlanPayload });
+          }
+          setPlanChangeDialog({ isOpen: true, pendingAdminUpdates: Object.keys(adminUpdates).length > 0 ? adminUpdates : undefined });
+        } else {
+          if (Object.keys(nonPlanPayload).length > 0) {
+            await updateMutation.mutateAsync({ id: editSchool.id, data: nonPlanPayload });
+          }
+          if (Object.keys(adminUpdates).length > 0 && schoolAdmin) {
             await schoolService.updateSchoolAdmin(editSchool.id, adminUpdates);
           }
+          showNotification('School updated successfully!', 'success');
+          navigate('/super-admin/schools');
         }
       } else {
         const createData = data as CreateSchoolFormData & { isEditMode: false };
@@ -142,7 +195,7 @@ const CreateSchool: React.FC = () => {
             name: createData.name,
             code: createData.code || generateSchoolCode(createData.name),
             subscriptionPlanId: planMapping[selectedPlan],
-            feeTerms: currentFeeTermObj?.numericId || 1,
+            feeTerms: feeTermMapping[feeTerm],
             contactEmail: createData.email,
             contactPhone: createData.phone,
             address: createData.address,
@@ -157,17 +210,59 @@ const CreateSchool: React.FC = () => {
           }
         };
         await createMutation.mutateAsync(payload);
+        showNotification('School registered successfully!', 'success');
+        navigate('/super-admin/schools');
       }
-      showNotification(`School ${isEditMode ? 'updated' : 'registered'} successfully!`, 'success');
-      navigate('/super-admin/schools');
     } catch (error) {
       const message = error instanceof Error ? error.message : `Failed to ${isEditMode ? 'update' : 'register'} school.`;
       showNotification(message, 'error');
     }
   };
 
+  const handleCalculatePlanChange = async (planId: number, selectedFeeTerm: string) => {
+    if (!editSchool) return;
+    setIsCalculating(true);
+    try {
+      const result = await schoolService.calculateUpgrade(editSchool.id, {
+        planId,
+        feeTerm: selectedFeeTerm,
+      });
+      setCalculationResult(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to calculate pricing';
+      showNotification(message, 'error');
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  const handleConfirmPlanChange = async (data: { planId: number; feeTerm: string; feeTermNumeric: number; paymentMode: string }) => {
+    if (!editSchool) return;
+    try {
+      await purchaseMutation.mutateAsync({
+        schoolId: editSchool.id,
+        data: {
+          planId: data.planId,
+          feeTerm: data.feeTerm,
+          feeTermNumeric: data.feeTermNumeric,
+          paymentMode: data.paymentMode,
+        },
+      });
+
+      if (planChangeDialog.pendingAdminUpdates) {
+        await schoolService.updateSchoolAdmin(editSchool.id, planChangeDialog.pendingAdminUpdates);
+      }
+
+      showNotification('School updated and subscription changed successfully!', 'success');
+      navigate('/super-admin/schools');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to change subscription plan';
+      showNotification(message, 'error');
+    }
+  };
+
   return (
-    <AdminLayout title="Register New School">
+    <MainLayout title="Register New School">
       <div className="max-w-4xl mx-auto space-y-12 pb-20">
         <div className="text-center space-y-2 mb-12">
           <h2 className="text-4xl font-display font-black text-[#1E3A5F] tracking-tight">
@@ -194,16 +289,13 @@ const CreateSchool: React.FC = () => {
           <SubscriptionSettingsForm 
             register={register} 
             errors={errors}
-            selectedPlan={selectedPlan}
-            onPlanChange={setSelectedPlan}
-            isEditMode={isEditMode}
           />
 
           <hr className="border-slate-50" />
-          <PlanSelection selectedPlan={selectedPlan} setSelectedPlan={setSelectedPlan} />
+          <PlanSelection selectedPlan={selectedPlan} setSelectedPlan={handlePlanChange} />
 
           <hr className="border-slate-50" />
-          <FeeTermsSelection feeTerm={feeTerm} setFeeTerm={setFeeTerm} />
+          <FeeTermsSelection feeTerm={feeTerm} setFeeTerm={setFeeTerm} selectedPlan={selectedPlan} />
 
           <div className="flex justify-center items-center gap-6 pt-8">
                <button 
@@ -224,11 +316,28 @@ const CreateSchool: React.FC = () => {
           </div>
         </form>
 
+          <PlanChangeDialog
+            key={`plan-change-${planChangeDialog.isOpen ? Date.now() : 0}`}
+            isOpen={planChangeDialog.isOpen}
+            onClose={() => setPlanChangeDialog({ isOpen: false })}
+            schoolId={editSchool?.id || ''}
+            currentPlanId={originalPlanId || 1}
+            currentPlanName={editSchool?.plan || 'BASIC'}
+            selectedPlanId={planMapping[selectedPlan]}
+            selectedPlanName={selectedPlan}
+            selectedPlanPricing={selectedPlanPricing}
+            subscriptionEndDate={editSchool?.subscriptionEndDate}
+            onConfirm={handleConfirmPlanChange}
+            isCalculating={isCalculating}
+            calculationResult={calculationResult}
+            onCalculate={handleCalculatePlanChange}
+          />
+
         <p className="text-center text-[11px] font-bold text-slate-300 uppercase tracking-widest">
            © 2024 EduManage System. All rights reserved.
         </p>
       </div>
-    </AdminLayout>
+    </MainLayout>
   );
 };
 

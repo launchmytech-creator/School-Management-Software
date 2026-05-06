@@ -14,18 +14,30 @@ interface AttendanceSummaryData {
 interface AttendanceSummaryProps {
   data: AttendanceSummaryData;
   studentName: string;
+  size?: "sm" | "lg";
 }
 
-const AttendanceSummary: React.FC<AttendanceSummaryProps> = ({ data, studentName }) => {
+const AttendanceSummary: React.FC<AttendanceSummaryProps> = ({ data, studentName, size = "sm" }) => {
   const firstName = studentName?.split(" ")[0] ?? "Student";
+  const isLarge = size === "lg";
+  const chartSize = isLarge ? "w-48 h-48" : "w-32 h-32";
+  const innerRadius = isLarge ? 60 : 40;
+  const outerRadius = isLarge ? 80 : 55;
+  const titleSize = isLarge ? "text-xl" : "text-lg";
+  const textSize = isLarge ? "text-4xl" : "text-3xl";
+  const labelSize = isLarge ? "text-[10px]" : "text-[8px]";
+  const padding = isLarge ? "p-8" : "p-4";
+  const itemPadding = isLarge ? "p-3" : "p-2";
+  const itemTextSize = isLarge ? "text-sm" : "text-xs";
+  const itemNumberSize = isLarge ? "text-xl" : "text-base";
 
   return (
-    <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
-      <h3 className="text-xl font-black text-slate-900 tracking-tight mb-8">
+    <div className={`bg-white rounded-2xl ${padding} shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center`}>
+      <h3 className={`${titleSize} font-black text-slate-900 tracking-tight mb-4`}>
         Attendance Summary
       </h3>
 
-      <div className="relative w-48 h-48 mb-6">
+      <div className={`relative ${chartSize} mb-4`}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -43,8 +55,8 @@ const AttendanceSummary: React.FC<AttendanceSummaryProps> = ({ data, studentName
               ]}
               cx="50%"
               cy="50%"
-              innerRadius={60}
-              outerRadius={80}
+              innerRadius={innerRadius}
+              outerRadius={outerRadius}
               paddingAngle={2}
               dataKey="value"
               stroke="none"
@@ -55,37 +67,37 @@ const AttendanceSummary: React.FC<AttendanceSummaryProps> = ({ data, studentName
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-4xl font-black text-slate-800 tracking-tight">
+          <span className={`${textSize} font-black text-slate-800 tracking-tight`}>
             {data.percentage}%
           </span>
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          <span className={`${labelSize} font-black text-slate-400 uppercase tracking-widest`}>
             Attendance
           </span>
         </div>
       </div>
 
-      <div className="w-full space-y-3 mb-6">
-        <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl">
-          <span className="text-xs font-bold text-emerald-600">Working Days</span>
-          <span className="text-lg font-black text-emerald-700">
+      <div className={`w-full space-y-2 mb-4`}>
+        <div className={`flex justify-between items-center ${itemPadding} bg-emerald-50 rounded-xl`}>
+          <span className={`${itemTextSize} font-bold text-emerald-600`}>Working Days</span>
+          <span className={`${itemNumberSize} font-black text-emerald-700`}>
             {data.workingDays}
           </span>
         </div>
-        <div className="flex justify-between items-center p-3 bg-rose-50 rounded-xl">
-          <span className="text-xs font-bold text-rose-600">Present Days</span>
-          <span className="text-lg font-black text-rose-700">
+        <div className={`flex justify-between items-center ${itemPadding} bg-rose-50 rounded-xl`}>
+          <span className={`${itemTextSize} font-bold text-rose-600`}>Present Days</span>
+          <span className={`${itemNumberSize} font-black text-rose-700`}>
             {data.presentCount}
           </span>
         </div>
-        <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-          <span className="text-xs font-bold text-slate-500">Absent Days</span>
-          <span className="text-lg font-black text-slate-700">
+        <div className={`flex justify-between items-center ${itemPadding} bg-slate-50 rounded-xl`}>
+          <span className={`${itemTextSize} font-bold text-slate-500`}>Absent Days</span>
+          <span className={`${itemNumberSize} font-black text-slate-700`}>
             {data.absentCount}
           </span>
         </div>
       </div>
 
-      <p className="text-xs font-bold text-slate-400 leading-relaxed px-4">
+      <p className={`${isLarge ? "text-xs" : "text-[10px]"} font-bold text-slate-400 leading-relaxed px-2`}>
         {firstName} has{" "}
         {data.percentage >= 90
           ? "excellent"

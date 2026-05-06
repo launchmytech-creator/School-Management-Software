@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import type { UserRole } from '../types/auth';
 
 interface ProtectedRouteProps {
@@ -11,15 +12,17 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const location = useLocation();
+  const { showNotification } = useNotification();
 
   useEffect(() => {
     const handleAuthError = () => {
+      showNotification('Your session has expired. Please log in again.', 'error');
       logout();
     };
 
     window.addEventListener('auth:error', handleAuthError);
     return () => window.removeEventListener('auth:error', handleAuthError);
-  }, [logout]);
+  }, [logout, showNotification]);
 
   if (loading) {
     return (
@@ -44,6 +47,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     };
     
     return <Navigate to={dashboardMap[user.role] || '/login'} replace />;
+  }
+
+  if (user.role !== 'super_admin' && user.subscriptionStatus) {
+    const blockedStatuses = ['suspended', 'expired'];
+    if (blockedStatuses.includes(user.subscriptionStatus)) {
+      return <Navigate to={`/subscription-${user.subscriptionStatus}`} replace />;
+    }
   }
 
   return <>{children}</>;

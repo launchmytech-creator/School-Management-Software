@@ -20,7 +20,6 @@ const navGroups: NavGroup[] = [
     icon: 'grid_view',
     items: [
       { name: 'Dashboard', icon: 'dashboard', path: '/admin/dashboard' },
-      // { name: 'Reports', icon: 'analytics', path: '/admin/reports' },
     ],
   },
   {
@@ -41,7 +40,6 @@ const navGroups: NavGroup[] = [
     icon: 'menu_book',
     items: [
       { name: 'Classes', icon: 'school', path: '/admin/classes' },
-      { name: 'Subjects', icon: 'menu_book', path: '/admin/subjects' },
       { name: 'Syllabus Tracking', icon: 'playlist_add_check', path: '/admin/syllabus-tracking' },
     ],
   },

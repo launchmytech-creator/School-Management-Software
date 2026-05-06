@@ -1,23 +1,17 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import { useNotification } from "../../context/NotificationContext";
-import { classService } from "../../services/classService";
-import {
-  examService,
-  type Exam,
-  type ExamSubject,
-} from "../../services/examService";
-import {
-  examResultService,
-  type ExamSubjectResult,
-} from "../../services/examResultService";
 import { useAllStudents } from "../../hooks/queries/useStudents";
-import type { Class } from "../../types/class";
+import { useClasses } from "../../hooks/queries/useClasses";
+import { useExams, useExamById } from "../../hooks/queries/useExams";
+import { useExamSubjectResults, useEnterMarks } from "../../hooks/queries/useExamResults";
+import type { ExamSubject } from "../../services/examService";
+import type { ExamSubjectResult } from "../../services/examResultService";
 import { Save, GraduationCap } from "lucide-react";
 import { Button } from "../../components/ui/button";
-import { MarksConfirmModal } from "./MarksConfirmModal";
+import { MarksConfirmModal } from "../../components/modals/MarksConfirmModal";
 import { MarksRow } from "./MarksRow";
 
 interface StudentMarks {
@@ -41,43 +35,33 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
   const isAdmin = layout === "admin";
   const basePath = isAdmin ? "/admin" : "/accountant";
 
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [exams, setExams] = useState<Exam[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedExam, setSelectedExam] = useState<string>("");
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [examSubjects, setExamSubjects] = useState<ExamSubject[]>([]);
   const [studentMarks, setStudentMarks] = useState<StudentMarks[]>([]);
-  const [saving, setSaving] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [loadingFromUrl, setLoadingFromUrl] = useState(false);
 
   const { data: allStudents = [] } = useAllStudents();
+  const { data: classesData = [] } = useClasses();
+  const { data: examsData = [] } = useExams({ classId: selectedClass ? parseInt(selectedClass) : undefined });
+
+  const examIdParam = searchParams.get("examId");
+  const { data: selectedExamData, isLoading: loadingExam } = useExamById(
+    examIdParam ? parseInt(examIdParam) : selectedExam ? parseInt(selectedExam) : 0
+  );
+
+  const { data: existingResults = [], refetch: refetchResults } = useExamSubjectResults(
+    selectedSubject ? parseInt(selectedSubject) : 0
+  );
+
+  const enterMarks = useEnterMarks();
 
   const classStudents = useMemo(() => {
-    return allStudents.filter(s => s.currentClassId?.toString() === selectedClass);
+    return allStudents.filter(
+      (s) => s.currentClassId?.toString() === selectedClass,
+    );
   }, [allStudents, selectedClass]);
-
-  const fetchClasses = useCallback(async () => {
-    try {
-      const data = await classService.getClasses();
-      setClasses(data);
-    } catch {
-      showNotification("Failed to fetch classes", "error");
-    }
-  }, [showNotification]);
-
-  const fetchExams = useCallback(
-    async (classId?: number) => {
-      try {
-        const data = await examService.getExams(classId);
-        setExams(data);
-      } catch {
-        showNotification("Failed to fetch exams", "error");
-      }
-    },
-    [showNotification],
-  );
 
   useEffect(() => {
     if (selectedClass && classStudents.length > 0) {
@@ -95,16 +79,28 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
     }
   }, [classStudents, selectedClass]);
 
-  const fetchExistingResults = useCallback(async (examSubjectId: string) => {
-    if (!examSubjectId) return;
-    try {
-      const data = await examResultService.getExamSubjectResults(
-        parseInt(examSubjectId),
-      );
+  useEffect(() => {
+    if (examIdParam && selectedExamData) {
+      setSelectedClass(selectedExamData.classId.toString());
+      setSelectedExam(selectedExamData.id.toString());
+      setExamSubjects(selectedExamData.subjects || []);
+      if (selectedExamData.subjects && selectedExamData.subjects.length > 0) {
+        setSelectedSubject(selectedExamData.subjects[0].id.toString());
+      }
+    }
+  }, [examIdParam, selectedExamData]);
 
+  useEffect(() => {
+    if (!loadingExam && selectedExam && selectedExamData) {
+      setExamSubjects(selectedExamData.subjects || []);
+    }
+  }, [loadingExam, selectedExam, selectedExamData]);
+
+  useEffect(() => {
+    if (!loadingExam && selectedSubject && existingResults.length >= 0) {
       setStudentMarks((prev) =>
         prev.map((sm) => {
-          const existing = data.find((r) => r.studentId === sm.studentId);
+          const existing = existingResults.find((r) => r.studentId === sm.studentId);
           if (existing) {
             return {
               ...sm,
@@ -119,88 +115,8 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
           return sm;
         }),
       );
-    } catch {
-      // ignore
     }
-  }, []);
-
-  const fetchExamDirectly = useCallback(
-    async (examId: number) => {
-      try {
-        setLoadingFromUrl(true);
-        const exam = await examService.getExamById(examId);
-
-        setSelectedClass(exam.classId.toString());
-        setSelectedExam(exam.id.toString());
-        setExamSubjects(exam.subjects || []);
-
-        const marksData: StudentMarks[] = classStudents.map((s) => ({
-          studentId: s.id,
-          studentName: s.fullName,
-          admissionNumber: s.admissionNumber,
-          rollNumber: s.rollNumber ?? null,
-          marksObtained: "",
-          isAbsent: false,
-        }));
-        setStudentMarks(marksData);
-
-        if (exam.subjects && exam.subjects.length > 0) {
-          setSelectedSubject(exam.subjects[0].id.toString());
-          const existingResults = await examResultService.getExamSubjectResults(
-            exam.subjects[0].id,
-          );
-
-          setStudentMarks((prev) =>
-            prev.map((sm) => {
-              const existing = existingResults.find(
-                (r) => r.studentId === sm.studentId,
-              );
-              if (existing) {
-                return {
-                  ...sm,
-                  marksObtained:
-                    existing.marksObtained !== null
-                      ? existing.marksObtained.toString()
-                      : "",
-                  isAbsent: existing.isAbsent,
-                  existingResult: existing,
-                };
-              }
-              return sm;
-            }),
-          );
-        }
-      } catch {
-        showNotification("Failed to load exam data", "error");
-      } finally {
-        setLoadingFromUrl(false);
-      }
-    },
-    [showNotification],
-  );
-
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
-
-  useEffect(() => {
-    const examIdParam = searchParams.get("examId");
-    if (examIdParam) {
-      fetchExamDirectly(parseInt(examIdParam));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!loadingFromUrl && selectedClass) {
-      fetchExams(parseInt(selectedClass));
-    }
-  }, [selectedClass, fetchExams, loadingFromUrl]);
-
-  useEffect(() => {
-    if (!loadingFromUrl && selectedSubject) {
-      fetchExistingResults(selectedSubject);
-    }
-  }, [selectedSubject, fetchExistingResults, loadingFromUrl]);
+  }, [selectedSubject, existingResults, loadingExam]);
 
   const handleClassChange = (classId: string) => {
     setSelectedClass(classId);
@@ -208,26 +124,12 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
     setSelectedSubject("");
     setExamSubjects([]);
     setStudentMarks([]);
-    if (classId) {
-      fetchExams(parseInt(classId));
-    }
   };
 
-  const handleExamChange = async (examId: string) => {
+  const handleExamChange = (examId: string) => {
     setSelectedExam(examId);
     setSelectedSubject("");
-
-    if (examId) {
-      try {
-        const examData = await examService.getExamById(parseInt(examId));
-        setExamSubjects(examData.subjects || []);
-      } catch {
-        showNotification("Failed to fetch exam subjects", "error");
-        setExamSubjects([]);
-      }
-    } else {
-      setExamSubjects([]);
-    }
+    setExamSubjects([]);
   };
 
   const handleSubjectChange = (subjectId: string) => {
@@ -266,7 +168,7 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
         return;
       }
     }
-    
+
     setStudentMarks((prev) =>
       prev.map((sm) => {
         if (sm.studentId === studentId) {
@@ -299,10 +201,10 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
       return;
     }
 
-    const selectedSubjectData = examSubjects.find(
+    const selectedSubjectDataItem = examSubjects.find(
       (s) => s.id.toString() === selectedSubject,
     );
-    if (!selectedSubjectData) return;
+    if (!selectedSubjectDataItem) return;
 
     const marksData = studentMarks
       .filter((sm) => sm.marksObtained !== "" || sm.isAbsent)
@@ -315,7 +217,7 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
           ? undefined
           : calculateGrade(
               parseFloat(sm.marksObtained) || 0,
-              selectedSubjectData.maxMarks,
+              selectedSubjectDataItem.maxMarks,
             ),
         isAbsent: sm.isAbsent,
       }));
@@ -326,22 +228,19 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
     }
 
     try {
-      setSaving(true);
-      await examResultService.enterMarks({
+      await enterMarks.mutateAsync({
         examSubjectId: parseInt(selectedSubject),
         results: marksData,
       });
       showNotification("Marks saved successfully", "success");
       setShowConfirmModal(false);
-      fetchExistingResults(selectedSubject);
+      refetchResults();
     } catch {
       showNotification("Failed to save marks", "error");
-    } finally {
-      setSaving(false);
     }
   };
 
-  const selectedExamData = exams.find((e) => e.id.toString() === selectedExam);
+  const displayExamData = selectedExamData || examsData.find((e) => e.id.toString() === selectedExam);
 
   const renderContent = () => (
     <>
@@ -349,8 +248,8 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
         <PageHeader
           title="Marks Entry"
           subtitle={
-            selectedExamData
-              ? `Entering marks for: ${selectedExamData.name}`
+            displayExamData
+              ? `Entering marks for: ${displayExamData.name}`
               : "Enter and manage student examination marks"
           }
           breadcrumb={{
@@ -373,7 +272,7 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
             className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Select Class</option>
-            {classes.map((cls) => (
+            {classesData.map((cls) => (
               <option key={cls.id} value={cls.id}>
                 {cls.name} - Section {cls.section || "A"}
               </option>
@@ -392,7 +291,7 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
             disabled={!selectedClass}
           >
             <option value="">Select Exam</option>
-            {exams.map((exam) => (
+            {examsData.map((exam) => (
               <option key={exam.id} value={exam.id}>
                 {exam.name}
               </option>
@@ -496,7 +395,7 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
         onClose={() => setShowConfirmModal(false)}
         onConfirm={handleSaveMarks}
         studentMarks={studentMarks}
-        loading={saving}
+        loading={enterMarks.isPending}
       />
     </>
   );

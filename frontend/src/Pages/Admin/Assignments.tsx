@@ -8,7 +8,8 @@ import { useClasses, useSubjects } from '../../hooks/queries';
 import { useAcademicYears } from '../../hooks/queries';
 import { FileText, Plus, Trash2, Clock, CheckCircle, Users } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
-import { BaseModal } from '../../components/common/BaseModal';
+import { BaseModal } from '../../components/modals/BaseModal';
+import { ConfirmDialog } from '../../components/modals/ConfirmDialog';
 import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
 import { SkeletonTable } from '../../components/common/Skeleton';
@@ -22,6 +23,7 @@ const Assignments: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; id: number | null }>({ isOpen: false, id: null });
 
   const {
     register,
@@ -92,11 +94,12 @@ const Assignments: React.FC = () => {
     });
   };
 
-  const handleDelete = (id: number) => {
-    if (!confirm('Are you sure you want to delete this assignment?')) return;
-    deleteAssignment.mutate(id, {
+  const handleDelete = () => {
+    if (!deleteDialog.id) return;
+    deleteAssignment.mutate(deleteDialog.id, {
       onSuccess: () => {
         showNotification('Assignment deleted successfully', 'success');
+        setDeleteDialog({ isOpen: false, id: null });
       },
       onError: () => {
         showNotification('Failed to delete assignment', 'error');
@@ -241,7 +244,7 @@ const Assignments: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleDelete(assignment.id)}
+                      onClick={() => setDeleteDialog({ isOpen: true, id: assignment.id })}
                       disabled={deleteAssignment.isPending}
                       className="p-2 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                     >
@@ -344,6 +347,17 @@ const Assignments: React.FC = () => {
             </div>
           </form>
         </BaseModal>
+
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, id: null })}
+        onConfirm={handleDelete}
+        title="Delete Assignment"
+        message="Are you sure you want to delete this assignment? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+        loading={deleteAssignment.isPending}
+      />
     </div>
   );
 };

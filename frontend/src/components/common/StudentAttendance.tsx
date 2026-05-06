@@ -3,7 +3,7 @@ import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import AttendanceStatsGrid from "../../components/common/AttendanceStatsGrid";
 import { AttendanceTable } from "./AttendanceTable";
-import { AttendanceConfirmModal } from "./AttendanceConfirmModal";
+import { AttendanceConfirmModal } from "../../components/modals/AttendanceConfirmModal";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useAuth } from "../../context/AuthContext";
@@ -33,11 +33,17 @@ import { QueryErrorFallback } from "../../components/error";
 type AttendanceStatus = "present" | "absent";
 
 interface StudentAttendanceProps {
-  layout: "teacher" | "accountant";
+  layout?: "teacher" | "accountant";
 }
 
 const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   const { user } = useAuth();
+  
+  // Auto-detect layout from AuthContext if not provided
+  const resolvedLayout = layout ?? (user?.role === 'teacher' ? 'teacher' 
+    : user?.role === 'accountant' ? 'accountant' 
+    : 'admin');
+    
   const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
 
@@ -51,7 +57,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
   const [hasChanges, setHasChanges] = useState(false);
 
   const teacherId = user?.id as number;
-  const isTeacher = layout === "teacher";
+  const isTeacher = resolvedLayout === "teacher";
 
   const { data: inchargeClasses = [], isLoading: loadingInchargeClasses } =
     useClassesByIncharge(
@@ -272,11 +278,11 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex items-end gap-4 flex-wrap">
           {isTeacher ? (
             <>
               {inchargeClasses.length > 1 && (
-                <div className="bg-white rounded-xl border border-slate-200 p-5 md:col-span-2">
+                <div className="bg-white rounded-xl border border-slate-200 p-5 flex-1 min-w-0">
                   <label className="block text-sm font-bold text-slate-700 mb-3">
                     Class
                   </label>
@@ -314,7 +320,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
               )}
 
               {inchargeClasses.length === 0 && !loadingInchargeClasses && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-6 md:col-span-2">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex-1">
                   <div className="flex items-center gap-3">
                     <div className="p-3 bg-red-100 rounded-full">
                       <Lock className="w-6 h-6 text-red-600" />
@@ -333,7 +339,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
               )}
             </>
           ) : (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               <label className="text-sm font-bold text-slate-700 whitespace-nowrap">
                 Class:
               </label>
@@ -364,7 +370,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               max={getLocalDateString()}
-              className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>

@@ -2,104 +2,31 @@ import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
-import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
 import { useClassById } from "../../hooks/queries/useClasses";
 import { useAllStudents } from "../../hooks/queries/useStudents";
 import { useDeleteClass } from "../../hooks/mutations/useClassMutations";
 import {
   useSubjectsByClass,
-  useClassProgress,
   useAllAllocations,
 } from "../../hooks/queries";
-import { useAcademicYear } from "../../context/AcademicYearContext";
 import AdminStatCard from "../../components/dashboard/AdminStatCard";
 import {
-  BookOpen,
   Users,
   Library,
   ChevronRight,
-  ChevronDown,
-  CheckCircle2,
-  Clock3,
-  Circle,
-  Loader2,
   Eye,
   Shield,
+  Pencil,
+  ListChecks,
 } from "lucide-react";
-import { useSubjectChapters } from "../../hooks/queries";
 import PageHeader from "../../components/common/PageHeader";
-
-// Sub-component for chapters list
-const SubjectChapters: React.FC<{
-  classId: string | number;
-  subjectId: number;
-  academicYearId: string | number;
-}> = ({ classId, subjectId, academicYearId }) => {
-  const { data: chapters = [], isLoading } = useSubjectChapters(
-    classId,
-    subjectId,
-    academicYearId,
-  );
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-6 text-slate-400">
-        <Loader2 className="size-5 animate-spin mr-2" />
-        <span className="text-xs font-bold uppercase tracking-widest">
-          Loading chapters...
-        </span>
-      </div>
-    );
-  }
-
-  if (chapters.length === 0) {
-    return (
-      <div className="py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-widest italic">
-        No chapters defined
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-6 space-y-2 pt-4 border-t border-slate-50">
-      {chapters.map((chapter) => (
-        <div
-          key={chapter.chapterId}
-          className="flex items-center justify-between p-3 rounded-xl bg-slate-50/50 border border-slate-100/50"
-        >
-          <div className="flex items-center gap-3">
-            {chapter.status === "completed" ? (
-              <CheckCircle2 className="size-4 text-emerald-500" />
-            ) : chapter.status === "in-progress" ? (
-              <Clock3 className="size-4 text-amber-500" />
-            ) : (
-              <Circle className="size-4 text-slate-300" />
-            )}
-            <span className="text-sm font-bold text-slate-700">
-              Ch. {chapter.sequenceNumber}: {chapter.chapterName}
-            </span>
-          </div>
-          <span
-            className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-              chapter.status === "completed"
-                ? "bg-emerald-100 text-emerald-700"
-                : chapter.status === "in-progress"
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-slate-100 text-slate-500"
-            }`}
-          >
-            {chapter.status || "pending"}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-};
+import { Button } from "../../components/ui/button";
+import { subjectIcon } from "../../lib/subject-utils";
 
 const ClassDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { selectedYear } = useAcademicYear();
 
   const { data: classData, isLoading: loadingClass } = useClassById(id || "");
   const { data: allStudents = [] } = useAllStudents();
@@ -108,12 +35,7 @@ const ClassDetail: React.FC = () => {
   );
   const { data: subjects = [] } = useSubjectsByClass(id || "");
   const { data: allocations = [] } = useAllAllocations();
-  const { data: progress = [] } = useClassProgress(id || "");
   const deleteClass = useDeleteClass();
-
-  const [expandedSubjectId, setExpandedSubjectId] = useState<number | null>(
-    null,
-  );
 
   const [deleteDialog, setDeleteDialog] = useState({
     isOpen: false,
@@ -149,8 +71,6 @@ const ClassDetail: React.FC = () => {
     );
   }
 
-  const totalChapters = progress.reduce((sum, s) => sum + s.totalChapters, 0);
-
   const statCards = [
     {
       label: "Total Students",
@@ -163,12 +83,6 @@ const ClassDetail: React.FC = () => {
       value: subjects.length,
       icon: Library,
       variant: "amber" as const,
-    },
-    {
-      label: "Active Chapters",
-      value: totalChapters,
-      icon: BookOpen,
-      variant: "emerald" as const,
     },
     {
       label: "Class Incharge",
@@ -191,30 +105,18 @@ const ClassDetail: React.FC = () => {
         }}
       />
 
-      {/* Stat Cards Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
         {statCards.map((stat, i) => (
           <AdminStatCard key={i} {...stat} />
         ))}
       </div>
 
-      {/* Main Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Student Directory */}
-        <div className="lg:col-span-7 space-y-6">
+        <div className="lg:col-span-6 space-y-6">
           <div className="flex items-center justify-between px-2">
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">
               Students
             </h3>
-            {/* <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-slate-400 hover:bg-slate-100 rounded-xl"
-              >
-                <Plus className="size-5" />
-              </Button>
-            </div> */}
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -222,13 +124,13 @@ const ClassDetail: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/50 border-b border-slate-100">
-                    <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">
-                      Student Info
-                    </th>
-                    <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                    <th className="px-3 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest w-20">
                       Roll Number
                     </th>
-                    <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">
+                    <th className="px-3 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                      Student Info
+                    </th>
+                    <th className="px-3 py-3 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right w-16">
                       Actions
                     </th>
                   </tr>
@@ -243,28 +145,24 @@ const ClassDetail: React.FC = () => {
                           navigate(`/admin/students/${student.id}`)
                         }
                       >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-4">
-                            <div className="size-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-sm shadow-sm">
-                              {student.fullName.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900 leading-tight">
+                        <td className="px-3 py-3 text-slate-500 font-bold text-sm tracking-tight w-20">
+                          #
+                          {String(student.rollNumber || "000").padStart(3, "0")}
+                        </td>
+                        <td className="px-3 py-3 min-w-0">
+                          <div className="flex items-center gap-3">
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-900 text-sm leading-tight truncate">
                                 {student.fullName}
                               </p>
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                Class {classData.name}-
-                                {classData.section || "A"}
+                                {classData.name}-{classData.section || "A"}
                               </p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-500 font-bold text-sm tracking-tight truncate max-w-[120px]">
-                          #
-                          {String(student.rollNumber || "000").padStart(3, "0")}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="px-3 py-3 text-center w-16">
+                          <div className="flex items-center justify-center gap-1">
                             <button
                               className="text-slate-300 hover:text-blue-600 transition-colors p-1"
                               onClick={(e) => {
@@ -275,6 +173,16 @@ const ClassDetail: React.FC = () => {
                             >
                               <Eye className="size-4" />
                             </button>
+                            <button
+                              className="text-slate-300 hover:text-amber-600 transition-colors p-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/admin/students/${student.id}/edit`);
+                              }}
+                              title="Edit Student"
+                            >
+                              <Pencil className="size-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -283,7 +191,7 @@ const ClassDetail: React.FC = () => {
                     <tr>
                       <td
                         colSpan={3}
-                        className="px-6 py-12 text-center text-slate-400 italic"
+                        className="px-3 py-12 text-center text-slate-400 italic"
                       >
                         No students found in this class
                       </td>
@@ -295,42 +203,42 @@ const ClassDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Subjects & Chapters */}
-        <div className="lg:col-span-5 space-y-6">
-          <h3 className="text-2xl font-black text-slate-900 tracking-tight px-2">
-            Subjects & Chapters
-          </h3>
+        <div className="lg:col-span-6 space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              Subjects
+            </h3>
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/admin/classes/${id}/subjects`)}
+              className="gap-2"
+            >
+              <ListChecks className="w-4 h-4" />
+              Manage Subjects
+            </Button>
+          </div>
 
           <div className="flex flex-col gap-4">
             {subjects.length > 0 ? (
               subjects.map((sub) => {
-                const subProgress = progress.find(
-                  (p) => p.subjectId === sub.subjectId,
-                );
                 const teacher = allocations.find(
                   (a) =>
                     a.subjectId === sub.subjectId && a.classId === Number(id),
                 );
 
-                const isExpanded = expandedSubjectId === sub.subjectId;
-
                 return (
                   <div
                     key={sub.id}
-                    onClick={() =>
-                      setExpandedSubjectId(isExpanded ? null : sub.subjectId)
-                    }
-                    className={`bg-white p-6 rounded-2xl border transition-all duration-300 ${
-                      isExpanded
-                        ? "shadow-lg border-slate-200"
-                        : "border-slate-100 shadow-sm hover:shadow-md cursor-pointer"
-                    }`}
+                    className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all"
                   >
                     <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-black text-slate-900 text-lg tracking-tight mb-1">
-                          {sub.subjectName}
-                        </h4>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <SubjectIcon name={sub.subjectName} />
+                          <h4 className="font-black text-slate-900 text-lg tracking-tight">
+                            {sub.subjectName}
+                          </h4>
+                        </div>
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                           Teacher:{" "}
                           <span className="text-slate-600">
@@ -338,41 +246,22 @@ const ClassDetail: React.FC = () => {
                           </span>
                         </p>
                       </div>
-                      {isExpanded ? (
-                        <ChevronDown className="size-5 text-blue-500" />
-                      ) : (
-                        <ChevronRight className="size-5 text-slate-300 group-hover:translate-x-1 transition-transform" />
-                      )}
+                      <ChevronRight className="size-5 text-slate-300" />
                     </div>
-                    {subProgress && (
-                      <div className="mt-4 space-y-2">
-                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-1">
-                          <span className="text-slate-400">
-                            Chapters Progress
-                          </span>
-                          <span className="text-blue-600">
-                            {subProgress.completedChapters}/
-                            {subProgress.totalChapters}
-                          </span>
-                        </div>
-                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                            style={{
-                              width: `${subProgress.progressPercentage}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
 
-                    {isExpanded && id && selectedYear?.id && (
-                      <SubjectChapters
-                        classId={id}
-                        subjectId={sub.subjectId}
-                        academicYearId={selectedYear.id}
-                      />
-                    )}
+                    <div className="mt-4 pt-4 border-t border-slate-50">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          navigate(`/admin/classes/${id}/subjects/${sub.subjectId}/chapters`)
+                        }
+                        className="gap-2 w-full"
+                      >
+                        <ListChecks className="w-4 h-4" />
+                        Manage Chapters
+                      </Button>
+                    </div>
                   </div>
                 );
               })
@@ -398,6 +287,20 @@ const ClassDetail: React.FC = () => {
         variant="danger"
         loading={deleteDialog.loading}
       />
+    </div>
+  );
+};
+
+const SubjectIcon: React.FC<{ name: string }> = ({ name }) => {
+  const { icon, bg, text } = subjectIcon(name);
+  return (
+    <div className={`p-2 rounded-lg ${bg}`}>
+      <span
+        className={`material-symbols-outlined text-lg ${text}`}
+        style={{ fontVariationSettings: "'FILL' 1" }}
+      >
+        {icon}
+      </span>
     </div>
   );
 };

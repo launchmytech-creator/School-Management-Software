@@ -1,5 +1,5 @@
 import React from 'react';
-import { BaseModal } from '../common/BaseModal';
+import { BaseModal } from '../modals/BaseModal';
 import { Button } from '../ui/button';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ArrowRight, Search, CheckSquare, Square } from 'lucide-react';

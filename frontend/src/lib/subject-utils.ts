@@ -1,11 +1,9 @@
 export const EXAM_TYPES = ["All", "Class Test", "Unit Test", "Half Yearly", "Annual", "Final"] as const;
 export type ExamType = typeof EXAM_TYPES[number];
 
-export const EXAM_TYPE_OPTIONS = [
-  { value: "Annual", label: "Annual" },
-  { value: "Half Yearly", label: "Half Yearly" },
-  { value: "Unit Test", label: "Unit Test" },
-] as const;
+export const EXAM_TYPE_OPTIONS: { value: Exclude<ExamType, "All">; label: string }[] = EXAM_TYPES
+  .filter((type): type is Exclude<ExamType, "All"> => type !== "All")
+  .map((type) => ({ value: type, label: type }));
 
 export const SUBJECT_COLORS: Record<string, string> = {
   Mathematics: "#4A9FD4",

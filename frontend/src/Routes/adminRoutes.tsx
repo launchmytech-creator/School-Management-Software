@@ -3,17 +3,17 @@ import { Routes, Route } from "react-router-dom";
 import RequiresActiveYear from "../components/academicYear/RequiresActiveYear";
 import UpgradePrompt from "../components/common/UpgradePrompt";
 import { useAuth } from "../context/AuthContext";
-import AdminLayout from "../layouts/AdminLayout";
+import MainLayout from "../layouts/MainLayout";
 import AdminDashboard from "../Pages/Admin/Dashboard";
 import AdminProfile from "../Pages/Admin/AdminProfile";
 import AcademicYearsPage from "../Pages/Admin/AcademicYearsPage";
 import Classes from "../Pages/Admin/Classes";
 import ClassDetail from "../Pages/Admin/ClassDetail";
 import ParentList from "../Pages/Admin/ParentList";
-import AddStudent from "../Pages/Admin/AddStudent";
-import EditStudent from "../Pages/Admin/EditStudent";
 import StudentProfile from "../components/common/StudentProfile";
-import StudentsList from "../components/common/StudentsList";
+import StudentForm from "../components/common/StudentForm";
+import StudentClassSelector from "../components/students/StudentClassSelector";
+import StudentClassList from "../components/students/StudentClassList";
 import TeacherList from "../Pages/Admin/TeacherList";
 import TeacherAllocation from "../Pages/Admin/TeacherAllocation";
 import TeacherProfile from "../Pages/Admin/TeacherProfile";
@@ -21,20 +21,26 @@ import AccountantList from "../Pages/Admin/AccountantList";
 import AddAccountant from "../Pages/Admin/AddAccountant";
 import EditAccountant from "../Pages/Admin/EditAccountant";
 import AccountantProfile from "../Pages/Admin/AccountantProfile";
-import FeeCollection from "../Pages/Admin/FeeCollection";
-import FeeDefaulters from "../Pages/Admin/FeeDefaulters";
+import FeeClassSelector from "../components/fee/FeeClassSelector";
+import StudentFeeList from "../components/fee/StudentFeeList";
+import StudentFeeDetail from "../components/fee/StudentFeeDetail";
+import FeeClassDefaulters from "../components/fee/FeeClassDefaulters";
+import FeeStructures from "../Pages/Admin/FeeStructures";
 import ExamsList from "../components/common/ExamsList";
-import ExamResults from "../components/common/ExamResults";
-import Subjects from "../Pages/Admin/Subjects";
+import ExamClassSelector from "../components/exam/ExamClassSelector";
+import ExamResultsPage from "../components/exam/ExamResultsPage";
+import SubjectResultsPage from "../components/exam/SubjectResultsPage";
+import ClassSubjects from "../Pages/Admin/ClassSubjects";
+import SubjectChapters from "../Pages/Admin/SubjectChapters";
 import SyllabusTracking from "../Pages/Admin/SyllabusTracking";
+import SyllabusSubjectProgress from "../Pages/Admin/SyllabusSubjectProgress";
+import SyllabusChapterProgress from "../Pages/Admin/SyllabusChapterProgress";
 import Holidays from "../Pages/Admin/Holidays";
 import TeacherAttendancePage from "../Pages/Admin/TeacherAttendancePage";
-import Announcements from "../Pages/Admin/Announcements";
+import Announcements from "../components/common/Announcements";
 import SchoolSettingsPage from "../Pages/Admin/SchoolSettingsPage";
 import StudentPromotion from "../Pages/Admin/StudentPromotion";
-import FeeStructures from "../Pages/Admin/FeeStructures";
 import MarksEntry from "../components/common/MarksEntry";
-import Reports from "@/Pages/Admin/Reports";
 import ClassComparison from "../Pages/Admin/ClassComparison";
 import StudentHistory from "../Pages/Admin/StudentHistory";
 import NotFound from "../Pages/NotFound";
@@ -51,7 +57,7 @@ const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({
 };
 
 const AdminRoutes = () => (
-  <AdminLayout>
+  <MainLayout>
     <Routes>
       <Route path="dashboard" element={<AdminDashboard />} />
       <Route path="profile" element={<AdminProfile />} />
@@ -72,7 +78,15 @@ const AdminRoutes = () => (
         path="students"
         element={
           <RequiresActiveYear>
-            <StudentsList layout="admin" />
+            <StudentClassSelector layout="admin" />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="students/class/:classId"
+        element={
+          <RequiresActiveYear>
+            <StudentClassList layout="admin" />
           </RequiresActiveYear>
         }
       />
@@ -80,7 +94,7 @@ const AdminRoutes = () => (
         path="add-student"
         element={
           <RequiresActiveYear>
-            <AddStudent />
+            <StudentForm layout="admin" mode="create" />
           </RequiresActiveYear>
         }
       />
@@ -96,7 +110,7 @@ const AdminRoutes = () => (
         path="students/:id/edit"
         element={
           <RequiresActiveYear>
-            <EditStudent />
+            <StudentForm layout="admin" mode="edit" />
           </RequiresActiveYear>
         }
       />
@@ -184,7 +198,23 @@ const AdminRoutes = () => (
         path="fees"
         element={
           <RequiresActiveYear>
-            <FeeCollection />
+            <FeeClassSelector mode="collection" layout="admin" />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="fees/class/:classId"
+        element={
+          <RequiresActiveYear>
+            <StudentFeeList layout="admin" />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="fees/class/:classId/student/:studentId"
+        element={
+          <RequiresActiveYear>
+            <StudentFeeDetail layout="admin" canApplyWaiver={true} canEdit={true} />
           </RequiresActiveYear>
         }
       />
@@ -192,7 +222,15 @@ const AdminRoutes = () => (
         path="fee-defaulters"
         element={
           <RequiresActiveYear>
-            <FeeDefaulters />
+            <FeeClassSelector mode="defaulters" layout="admin" />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="fee-defaulters/class/:classId"
+        element={
+          <RequiresActiveYear>
+            <FeeClassDefaulters layout="admin" canSendReminders={true} />
           </RequiresActiveYear>
         }
       />
@@ -218,7 +256,23 @@ const AdminRoutes = () => (
         path="exam-results"
         element={
           <RequiresActiveYear>
-            <ExamResults layout="admin" />
+            <ExamClassSelector layout="admin" />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="exam-results/class/:classId"
+        element={
+          <RequiresActiveYear>
+            <ExamResultsPage layout="admin" />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="exam-results/class/:classId/subject/:subjectId"
+        element={
+          <RequiresActiveYear>
+            <SubjectResultsPage layout="admin" />
           </RequiresActiveYear>
         }
       />
@@ -241,10 +295,18 @@ const AdminRoutes = () => (
 
       {/* Academic Management */}
       <Route
-        path="subjects"
+        path="classes/:id/subjects"
         element={
           <RequiresActiveYear>
-            <Subjects />
+            <ClassSubjects />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="classes/:id/subjects/:subjectId/chapters"
+        element={
+          <RequiresActiveYear>
+            <SubjectChapters />
           </RequiresActiveYear>
         }
       />
@@ -254,6 +316,26 @@ const AdminRoutes = () => (
           <RequiresActiveYear>
             <PlanGuard feature="syllabus_tracking">
               <SyllabusTracking />
+            </PlanGuard>
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="syllabus-tracking/class/:classId"
+        element={
+          <RequiresActiveYear>
+            <PlanGuard feature="syllabus_tracking">
+              <SyllabusSubjectProgress />
+            </PlanGuard>
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="syllabus-tracking/class/:classId/subject/:subjectId"
+        element={
+          <RequiresActiveYear>
+            <PlanGuard feature="syllabus_tracking">
+              <SyllabusChapterProgress />
             </PlanGuard>
           </RequiresActiveYear>
         }
@@ -284,19 +366,7 @@ const AdminRoutes = () => (
         path="announcements"
         element={
           <RequiresActiveYear>
-            <Announcements />
-          </RequiresActiveYear>
-        }
-      />
-
-      {/* Reports */}
-      <Route
-        path="reports"
-        element={
-          <RequiresActiveYear>
-            <PlanGuard feature="analytics">
-              <Reports />
-            </PlanGuard>
+            <Announcements layout="admin" />
           </RequiresActiveYear>
         }
       />
@@ -307,7 +377,7 @@ const AdminRoutes = () => (
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
     </Routes>
-  </AdminLayout>
+  </MainLayout>
 );
 
 export default AdminRoutes;

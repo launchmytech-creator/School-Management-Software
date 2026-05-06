@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authService } from '../services/authService';
 import type { AuthUser, LoginCredentials } from '../types/auth';
 import { clearQueryCache, queryClient } from '../lib/queryClient';
@@ -31,23 +32,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [userLoading, setUserLoading] = useState(false);
 
+  // Use React Query for profile fetching - provides caching and deduplication
+  const { data: profileData } = useQuery({
+    queryKey: queryKeys.user.current(),
+    queryFn: authService.getProfile,
+    staleTime: 15 * 60 * 1000, // 15 minutes - profile doesn't change often
+    enabled: authService.isAuthenticated(),
+    retry: false, // Don't retry on auth failures
+  });
+
+  // Sync profile data to state when available
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (authService.isAuthenticated()) {
-          const profile = await authService.getProfile();
-          setUser(profile);
-          queryClient.setQueryData(queryKeys.user.current(), profile);
-        }
-      } catch {
-        authService.logout();
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
+    if (profileData) {
+      setUser(profileData);
+    }
+    // Set loading to false once we have the profile or if auth check is complete
+    if (profileData || !authService.isAuthenticated()) {
+      setLoading(false);
+    }
+  }, [profileData]);
+
+  // Handle 401 errors by logging out
+  useEffect(() => {
+    const handleAuthError = () => {
+      authService.logout();
+      setUser(null);
+      setLoading(false);
     };
     
-    initAuth();
+    window.addEventListener('auth:error', handleAuthError);
+    return () => window.removeEventListener('auth:error', handleAuthError);
   }, []);
 
   const login = useCallback(async (credentials: LoginCredentials): Promise<AuthUser> => {
@@ -74,9 +88,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refetchUser = useCallback(async () => {
     setUserLoading(true);
     try {
-      const profile = await authService.getProfile();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.user.current() });
+      const profile = await queryClient.fetchQuery({ 
+        queryKey: queryKeys.user.current(),
+        queryFn: authService.getProfile 
+      });
       setUser(profile);
-      queryClient.setQueryData(queryKeys.user.current(), profile);
     } catch (error) {
       console.error('Failed to refetch user:', error);
     } finally {

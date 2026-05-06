@@ -7,7 +7,7 @@ import { timetableService, type TimetableEntry } from '../../services/timetableS
 import { useClasses, useSubjects, useTimetables } from '../../hooks/queries';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { Calendar, Plus, Clock, BookOpen, User } from 'lucide-react';
-import { BaseModal } from '../../components/common/BaseModal';
+import { BaseModal } from '../../components/modals/BaseModal';
 import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
 import { SkeletonTable } from '../../components/common/Skeleton';

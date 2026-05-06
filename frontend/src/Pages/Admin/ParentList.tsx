@@ -1,25 +1,25 @@
 import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNotification } from "../../context/NotificationContext";
+import { useParents } from "../../hooks/queries";
+import type { Parent } from "../../types/parent";
+import { queryKeys } from "../../lib/queryKeys";
+import { parentService } from "../../services/parentService";
+import ViewToggle from "../../components/common/ViewToggle";
+import StatusBadge, { getStatusBadge } from "../../components/common/StatusBadge";
+import PageHeader from "../../components/common/PageHeader";
+import FilterBar from "../../components/common/FilterBar";
+import EmptyState from "../../components/common/EmptyState";
 import { 
   Search, Eye, Edit2, Trash2, 
   UserPlus, Loader2, GraduationCap, 
   Mail, Phone
 } from "lucide-react";
-import ParentDetailsModal from "../../components/parent/ParentDetailsModal";
-import EditParentModal from "../../components/parent/EditParentModal";
-import { parentService } from "../../services/parentService";
-import type { Parent } from "../../types/parent";
-import { useNotification } from "../../context/NotificationContext";
-import { useParents } from "../../hooks/queries";
-import { queryKeys } from "../../lib/queryKeys";
-import PageHeader from "../../components/common/PageHeader";
-import FilterBar from "../../components/common/FilterBar";
-import ViewToggle from "../../components/common/ViewToggle";
-import StatusBadge from "../../components/common/StatusBadge";
-import EmptyState from "../../components/common/EmptyState";
-import CreateParentModal from "../../components/parent/CreateParentModal";
+import ParentDetailsModal from "../../components/modals/ParentDetailsModal";
+import EditParentModal from "../../components/modals/EditParentModal";
+import CreateParentModal from "../../components/modals/CreateParentModal";
 import { Button } from "../../components/ui/button";
-import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
 
 const ParentList: React.FC = () => {
   const { showNotification } = useNotification();

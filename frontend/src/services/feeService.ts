@@ -1,4 +1,5 @@
 import { apiRequest } from "./api";
+import type { PaginatedResponse } from "../types/common";
 
 // ── Fee breakdown type (per-component amounts per term) ──────────────
 export type FeeBreakdown = Record<string, number>;
@@ -274,35 +275,50 @@ export const feeService = {
       studentId?: number;
       academicYearId?: number;
       status?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
     } = {},
-  ): Promise<FeeTransaction[]> => {
+  ): Promise<PaginatedResponse<FeeTransaction>> => {
     const qp = new URLSearchParams();
     if (params.classId) qp.append("classId", String(params.classId));
     if (params.studentId) qp.append("studentId", String(params.studentId));
     if (params.academicYearId)
       qp.append("academicYearId", String(params.academicYearId));
     if (params.status) qp.append("status", params.status);
+    if (params.search) qp.append("search", params.search);
+    if (params.page) qp.append("page", String(params.page));
+    if (params.limit) qp.append("limit", String(params.limit));
 
     const qs = qp.toString();
-    const rows = await apiRequest<BackendFeeTransaction[]>(
+    const response = await apiRequest<{ data: BackendFeeTransaction[]; pagination: { page: number; limit: number; total: number; totalPages: number } | null }>(
       `/fee-transactions${qs ? `?${qs}` : ""}`,
     );
-    return rows.map(mapTransaction);
+    return {
+      data: response.data.map(mapTransaction),
+      pagination: response.pagination,
+    };
   },
 
   // Fee defaulters (grouped by student)
   getFeeDefaulters: async (
-    params: { classId?: number; academicYearId?: number } = {},
-  ): Promise<FeeDefaulter[]> => {
+    params: { classId?: number; academicYearId?: number; search?: string; page?: number; limit?: number } = {},
+  ): Promise<PaginatedResponse<FeeDefaulter>> => {
     const qp = new URLSearchParams();
     if (params.classId) qp.append("classId", String(params.classId));
     if (params.academicYearId)
       qp.append("academicYearId", String(params.academicYearId));
+    if (params.search) qp.append("search", params.search);
+    if (params.page) qp.append("page", String(params.page));
+    if (params.limit) qp.append("limit", String(params.limit));
     const qs = qp.toString() ? `?${qp.toString()}` : "";
-    const rows = await apiRequest<BackendFeeTransaction[]>(
+    const response = await apiRequest<{ data: BackendFeeTransaction[]; pagination: { page: number; limit: number; total: number; totalPages: number } | null }>(
       `/fee-transactions/defaulters${qs}`,
     );
-    return groupDefaulters(rows);
+    return {
+      data: groupDefaulters(response.data),
+      pagination: response.pagination,
+    };
   },
 
   // Single student transactions

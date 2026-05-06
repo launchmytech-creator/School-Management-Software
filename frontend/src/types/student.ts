@@ -32,6 +32,8 @@ export interface StudentFilters {
   academicYear?: string;
   search?: string;
   status?: string;
+  page?: number;
+  limit?: number;
 }
 
 // [NEW] Student History Types

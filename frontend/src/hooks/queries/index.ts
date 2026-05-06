@@ -18,10 +18,9 @@ export { useAccountants, useAccountantById } from './useAccountants';
 export { useAnnouncements, useAnnouncementById } from './useAnnouncements';
 export { useHolidays, useHolidayById, useAcademicCalendar, useWorkingDays } from './useHolidays';
 export { useParents, useParentById } from './useParents';
-export { useSummaryReport, useAttendanceReport, useFeesReport, useResultsReport } from './useReports';
 export { useTimetables, useTimetableById } from './useTimetables';
 export { useTeacherAttendance, useTeacherAttendanceByDate, useTeacherAttendanceSummary } from './useTeacherAttendance';
-export { useStudentResults, useClassComparison, useClassSubjectComparison, useClassesForComparison, useExamResults, useExamResultsPerformance } from './useExamResults';
+export { useStudentResults, useClassComparison, useClassSubjectComparison, useClassesForComparison, useExamResults, useExamResultsPerformance, useExamSubjectResults, useEnterMarks } from './useExamResults';
 export { useAvailablePlans } from './useSubscriptionPlans';
 export { useStudentHistory } from './useStudentHistory';
 

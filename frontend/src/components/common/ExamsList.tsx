@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import { ExamCard } from "./ExamCard";
-import { CreateExamModal } from "../../components/academic/CreateExamModal";
-import { EditExamModal } from "../../components/academic/EditExamModal";
+import { CreateExamModal } from "../../components/modals/CreateExamModal";
+import { EditExamModal } from "../../components/modals/EditExamModal";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { examService, type Exam } from "../../services/examService";
@@ -13,7 +13,7 @@ import { useClasses } from "../../hooks/queries";
 import { Plus, GraduationCap } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
-import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
 
 interface ExamsListProps {
   layout: "admin" | "accountant";

@@ -1,6 +1,10 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "../Pages/Auth/Login";
+import ForgotPassword from "../Pages/Auth/ForgotPassword";
+import ResetPassword from "../Pages/Auth/ResetPassword";
+import SubscriptionSuspended from "../Pages/Shared/SubscriptionSuspended";
+import SubscriptionExpired from "../Pages/Shared/SubscriptionExpired";
 import PublicRoute from "./PublicRoute";
 import ProtectedRoute from "./ProtectedRoute";
 import NotFound from "../Pages/NotFound";
@@ -42,6 +46,25 @@ const AppRouter = () => (
         </PublicRoute>
       }
     />
+    <Route
+      path="/forgot-password"
+      element={
+        <PublicRoute>
+          <ForgotPassword />
+        </PublicRoute>
+      }
+    />
+    <Route
+      path="/reset-password"
+      element={
+        <PublicRoute>
+          <ResetPassword />
+        </PublicRoute>
+      }
+    />
+
+    <Route path="/subscription-suspended" element={<SubscriptionSuspended />} />
+    <Route path="/subscription-expired" element={<SubscriptionExpired />} />
 
     <Route
       path="/super-admin/*"

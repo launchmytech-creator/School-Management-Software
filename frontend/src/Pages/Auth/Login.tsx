@@ -46,6 +46,33 @@ const Login: React.FC = () => {
         };
       }
       if (
+        message.includes("school_003") ||
+        message.includes("subscription has expired")
+      ) {
+        return {
+          type: "validation",
+          message: "Your school subscription has expired. Please contact your administrator to renew.",
+        };
+      }
+      if (
+        message.includes("school_004") ||
+        message.includes("subscription is suspended")
+      ) {
+        return {
+          type: "validation",
+          message: "Your school subscription is suspended. Please contact support for assistance.",
+        };
+      }
+      if (
+        message.includes("school_005") ||
+        message.includes("trial period has expired")
+      ) {
+        return {
+          type: "validation",
+          message: "Your trial period has expired. Please purchase a subscription plan to continue.",
+        };
+      }
+      if (
         message.includes("401") ||
         message.includes("unauthorized") ||
         message.includes("invalid credentials") ||

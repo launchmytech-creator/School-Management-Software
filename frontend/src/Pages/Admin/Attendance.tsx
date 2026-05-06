@@ -8,7 +8,7 @@ import { useClasses } from '../../hooks/queries/useClasses';
 import { useClassAttendance } from '../../hooks/queries/useAttendance';
 import { Users, CheckCircle, XCircle, Clock, CalendarCheck } from 'lucide-react';
 import { formatDate, getLocalDateString } from '../../lib/utils';
-import { BaseModal } from '../../components/common/BaseModal';
+import { BaseModal } from '../../components/modals/BaseModal';
 import { SkeletonTable } from '../../components/common/Skeleton';
 
 const Attendance: React.FC = () => {

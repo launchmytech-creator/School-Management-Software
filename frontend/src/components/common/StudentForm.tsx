@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 import { 
   UserPlus, 
@@ -10,20 +11,19 @@ import {
 } from 'lucide-react';
 import { ParentSection } from '../students/ParentSection';
 import { studentService, type CreateStudentDto } from '../../services/studentService';
-import { feeService } from '../../services/feeService';
-import { classService } from '../../services/classService';
-import { parentService } from '../../services/parentService';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { getLocalDateString } from '../../lib/utils';
-import type { Class } from '../../types/class';
-import type { Parent } from '../../types/parent';
+import type { Parent, Gender, CreateParentDto } from '../../types/parent';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useClasses } from '../../hooks/queries/useClasses';
+import { useParents } from '../../hooks/queries/useParents';
+import { useStudentById } from '../../hooks/queries/useStudents';
 
 interface StudentFormProps {
-  layout: 'admin' | 'accountant';
+  layout?: 'admin' | 'accountant' | 'teacher';
   mode: 'create' | 'edit';
 }
 
@@ -40,46 +40,63 @@ const studentFormSchema = z.object({
   rollNumber: z.string().optional(),
 });
 
-const generateAdmissionNumber = () => {
+const ADMISSION_NUMBER_MIN = 10;
+const ADMISSION_NUMBER_MAX = 100;
+const generateAdmissionNumber = (): string => {
   const year = new Date().getFullYear();
   const timePart = Date.now().toString().slice(-6);
-  const randomPart = Math.floor(Math.random() * 90 + 10);
+  const randomPart = Math.floor(Math.random() * (ADMISSION_NUMBER_MAX - ADMISSION_NUMBER_MIN + 1)) + ADMISSION_NUMBER_MIN;
   return `ADM-${year}-${timePart}-${randomPart}`;
 };
 
+interface NewParentFormData {
+  fullName: string;
+  email: string;
+  password: string;
+  phone: string;
+  dateOfBirth: string;
+  gender: Gender;
+  address: string;
+}
+
+const defaultParentFormData: NewParentFormData = {
+  fullName: "",
+  email: "",
+  password: "",
+  phone: "",
+  dateOfBirth: "",
+  gender: "male",
+  address: "",
+};
+
 const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
+  
+  // Auto-detect layout from AuthContext if not provided
+  const resolvedLayout = layout ?? (user?.role === 'teacher' ? 'teacher' 
+    : user?.role === 'accountant' ? 'accountant' 
+    : 'admin');
+    
   const [loading, setLoading] = useState(false);
-  const [fetchingData, setFetchingData] = useState(true);
   const [fetchingStudent, setFetchingStudent] = useState(mode === 'edit');
-
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [parents, setParents] = useState<Parent[]>([]);
 
   const [showNewParentForm, setShowNewParentForm] = useState(false);
   const [parentSearch, setParentSearch] = useState('');
   const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
   const [showParentDropdown, setShowParentDropdown] = useState(false);
-  const [newParentData, setNewParentData] = useState<{
-    fullName: string;
-    email: string;
-    password: string;
-    phone: string;
-    dateOfBirth: string;
-    gender: "male" | "female" | "other";
-    address: string;
-  }>({
-    fullName: "",
-    email: "",
-    password: "",
-    phone: "",
-    dateOfBirth: "",
-    gender: "male",
-    address: "",
-  });
+  const [newParentData, setNewParentData] = useState<NewParentFormData>(defaultParentFormData);
+
+  // Use React Query hooks for data fetching - provides caching and deduplication
+  const { data: classesData, isLoading: loadingClasses } = useClasses(selectedYear?.id);
+  const { data: parentsData, isLoading: loadingParents } = useParents();
+  const { data: studentData, isLoading: loadingStudent } = useStudentById(mode === 'edit' && id ? parseInt(id, 10) : 0);
+
+  const classes = classesData || [];
+  const parents = parentsData || [];
 
   const {
     register: registerStudent,
@@ -102,10 +119,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
     },
   });
 
-  const isAdmin = layout === 'admin';
+  const isAdmin = resolvedLayout === 'admin';
   const basePath = isAdmin ? '/admin' : '/accountant';
 
-  // Filter parents based on search
   const filteredParents = useMemo(() => {
     if (!parentSearch) return parents;
     const search = parentSearch.toLowerCase();
@@ -116,23 +132,26 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
     );
   }, [parents, parentSearch]);
 
+  // Populate student data when editing
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [classesData, parentsData] = await Promise.all([
-          classService.getClasses(selectedYear?.id),
-          parentService.getParents()
-        ]);
-        setClasses(classesData);
-        setParents(parentsData);
-      } catch {
-        showNotification('Failed to load classes or parents.', 'error');
-      } finally {
-        setFetchingData(false);
-      }
-    };
-    fetchData();
-  }, [selectedYear, showNotification]);
+    if (mode === 'edit' && studentData) {
+      resetStudent({
+        admissionNumber: studentData.admissionNumber || '',
+        fullName: studentData.fullName || '',
+        dateOfBirth: studentData.dateOfBirth || '',
+        gender: (studentData.gender?.toLowerCase() || 'male') as 'male' | 'female' | 'other',
+        address: studentData.address || '',
+        phone: studentData.phone || '',
+        admissionDate: studentData.admissionDate || getLocalDateString(),
+        currentClassId: studentData.currentClassId?.toString() || '',
+        parentId: studentData.parentId?.toString() || '',
+        rollNumber: studentData.rollNumber || ''
+      });
+    }
+    if (mode === 'edit' && !loadingStudent && id) {
+      setFetchingStudent(false);
+    }
+  }, [mode, studentData, loadingStudent]);
 
   useEffect(() => {
     if (mode === 'create') {
@@ -140,74 +159,38 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
     }
   }, [mode]);
 
-  useEffect(() => {
-    if (mode === 'edit' && id) {
-      const fetchStudent = async () => {
-        try {
-          const data = await studentService.getStudentById(parseInt(id));
-          resetStudent({
-            admissionNumber: data.admissionNumber || '',
-            fullName: data.fullName || '',
-            dateOfBirth: data.dateOfBirth || '',
-            gender: (data.gender?.toLowerCase() || 'male') as 'male' | 'female' | 'other',
-            address: data.address || '',
-            phone: data.phone || '',
-            admissionDate: data.admissionDate || getLocalDateString(),
-            currentClassId: data.currentClassId?.toString() || '',
-            parentId: data.parentId?.toString() || '',
-            rollNumber: data.rollNumber || ''
-          });
-        } catch {
-          showNotification('Failed to load student data.', 'error');
-          navigate(`${basePath}/students`);
-        } finally {
-          setFetchingStudent(false);
-        }
-      };
-      fetchStudent();
-    }
-  }, [mode, id, basePath, navigate]);
-
-  const handleParentSelect = (parentId: string) => {
+  const handleParentSelect = useCallback((parentId: string) => {
     if (!parentId) {
       setSelectedParent(null);
       setStudentValue('parentId', '');
       return;
     }
-    const parent = parents.find(p => p.id === parseInt(parentId));
+    const parent = parents.find(p => p.id === parseInt(parentId, 10));
     setSelectedParent(parent || null);
     setStudentValue('parentId', parentId);
     setShowNewParentForm(false);
-  };
+  }, [parents, setStudentValue]);
 
-  const handleAddNewParent = () => {
+  const handleAddNewParent = useCallback(() => {
     setShowNewParentForm(true);
     setSelectedParent(null);
     setStudentValue('parentId', '');
-  };
+  }, [setStudentValue]);
 
-  const handleCancelNewParent = () => {
+  const handleCancelNewParent = useCallback(() => {
     setShowNewParentForm(false);
-    setNewParentData({
-      fullName: '',
-      email: '',
-      password: '',
-      phone: '',
-      dateOfBirth: '',
-      gender: 'male',
-      address: ''
-    });
-  };
+    setNewParentData(defaultParentFormData);
+  }, []);
 
-  const handleNewParentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleNewParentChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setNewParentData(prev => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
-  const handleClearSelectedParent = () => {
+  const handleClearSelectedParent = useCallback(() => {
     setSelectedParent(null);
     setStudentValue('parentId', '');
-  };
+  }, [setStudentValue]);
 
   const onSubmitStudent = async (data: z.infer<typeof studentFormSchema>) => {
     setLoading(true);
@@ -216,15 +199,17 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
 
       if (showNewParentForm) {
         try {
-          const newParent = await parentService.createParent({
+          const parentPayload: CreateParentDto = {
             fullName: newParentData.fullName,
             email: newParentData.email,
             password: newParentData.password,
             phone: newParentData.phone || undefined,
             dateOfBirth: newParentData.dateOfBirth || undefined,
-            gender: newParentData.gender as any || undefined,
+            gender: newParentData.gender,
             address: newParentData.address || undefined,
-          } as any);
+          };
+          
+          const newParent = await parentService.createParent(parentPayload);
           
           finalParentId = newParent.id;
           showNotification('New parent created successfully!', 'success');
@@ -234,7 +219,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
           return;
         }
       } else {
-        finalParentId = data.parentId ? parseInt(data.parentId) : undefined;
+        finalParentId = data.parentId ? parseInt(data.parentId, 10) : undefined;
       }
 
       const studentPayload: CreateStudentDto = {
@@ -245,7 +230,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
         address: data.address || undefined,
         phone: data.phone || undefined,
         admissionDate: data.admissionDate,
-        currentClassId: data.currentClassId ? parseInt(data.currentClassId) : undefined,
+        currentClassId: data.currentClassId ? parseInt(data.currentClassId, 10) : undefined,
         parentId: finalParentId,
         rollNumber: data.rollNumber || undefined,
       };
@@ -255,7 +240,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
       if (data.currentClassId && selectedYear?.id) {
         try {
           const result = await feeService.generateFeeTransactions({
-            classId: parseInt(data.currentClassId),
+            classId: parseInt(data.currentClassId, 10),
             academicYearId: Number(selectedYear.id),
           });
           
@@ -281,8 +266,13 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
       }
       
       navigate(`${basePath}/students`);
-    } catch {
-      if (mode === 'create') {
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error;
+      
+      // Check for roll number duplicate error
+      if (errorMessage?.toLowerCase().includes('roll number') || errorMessage?.toLowerCase().includes('rollnumber')) {
+        showNotification('A student with this roll number already exists in this class', 'error');
+      } else if (mode === 'create') {
         showNotification('Failed to enroll student. Please check all fields.', 'error');
       } else {
         showNotification('Failed to update student. Please check all fields.', 'error');
@@ -394,7 +384,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
               <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Current Class</label>
               <select 
                 className="w-full bg-slate-50/50 border border-slate-100 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 transition-all appearance-none cursor-pointer disabled:opacity-50"
-                disabled={fetchingData || fetchingStudent}
+                disabled={loadingClasses || fetchingStudent}
                 {...registerStudent('currentClassId')}
               >
                 <option value="">Select a Class</option>
@@ -404,7 +394,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
                   </option>
                 ))}
               </select>
-              {fetchingData && <p className="text-[10px] text-blue-500 font-bold animate-pulse">Loading classes...</p>}
+              {loadingClasses && <p className="text-[10px] text-blue-500 font-bold animate-pulse">Loading classes...</p>}
             </div>
             <div className="space-y-2">
               <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Admission Date</label>
@@ -434,7 +424,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
           showNewParentForm={showNewParentForm}
           showParentDropdown={showParentDropdown}
           parentSearch={parentSearch}
-          fetchingData={fetchingData}
+          fetchingData={loadingClasses}
           onSearchChange={setParentSearch}
           onParentSelect={handleParentSelect}
           onAddNewParent={handleAddNewParent}
@@ -456,7 +446,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
           </button>
           <button 
             type="submit" 
-            disabled={loading || fetchingData || fetchingStudent}
+            disabled={loading || loadingClasses || fetchingStudent}
             className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-10 py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-70 disabled:active:scale-100"
           >
             {loading ? (

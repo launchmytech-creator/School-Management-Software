@@ -165,18 +165,6 @@ export const queryKeys = {
       ['exam-results', 'classes-for-comparison', { schoolId, className, yearId }] as const,
   },
 
-  // ── Reports ───────────────────────────────────────────────
-  reports: {
-    summary: (schoolId: number | null, filters?: Filters) =>
-      ['reports', 'summary', { schoolId, ...filters }] as const,
-    attendance: (schoolId: number | null, filters?: Filters) =>
-      ['reports', 'attendance', { schoolId, ...filters }] as const,
-    fees: (schoolId: number | null, filters?: Filters) =>
-      ['reports', 'fees', { schoolId, ...filters }] as const,
-    results: (schoolId: number | null, filters?: Filters) =>
-      ['reports', 'results', { schoolId, ...filters }] as const,
-  },
-
   // ── Subscription Plans ─────────────────────────────────────
   subscriptionPlans: {
     all: (schoolId: number | null) => ['subscription-plans', { schoolId }] as const,

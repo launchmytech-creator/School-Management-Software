@@ -2,9 +2,7 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
-import { useTeacherDashboard } from '../../hooks/queries';
-import { announcementService } from '../../services/announcementService';
-import { useQuery } from '@tanstack/react-query';
+import { useTeacherDashboard, useAnnouncements } from '../../hooks/queries';
 import { School, BookOpen, TrendingUp, Users, ArrowRight, Megaphone } from 'lucide-react';
 
 const timeAgo = (dateStr: string): string => {
@@ -24,11 +22,7 @@ const TeacherDashboard: React.FC = () => {
   const teacherId = user?.id as number;
   const { data, isLoading } = useTeacherDashboard(teacherId);
 
-  const { data: announcements } = useQuery({
-    queryKey: ['announcements', 'recent'],
-    queryFn: () => announcementService.getAnnouncements({ limit: 5 }),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: announcements } = useAnnouncements({ limit: 5 });
 
   const allocations = data?.allocations ?? [];
   const syllabusStats = data?.syllabusStats ?? {

@@ -14,7 +14,6 @@ export { holidayService } from './holidayService';
 export { notificationService } from './notificationService';
 export { parentService } from './parentService';
 export { promotionService } from './promotionService';
-export { reportService } from './reportService';
 export { schoolService } from './schoolService';
 export { schoolSettingsService } from './schoolSettingsService';
 export { studentService } from './studentService';

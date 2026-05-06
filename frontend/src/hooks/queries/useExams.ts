@@ -3,6 +3,18 @@ import { examService, type Exam, type CreateExamDto, type AddExamSubjectDto } fr
 import { QUERY_STALE_TIME } from '../../lib/constants';
 import { useAuth } from '../../context/AuthContext';
 import { queryKeys } from '../../lib/queryKeys';
+import { handleServiceError } from '../../lib/queryErrorHandler';
+
+const retryConfig = {
+  retry: (failureCount: number, error: unknown): boolean => {
+    if (failureCount >= 3) return false;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('404')) {
+      return false;
+    }
+    return true;
+  },
+};
 
 export interface ExamFilters {
   classId?: number;
@@ -14,8 +26,16 @@ export const useExams = (filters: ExamFilters = {}) => {
 
   return useQuery<Exam[]>({
     queryKey: queryKeys.exams.byFilters(user?.schoolId ?? null, filters),
-    queryFn: () => examService.getExams(filters.classId),
+    queryFn: async () => {
+      try {
+        return await examService.getExams(filters.classId);
+      } catch (error) {
+        handleServiceError(error, 'EXAMS', 'FETCH');
+        throw error;
+      }
+    },
     staleTime: QUERY_STALE_TIME.LISTS,
+    ...retryConfig,
   });
 };
 
@@ -24,9 +44,17 @@ export const useExamById = (id: number) => {
 
   return useQuery<Exam>({
     queryKey: ['exams', 'detail', { schoolId: user?.schoolId ?? null, id }] as const,
-    queryFn: () => examService.getExamById(id),
+    queryFn: async () => {
+      try {
+        return await examService.getExamById(id);
+      } catch (error) {
+        handleServiceError(error, 'EXAMS', 'FETCH');
+        throw error;
+      }
+    },
     staleTime: QUERY_STALE_TIME.LISTS,
     enabled: !!id,
+    ...retryConfig,
   });
 };
 
@@ -34,7 +62,14 @@ export const useCreateExam = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateExamDto) => examService.createExam(data),
+    mutationFn: async (data: CreateExamDto) => {
+      try {
+        return await examService.createExam(data);
+      } catch (error) {
+        handleServiceError(error, 'EXAMS', 'CREATE');
+        throw error;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exams'] });
     },
@@ -45,8 +80,14 @@ export const useUpdateExam = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CreateExamDto> }) =>
-      examService.updateExam(id, data),
+    mutationFn: async ({ id, data }: { id: number; data: Partial<CreateExamDto> }) => {
+      try {
+        return await examService.updateExam(id, data);
+      } catch (error) {
+        handleServiceError(error, 'EXAMS', 'UPDATE');
+        throw error;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exams'] });
     },
@@ -57,7 +98,14 @@ export const useDeleteExam = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => examService.deleteExam(id),
+    mutationFn: async (id: number) => {
+      try {
+        return await examService.deleteExam(id);
+      } catch (error) {
+        handleServiceError(error, 'EXAMS', 'DELETE');
+        throw error;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exams'] });
     },
@@ -68,8 +116,14 @@ export const useAddExamSubject = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ examId, data }: { examId: number; data: AddExamSubjectDto }) =>
-      examService.addExamSubject(examId, data),
+    mutationFn: async ({ examId, data }: { examId: number; data: AddExamSubjectDto }) => {
+      try {
+        return await examService.addExamSubject(examId, data);
+      } catch (error) {
+        handleServiceError(error, 'EXAMS', 'CREATE');
+        throw error;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exams'] });
     },

@@ -7,7 +7,7 @@ import { teacherAttendanceService } from '../../services/teacherAttendanceServic
 import { useTeachers, useTeacherAttendanceByDate } from '../../hooks/queries';
 import { Users, CheckCircle, XCircle, Clock, CalendarCheck } from 'lucide-react';
 import { formatDate, getLocalDateString } from '../../lib/utils';
-import { BaseModal } from '../../components/common/BaseModal';
+import { BaseModal } from '../../components/modals/BaseModal';
 import { Button } from '../../components/ui/button';
 
 const TeacherAttendancePage: React.FC = () => {

@@ -3,6 +3,19 @@ import { assignmentService, type Assignment, type CreateAssignmentDto, type Assi
 import { queryKeys } from '../../lib/queryKeys';
 import { QUERY_STALE_TIME } from '../../lib/constants';
 import { useAuth } from '../../context/AuthContext';
+import { handleServiceError } from '../../lib/queryErrorHandler';
+import { toast } from 'sonner';
+
+const retryConfig = {
+  retry: (failureCount: number, error: unknown): boolean => {
+    if (failureCount >= 3) return false;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('404')) {
+      return false;
+    }
+    return true;
+  },
+};
 
 export interface AssignmentFilters {
   classId?: number;
@@ -17,9 +30,17 @@ export const useAssignments = (filters: AssignmentFilters = {}, enabled = true) 
   
   return useQuery<Assignment[]>({
     queryKey: queryKeys.assignments.byFilters(user?.schoolId ?? null, filters),
-    queryFn: () => assignmentService.getAssignments(filters),
+    queryFn: async () => {
+      try {
+        return await assignmentService.getAssignments(filters);
+      } catch (error) {
+        handleServiceError(error, 'ASSIGNMENTS', 'FETCH');
+        throw error;
+      }
+    },
     staleTime: QUERY_STALE_TIME.LISTS,
     enabled,
+    ...retryConfig,
   });
 };
 
@@ -28,9 +49,17 @@ export const useAssignmentById = (id: number) => {
   
   return useQuery<Assignment>({
     queryKey: ['assignments', { schoolId: user?.schoolId ?? null, id }],
-    queryFn: () => assignmentService.getAssignmentById(id),
+    queryFn: async () => {
+      try {
+        return await assignmentService.getAssignmentById(id);
+      } catch (error) {
+        handleServiceError(error, 'ASSIGNMENTS', 'FETCH');
+        throw error;
+      }
+    },
     staleTime: QUERY_STALE_TIME.LISTS,
     enabled: !!id,
+    ...retryConfig,
   });
 };
 
@@ -38,9 +67,20 @@ export const useCreateAssignment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateAssignmentDto) => assignmentService.createAssignment(data),
+    mutationFn: async (data: CreateAssignmentDto) => {
+      try {
+        return await assignmentService.createAssignment(data);
+      } catch (error) {
+        handleServiceError(error, 'ASSIGNMENTS', 'CREATE');
+        throw error;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      toast.success('Assignment created successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create assignment');
     },
   });
 };
@@ -49,10 +89,20 @@ export const useUpdateAssignment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CreateAssignmentDto> }) =>
-      assignmentService.updateAssignment(id, data),
+    mutationFn: async ({ id, data }: { id: number; data: Partial<CreateAssignmentDto> }) => {
+      try {
+        return await assignmentService.updateAssignment(id, data);
+      } catch (error) {
+        handleServiceError(error, 'ASSIGNMENTS', 'UPDATE');
+        throw error;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      toast.success('Assignment updated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update assignment');
     },
   });
 };
@@ -61,9 +111,20 @@ export const useDeleteAssignment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => assignmentService.deleteAssignment(id),
+    mutationFn: async (id: number) => {
+      try {
+        return await assignmentService.deleteAssignment(id);
+      } catch (error) {
+        handleServiceError(error, 'ASSIGNMENTS', 'DELETE');
+        throw error;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      toast.success('Assignment deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete assignment');
     },
   });
 };
@@ -73,9 +134,17 @@ export const useAssignmentSubmissions = (assignmentId: number) => {
   
   return useQuery<AssignmentSubmission[]>({
     queryKey: ['assignments', { schoolId: user?.schoolId ?? null, assignmentId }, 'submissions'],
-    queryFn: () => assignmentService.getSubmissions(assignmentId),
+    queryFn: async () => {
+      try {
+        return await assignmentService.getSubmissions(assignmentId);
+      } catch (error) {
+        handleServiceError(error, 'ASSIGNMENTS', 'FETCH');
+        throw error;
+      }
+    },
     staleTime: QUERY_STALE_TIME.LISTS,
     enabled: !!assignmentId,
+    ...retryConfig,
   });
 };
 
@@ -83,10 +152,20 @@ export const useGradeSubmission = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ submissionId, data }: { submissionId: number; data: { marksObtained: number; feedback?: string } }) =>
-      assignmentService.gradeSubmission(submissionId, data),
+    mutationFn: async ({ submissionId, data }: { submissionId: number; data: { marksObtained: number; feedback?: string } }) => {
+      try {
+        return await assignmentService.gradeSubmission(submissionId, data);
+      } catch (error) {
+        handleServiceError(error, 'ASSIGNMENTS', 'UPDATE');
+        throw error;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      toast.success('Submission graded successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to grade submission');
     },
   });
 };

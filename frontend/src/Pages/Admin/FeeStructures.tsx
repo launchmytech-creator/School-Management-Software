@@ -2,11 +2,11 @@ import React from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import { SkeletonTable } from '../../components/common/Skeleton';
-import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { ConfirmDialog } from '../../components/modals/ConfirmDialog';
 import { useFeeStructuresPage } from '../../hooks/useFeeStructuresPage';
 import { FeeStructureStats } from '../../components/fee/FeeStructureStats';
-import { FeeStructureFormModal } from '../../components/fee/FeeStructureFormModal';
-import { FeeGenerateModal } from '../../components/fee/FeeGenerateModal';
+import { FeeStructureFormModal } from '../../components/modals/FeeStructureFormModal';
+import { FeeGenerateModal } from '../../components/modals/FeeGenerateModal';
 import { FeeStructureGroupCard } from '../../components/fee/FeeStructureGroupCard';
 import { Plus, PlayCircle } from 'lucide-react';
 

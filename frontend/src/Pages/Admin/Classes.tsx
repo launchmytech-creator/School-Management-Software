@@ -1,17 +1,16 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Users, BookOpen, Eye, Trash2 } from "lucide-react";
-import type { Class } from "../../types/class";
+import { Plus, BookOpen, Eye, Trash2, ChevronRight, Users } from "lucide-react";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useClasses } from "../../hooks/queries/useClasses";
 import { useDeleteClass } from "../../hooks/mutations/useClassMutations";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import EmptyState from "../../components/common/EmptyState";
-import CreateClassModal from "../../components/class/CreateClassModal";
+import CreateClassModal from "../../components/modals/CreateClassModal";
 import ActionMenu from "../../components/ui/ActionMenu";
 import { Button } from "../../components/ui/button";
-import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
 
 const Classes: React.FC = () => {
   const navigate = useNavigate();
@@ -28,21 +27,15 @@ const Classes: React.FC = () => {
     loading: false,
   });
 
-  const filteredClasses = classes.filter((cls) => {
+  const filteredClasses = useMemo(() => {
     const searchLow = searchTerm.toLowerCase();
-    return (
-      cls.name.toLowerCase().includes(searchLow) ||
-      (cls.section && cls.section.toLowerCase().includes(searchLow))
-    );
-  });
-
-  const groupedClasses = useMemo(() => {
-    return filteredClasses.reduce((acc, curr) => {
-      if (!acc[curr.name]) acc[curr.name] = [];
-      acc[curr.name].push(curr);
-      return acc;
-    }, {} as Record<string, Class[]>);
-  }, [filteredClasses]);
+    return classes.filter((cls) => {
+      return (
+        cls.name.toLowerCase().includes(searchLow) ||
+        (cls.section && cls.section.toLowerCase().includes(searchLow))
+      );
+    });
+  }, [classes, searchTerm]);
 
   const handleResetFilters = () => {
     setSearchTerm("");
@@ -69,7 +62,7 @@ const Classes: React.FC = () => {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-6 pb-12">
         <div className="flex items-center justify-between">
           <PageHeader
             title="Academic Classes"
@@ -115,7 +108,7 @@ const Classes: React.FC = () => {
           <div className="bg-white rounded-xl border border-slate-200 p-12 flex items-center justify-center">
             <div className="animate-pulse text-slate-400">Loading classes...</div>
           </div>
-        ) : Object.keys(groupedClasses).length === 0 ? (
+        ) : filteredClasses.length === 0 ? (
           <EmptyState
             icon={BookOpen}
             title="No classes found"
@@ -123,74 +116,45 @@ const Classes: React.FC = () => {
             action={{ label: "Reset Filters", onClick: handleResetFilters }}
           />
         ) : (
-          <div className="space-y-12">
-            {Object.entries(groupedClasses).map(([className, sections]) => (
-              <div key={className} className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-px flex-1 bg-slate-100" />
-                  <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100">
-                    {className}
-                  </h2>
-                  <div className="h-px flex-1 bg-slate-100" />
-                </div>
-
-                <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-visible">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50/50 border-b border-slate-100">
-                        <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          Section
-                        </th>
-                        <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-                          Students
-                        </th>
-                        <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-                          Default Fee
-                        </th>
-                        <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {sections.map((s) => (
-                        <tr
-                          key={s.id}
-                          className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
-                          onClick={() => navigate(`/admin/classes/${s.id}`)}
-                        >
-                          <td className="px-10 py-6">
-                            <div className="flex items-center gap-4">
-                              <div className="size-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
-                                <BookOpen className="size-5" />
-                              </div>
-                              <span className="font-display font-black text-slate-900 text-lg tracking-tight">
-                                Section {s.section || "N/A"}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-8 py-6 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <Users className="size-4 text-slate-400" />
-                              <span className="font-display font-black text-slate-900 text-lg">
-                                {s.studentCount}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-8 py-6 text-center">
-                            <span className="font-display font-black text-slate-900 text-lg">
-                              {s.defaultFeeAmount ? `₹${s.defaultFeeAmount}` : "--"}
-                            </span>
-                          </td>
-                          <td className="py-6" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-center">
-                              <ActionMenu items={getActionMenuItems(s.id)} />
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+          <div className="space-y-4">
+            {filteredClasses.map((cls) => (
+              <div
+                key={cls.id}
+                className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => navigate(`/admin/classes/${cls.id}`)}
+              >
+                <div className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
+                        <BookOpen className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-slate-900">
+                          {cls.name}
+                          {cls.section && ` - Section ${cls.section}`}
+                        </h3>
+                        <p className="text-sm text-slate-500">
+                          <span className="inline-flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5" />
+                            {cls.studentCount} students
+                          </span>
+                          {cls.defaultFeeAmount && (
+                            <span className="ml-2">• Fee: ₹{cls.defaultFeeAmount}</span>
+                          )}
+                          {cls.inchargeName && (
+                            <span className="ml-2">• Teacher: {cls.inchargeName}</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <ActionMenu items={getActionMenuItems(cls.id)} />
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-slate-400" />
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

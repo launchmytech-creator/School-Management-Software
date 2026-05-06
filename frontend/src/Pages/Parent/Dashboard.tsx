@@ -81,6 +81,9 @@ const ParentDashboard: React.FC = () => {
           <ParentHeader
             child={selectedChild}
             academicYear={selectedYear?.name}
+            children={children}
+            selectedChildId={selectedChildId}
+            onChildSelect={setSelectedChildId}
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -1,5 +1,5 @@
 import React from "react";
-import { Mail, Phone, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import ProfileInfoRow from "../common/ProfileInfoRow";
 import type { Student } from "../../types/student";
 
@@ -29,9 +29,7 @@ export const StudentProfileCard: React.FC<StudentProfileCardProps> = ({
   const isInactive = student?.status === "inactive";
 
   return (
-    <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 text-center relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-1 bg-blue-500" />
-
+    <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 text-center relative overflow-hidden">
       <div className="relative inline-block mb-6">
         <div className="size-32 rounded-full border-4 border-slate-50 overflow-hidden shadow-lg">
           <img
@@ -67,16 +65,6 @@ export const StudentProfileCard: React.FC<StudentProfileCardProps> = ({
           icon={Users}
           label="Parent"
           value={student?.parentName ?? "N/A"}
-        />
-        <ProfileInfoRow
-          icon={Phone}
-          label="Phone"
-          value={student?.phone ?? "N/A"}
-        />
-        <ProfileInfoRow
-          icon={Mail}
-          label="Email"
-          value={<>{student?.phone?.replace(/\D/g, "")}@email.com</>}
         />
       </div>
 

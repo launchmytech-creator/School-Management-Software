@@ -1,3 +1,5 @@
+export type Gender = 'male' | 'female' | 'other';
+
 export interface Parent {
   id: number;
   email: string;
@@ -17,7 +19,7 @@ export interface CreateParentDto {
   fullName: string;
   phone?: string;
   dateOfBirth?: string;
-  gender?: string;
+  gender?: Gender;
   address?: string;
 }
 

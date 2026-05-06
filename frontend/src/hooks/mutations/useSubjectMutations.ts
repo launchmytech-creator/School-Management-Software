@@ -2,6 +2,18 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { subjectService, type CreateSubjectDto, type CreateChapterDto } from '../../services/subjectService';
 import { syllabusService } from '../../services/syllabusService';
 
+export const useUpdateSubject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { name: string; code: string } }) =>
+      subjectService.updateSubject(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+    },
+  });
+};
+
 export const useCreateSubject = () => {
   const queryClient = useQueryClient();
 
@@ -34,6 +46,18 @@ export const useRemoveSubjectFromClass = () => {
   return useMutation({
     mutationFn: (classSubjectId: number) => subjectService.removeSubjectFromClass(classSubjectId),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['class-subjects'] });
+    },
+  });
+};
+
+export const useDeleteSubject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (subjectId: number) => subjectService.deleteSubject(subjectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
       queryClient.invalidateQueries({ queryKey: ['class-subjects'] });
     },
   });

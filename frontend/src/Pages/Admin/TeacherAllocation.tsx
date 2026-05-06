@@ -3,12 +3,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2, Users } from "lucide-react";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
-import { useClasses, useTeachers, useAllAllocations } from "../../hooks/queries";
+import {
+  useClasses,
+  useTeachers,
+  useAllAllocations,
+} from "../../hooks/queries";
 import { classService } from "../../services/classService";
 import { teacherService } from "../../services/teacherService";
 import { Button } from "../../components/ui/button";
-import AllocateTeacherModal from "../../components/teacher/AllocateTeacherModal";
-import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import AllocateTeacherModal from "../../components/modals/AllocateTeacherModal";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
 import ClassInchargeCard from "../../components/teacher/ClassInchargeCard";
 import { AllocationTabs } from "../../components/teacher/AllocationTabs";
 import { AllocationFilterBar } from "../../components/teacher/AllocationFilterBar";
@@ -76,7 +80,7 @@ const TeacherAllocation: React.FC = () => {
         confirmDialog.action === "remove"
           ? "Class incharge removed successfully"
           : "Class incharge assigned successfully",
-        "success"
+        "success",
       );
       queryClient.invalidateQueries({ queryKey: ["classes"] });
     } catch {
@@ -99,7 +103,7 @@ const TeacherAllocation: React.FC = () => {
     className: string,
     teacherId: number | null,
     teacherName: string | null,
-    action: "assign" | "remove"
+    action: "assign" | "remove",
   ) => {
     setConfirmDialog({
       isOpen: true,
@@ -119,7 +123,13 @@ const TeacherAllocation: React.FC = () => {
     if (teacherId === null) {
       openConfirmDialog(classId, className, null, null, "remove");
     } else {
-      openConfirmDialog(classId, className, teacherId, teacherData?.fullName || "", "assign");
+      openConfirmDialog(
+        classId,
+        className,
+        teacherId,
+        teacherData?.fullName || "",
+        "assign",
+      );
     }
   };
 
@@ -170,7 +180,7 @@ const TeacherAllocation: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 ">
           <AllocationTabs
             activeTab={activeTab}
             onChange={setActiveTab}
@@ -233,7 +243,9 @@ const TeacherAllocation: React.FC = () => {
       <AllocateTeacherModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["teacher-allocations"] })}
+        onSuccess={() =>
+          queryClient.invalidateQueries({ queryKey: ["teacher-allocations"] })
+        }
       />
 
       <ConfirmDialog
@@ -249,7 +261,11 @@ const TeacherAllocation: React.FC = () => {
           })
         }
         onConfirm={handleAssignIncharge}
-        title={confirmDialog.action === "remove" ? "Remove Class Incharge" : "Assign Class Incharge"}
+        title={
+          confirmDialog.action === "remove"
+            ? "Remove Class Incharge"
+            : "Assign Class Incharge"
+        }
         message={
           confirmDialog.action === "remove"
             ? `Are you sure you want to remove the incharge from ${confirmDialog.className}? This class will no longer be able to mark attendance.`

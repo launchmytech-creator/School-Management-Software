@@ -1,5 +1,6 @@
 import { apiRequest } from './api';
 import type { StudentFilters, Student, StudentHistory } from '../types/student';
+import type { PaginatedResponse } from '../types/common';
 
 interface BackendStudent {
   id: number;
@@ -67,18 +68,23 @@ export interface UpdateStudentDto {
 }
 
 export const studentService = {
-  getStudents: async (filters: StudentFilters = {}): Promise<Student[]> => {
+  getStudents: async (filters: StudentFilters = {}): Promise<PaginatedResponse<Student>> => {
     const queryParams = new URLSearchParams();
     if (filters.classId) queryParams.append('classId', filters.classId);
     if (filters.status) queryParams.append('status', filters.status);
     if (filters.search) queryParams.append('search', filters.search);
     if (filters.academicYear) queryParams.append('academicYear', filters.academicYear);
+    if (filters.page) queryParams.append('page', String(filters.page));
+    if (filters.limit) queryParams.append('limit', String(filters.limit));
     
     const queryString = queryParams.toString();
     const url = `/students${queryString ? `?${queryString}` : ''}`;
     
-    const data = await apiRequest<BackendStudent[]>(url);
-    return data.map(mapFromBackend);
+    const response = await apiRequest<{ data: BackendStudent[]; pagination: { page: number; limit: number; total: number; totalPages: number } | null }>(url);
+    return {
+      data: response.data.map(mapFromBackend),
+      pagination: response.pagination,
+    };
   },
 
   getStudentById: async (id: number): Promise<Student> => {

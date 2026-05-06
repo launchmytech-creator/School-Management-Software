@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import AdminLayout from "../../layouts/AdminLayout";
+import MainLayout from "../../layouts/MainLayout";
 import AdminStatCard from "../../components/dashboard/AdminStatCard";
 import type { School } from "../../types/school";
-import SchoolDetailDrawer from "../../components/superAdmin/SchoolDetailDrawer";
 import { useSchoolStats, useToggleSchoolStatus } from "../../hooks/queries/useSchools";
 import { usePagination } from "../../hooks/usePagination";
 import { Building2, CheckCircle, XCircle } from "lucide-react";
@@ -17,10 +16,7 @@ const Schools: React.FC = () => {
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [plan, setPlan] = useState(searchParams.get("plan") || "");
   const [status, setStatus] = useState(searchParams.get("status") || "");
-
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [viewingSchool, setViewingSchool] = useState<School | null>(null);
-  // console.log(viewingSchool)
+  const [subscriptionStatus, setSubscriptionStatus] = useState(searchParams.get("subscriptionStatus") || "");
   const filteredSchools = useMemo(() => {
     return schools.filter((school) => {
       const matchesSearch =
@@ -37,7 +33,11 @@ const Schools: React.FC = () => {
         (status === "true" && school.status === true) ||
         (status === "false" && school.status === false);
 
-      return matchesSearch && matchesPlan && matchesStatus;
+      const matchesSubscriptionStatus =
+        subscriptionStatus === "" ||
+        school.subscriptionStatus.toLowerCase() === subscriptionStatus.toLowerCase();
+
+      return matchesSearch && matchesPlan && matchesStatus && matchesSubscriptionStatus;
     });
   }, [schools, search, plan, status]);
 
@@ -54,9 +54,8 @@ const Schools: React.FC = () => {
     initialPage: 1,
   });
 
-  const handleOpenDrawer = (school: School) => {
-    setViewingSchool(school);
-    setIsDrawerOpen(true);
+  const handleView = (school: School) => {
+    navigate(`/super-admin/schools/${school.id}`);
   };
 
   const handleEdit = (school: School) => {
@@ -89,7 +88,7 @@ const Schools: React.FC = () => {
   };
 
   return (
-    <AdminLayout title="All Schools">
+    <MainLayout title="All Schools">
       <div className="space-y-12 pb-24">
         {/* Header with Search & Stats */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
@@ -161,11 +160,26 @@ const Schools: React.FC = () => {
               <option value="true">Active</option>
               <option value="false">Inactive</option>
             </select>
+            <select
+              value={subscriptionStatus}
+              onChange={(e) => {
+                setSubscriptionStatus(e.target.value);
+                setPage(1);
+              }}
+              className="h-12 px-5 bg-white border border-slate-200 rounded-lg outline-none focus:border-primary text-sm text-slate-600 font-bold min-w-[160px] appearance-none cursor-pointer"
+            >
+              <option value="">Subscription: All</option>
+              <option value="trial">Trial</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+              <option value="expired">Expired</option>
+            </select>
             <button
               onClick={() => {
                 setSearch("");
                 setPlan("");
                 setStatus("");
+                setSubscriptionStatus("");
                 setPage(1);
               }}
               className="text-primary text-[11px] font-black uppercase tracking-widest hover:underline px-4 cursor-pointer"
@@ -204,6 +218,9 @@ const Schools: React.FC = () => {
                   </th>
                   <th className="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
                     Status
+                  </th>
+                  <th className="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
+                    Subscription
                   </th>
                   <th className="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                     Created
@@ -270,13 +287,28 @@ const Schools: React.FC = () => {
                             </div>
                           </div>
                         </td>
+                        <td className="py-6 px-4 text-center">
+                          <span
+                            className={`text-[9px] font-black px-3 py-1.5 rounded-md tracking-wider uppercase ${
+                              school.subscriptionStatus === 'trial'
+                                ? 'bg-blue-100 text-blue-700'
+                                : school.subscriptionStatus === 'active'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : school.subscriptionStatus === 'suspended'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            {school.subscriptionStatus}
+                          </span>
+                        </td>
                         <td className="py-6 px-4 text-[11px] font-bold text-slate-400">
                           {new Date(school.createdAt).toLocaleDateString()}
                         </td>
                         <td className="py-6 px-6 text-right">
                           <div className="flex justify-end gap-3 text-slate-300">
                             <button
-                              onClick={() => handleOpenDrawer(school)}
+                              onClick={() => handleView(school)}
                               className="hover:text-primary transition-colors cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-lg">
@@ -296,14 +328,14 @@ const Schools: React.FC = () => {
                       </tr>
                     ))
                   : !loading && (
-                      <tr>
-                        <td
-                          colSpan={9}
-                          className="py-20 text-center text-slate-300 text-xs font-bold uppercase tracking-widest italic"
-                        >
-                          No matching schools found
-                        </td>
-                      </tr>
+                       <tr>
+                         <td
+                           colSpan={10}
+                           className="py-20 text-center text-slate-300 text-xs font-bold uppercase tracking-widest italic"
+                         >
+                           No matching schools found
+                         </td>
+                       </tr>
                     )}
               </tbody>
             </table>
@@ -340,17 +372,7 @@ const Schools: React.FC = () => {
           </div>
         </div>
       </div>
-
-      <SchoolDetailDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        onEdit={(school) => {
-          setIsDrawerOpen(false);
-          handleEdit(school);
-        }}
-        school={viewingSchool}
-      />
-    </AdminLayout>
+    </MainLayout>
   );
 };
 

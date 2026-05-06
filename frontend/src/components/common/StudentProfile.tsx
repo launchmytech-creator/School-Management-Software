@@ -1,10 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  Award,
-} from "lucide-react";
+import { Award } from "lucide-react";
 import PerformanceTrendChart from "../../components/charts/PerformanceTrendChart";
-import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
 import { useStudentById } from "../../hooks/queries/useStudents";
 import { useAcademicYears } from "../../hooks/queries/useAcademicYears";
 import { useHolidays } from "../../hooks/queries/useHolidays";
@@ -14,7 +12,10 @@ import { useStudentFees } from "../../hooks/queries/useFeeTransactions";
 import { type StudentResult } from "../../services/examResultService";
 import { type FeeTransaction } from "../../services/feeService";
 import { computeFeeSummary } from "../../lib/fee-utils";
-import { useActivateStudent, useDeactivateStudent } from "../../hooks/mutations";
+import {
+  useActivateStudent,
+  useDeactivateStudent,
+} from "../../hooks/mutations";
 import { useAuth } from "../../context/AuthContext";
 import type { Student } from "../../types/student";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
@@ -25,37 +26,42 @@ import { TabBar } from "../../components/ui";
 import SubjectCard from "../../components/students/SubjectCard";
 import AttendanceSummary from "../../components/students/AttendanceSummary";
 import AttendanceLegend from "../../components/students/AttendanceLegend";
-import ExamTypeFilter from "../../components/students/ExamTypeFilter";
 import FeeStatsRow from "../../components/fee/FeeStatsRow";
 import FeeTransactionCard from "../../components/fee/FeeTransactionCard";
 import { StudentProfileCard } from "../../components/students/StudentProfileCard";
-import { AttendanceCalendar } from "../../components/students/AttendanceCalendar";
+import { EXAM_TYPES } from "../../lib/subject-utils";
+import {
+  Calendar,
+  type CalendarDay as CalendarDayType,
+} from "../../components/common/Calendar";
 
 interface StudentProfileProps {
-  layout: "admin" | "accountant" | "teacher";
-}
-
-type AttendanceStatus = "present" | "absent" | "holiday" | "sunday" | "none";
-
-interface CalendarDay {
-  date: Date;
-  dateStr: string;
-  status: AttendanceStatus;
-  isCurrentMonth: boolean;
-  isToday?: boolean;
-  holiday?: { description: string } | undefined;
+  layout?: "admin" | "accountant" | "teacher";
 }
 
 const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
+  const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasFeature } = useAuth();
 
+  // Auto-detect layout from AuthContext if not provided
+  const resolvedLayout =
+    layout ??
+    (user?.role === "teacher"
+      ? "teacher"
+      : user?.role === "accountant"
+        ? "accountant"
+        : "admin");
+
   const studentId = id ? parseInt(id) : 0;
 
-  const { data: studentData, isLoading: loadingStudent } = useStudentById(studentId);
+  const { data: studentData, isLoading: loadingStudent } =
+    useStudentById(studentId);
   const { data: academicYears = [] } = useAcademicYears();
-  const [currentAcademicYear, setCurrentAcademicYear] = useState<{ name: string } | null>(null);
+  const [currentAcademicYear, setCurrentAcademicYear] = useState<{
+    name: string;
+  } | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState("Attendance");
   const [activeSubject, setActiveSubject] = useState("Mathematics");
@@ -70,23 +76,33 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   const { data: holidays = [] } = useHolidays(currentMonth.getFullYear());
 
   const monthStart = useMemo(() => {
-    return getLocalDateString(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1));
+    return getLocalDateString(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1),
+    );
   }, [currentMonth]);
 
   const monthEnd = useMemo(() => {
-    return getLocalDateString(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0));
+    return getLocalDateString(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0),
+    );
   }, [currentMonth]);
 
-  const { data: attendanceRecords = [], isLoading: loadingAttendance } = useAttendance({
-    studentId,
-    startDate: monthStart,
-    endDate: monthEnd,
-  });
+  const { data: attendanceRecords = [], isLoading: loadingAttendance } =
+    useAttendance({
+      studentId,
+      startDate: monthStart,
+      endDate: monthEnd,
+    });
 
-  const { data: marksData = [], isLoading: loadingMarks } = useStudentResults(studentId);
-  const { data: feeData = [], isLoading: loadingFee } = useStudentFees(studentId);
+  const { data: marksData = [], isLoading: loadingMarks } =
+    useStudentResults(studentId);
+  const { data: feeData = [], isLoading: loadingFee } =
+    useStudentFees(studentId);
 
-  const feeSummary = React.useMemo(() => computeFeeSummary(feeData as FeeTransaction[]), [feeData]);
+  const feeSummary = React.useMemo(
+    () => computeFeeSummary(feeData as FeeTransaction[]),
+    [feeData],
+  );
 
   const activateStudent = useActivateStudent();
   const deactivateStudent = useDeactivateStudent();
@@ -122,24 +138,24 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
     }
   };
 
-  const calendarDays = useMemo<CalendarDay[]>(() => {
+  const calendarDays = useMemo<CalendarDayType[]>(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const todayStr = getLocalDateString(new Date());
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const days: CalendarDay[] = [];
+    const days: CalendarDayType[] = [];
 
     const startPadding = (firstDay.getDay() + 6) % 7;
     for (let i = startPadding - 1; i >= 0; i--) {
       const date = new Date(year, month, -i);
       days.push({
         date,
-        dateStr: getLocalDateString(date),
-        status: "none",
         isCurrentMonth: false,
         isToday: false,
+        isSunday: false,
       });
     }
 
@@ -147,29 +163,40 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
       const date = new Date(year, month, day);
       const dateStr = getLocalDateString(date);
       const attendance = attendanceRecords.find(
-        (r) => getLocalDateString(new Date(r.attendanceDate)) === dateStr
+        (r) => getLocalDateString(new Date(r.attendanceDate)) === dateStr,
       );
       const holiday = holidays.find((h) => h.holidayDate === dateStr);
       const isSunday = date.getDay() === 0;
 
-      let status: AttendanceStatus = "none";
-      if (holiday) {
-        status = "holiday";
-      } else if (isSunday) {
-        status = "sunday";
-      } else if (attendance?.status === "present") {
-        status = "present";
-      } else if (attendance?.status === "absent") {
-        status = "absent";
+      let attendanceStatus: "present" | "absent" | "leave" | "half_day" | null =
+        null;
+      if (attendance?.status === "present" || attendance?.status === "late") {
+        attendanceStatus = "present";
+      } else if (
+        attendance?.status === "absent" ||
+        attendance?.status === "excused"
+      ) {
+        attendanceStatus = "absent";
       }
 
       days.push({
         date,
-        dateStr,
-        status,
         isCurrentMonth: true,
-        isToday: dateStr === todayStr,
-        holiday,
+        isToday: date.getTime() === today.getTime(),
+        isSunday,
+        holiday: holiday ? { description: holiday.description } : undefined,
+        attendance: holiday ? null : attendanceStatus,
+      });
+    }
+
+    const endPadding = 42 - days.length;
+    for (let i = 1; i <= endPadding; i++) {
+      const date = new Date(year, month + 1, i);
+      days.push({
+        date,
+        isCurrentMonth: false,
+        isToday: false,
+        isSunday: false,
       });
     }
 
@@ -179,27 +206,44 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
   const attendanceSummary = useMemo(() => {
     const monthDays = calendarDays.filter((d) => d.isCurrentMonth);
     const totalDays = monthDays.length;
-    const holidayCount = monthDays.filter((d) => d.status === "holiday").length;
-    const sundayCount = monthDays.filter((d) => d.status === "sunday").length;
+    const holidayCount = monthDays.filter((d) => d.holiday).length;
+    const sundayCount = monthDays.filter((d) => d.isSunday).length;
     const workingDays = totalDays - holidayCount - sundayCount;
     const presentCount = attendanceRecords.filter(
-      (r) => r.status === "present" || r.status === "late"
+      (r) => r.status === "present" || r.status === "late",
     ).length;
     const absentCount = attendanceRecords.filter(
-      (r) => r.status === "absent" || r.status === "excused"
+      (r) => r.status === "absent" || r.status === "excused",
     ).length;
-    const percentage = workingDays > 0 ? Math.round((presentCount / workingDays) * 100) : 0;
+    const percentage =
+      workingDays > 0 ? Math.round((presentCount / workingDays) * 100) : 0;
 
-    return { totalDays, holidayCount, sundayCount, workingDays, presentCount, absentCount, percentage };
+    return {
+      totalDays,
+      holidayCount,
+      sundayCount,
+      workingDays,
+      presentCount,
+      absentCount,
+      percentage,
+    };
   }, [calendarDays, attendanceRecords]);
 
   const canGoPrev = useMemo(() => {
-    const prevMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+    const prevMonth = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() - 1,
+      1,
+    );
     return prevMonth >= new Date(new Date().getFullYear() - 1, 0, 1);
   }, [currentMonth]);
 
   const canGoNext = useMemo(() => {
-    const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    const nextMonth = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() + 1,
+      1,
+    );
     const today = new Date();
     today.setDate(1);
     today.setHours(0, 0, 0, 0);
@@ -208,30 +252,45 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
 
   const prevMonth = () => {
     if (canGoPrev) {
-      setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+      setCurrentMonth(
+        new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1),
+      );
     }
   };
 
   const nextMonth = () => {
     if (canGoNext) {
-      setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+      setCurrentMonth(
+        new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1),
+      );
     }
   };
 
-  const monthYear = currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const monthYear = currentMonth.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
 
   const handleEdit = () => {
     navigate(`${basePath}/students/${id}/edit`);
   };
 
-  const filteredMarks = marksData.filter((r) => activeType === "All" || r.examType === activeType);
+  const filteredMarks = marksData.filter(
+    (r) => activeType === "All" || r.examType === activeType,
+  );
 
-  const latestBySubject = filteredMarks.reduce<Record<string, StudentResult>>((acc, r) => {
-    if (!acc[r.subjectName] || new Date(r.examDate) > new Date(acc[r.subjectName].examDate)) {
-      acc[r.subjectName] = r;
-    }
-    return acc;
-  }, {});
+  const latestBySubject = filteredMarks.reduce<Record<string, StudentResult>>(
+    (acc, r) => {
+      if (
+        !acc[r.subjectName] ||
+        new Date(r.examDate) > new Date(acc[r.subjectName].examDate)
+      ) {
+        acc[r.subjectName] = r;
+      }
+      return acc;
+    },
+    {},
+  );
   const subjectCards = Object.values(latestBySubject);
 
   const allSubjects = [...new Set(marksData.map((r) => r.subjectName))];
@@ -241,21 +300,31 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
     marksData.forEach((r) => {
       const key = r.examName;
       if (!byExam[key]) byExam[key] = { name: key };
-      byExam[key][r.subjectName] = Math.round((r.marksObtained / r.maxMarks) * 100);
+      byExam[key][r.subjectName] = Math.round(
+        (r.marksObtained / r.maxMarks) * 100,
+      );
     });
     return Object.values(byExam);
   })();
 
-  const isAdmin = layout === "admin";
-  const isAccountant = layout === "accountant";
-  const isTeacher = layout === "teacher";
-  const basePath = isAdmin ? "/admin" : isAccountant ? "/accountant" : "/teacher";
+  const isAdmin = resolvedLayout === "admin";
+  const isAccountant = resolvedLayout === "accountant";
+  const isTeacher = resolvedLayout === "teacher";
+  const basePath = isAdmin
+    ? "/admin"
+    : isAccountant
+      ? "/accountant"
+      : "/teacher";
 
   const renderContent = () => (
     <div className="space-y-6 pb-12">
       <PageHeader
         title="Student Profile"
-        subtitle={student ? `${student.fullName} - ${student.className || "N/A"}` : "View student details"}
+        subtitle={
+          student
+            ? `${student.fullName} - ${student.className || "N/A"}`
+            : "View student details"
+        }
         breadcrumb={{
           links: [
             { label: "People", href: `${basePath}/students` },
@@ -285,18 +354,20 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
             tabs={[
               { key: "Attendance", label: "Attendance" },
               { key: "Marks", label: "Marks" },
-              ...(!isTeacher ? [{ key: "Fee Status", label: "Fee Status" }] : []),
+              ...(!isTeacher
+                ? [{ key: "Fee Status", label: "Fee Status" }]
+                : []),
               { key: "Performance", label: "Performance" },
             ]}
             active={activeTab}
             onChange={setActiveTab}
           />
 
-          {activeTab === "Attendance" && (
-            hasFeature("attendance") ? (
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                <div className="xl:col-span-2 bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100">
-                  <AttendanceCalendar
+          {activeTab === "Attendance" &&
+            (hasFeature("attendance") ? (
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+                <div className="xl:col-span-3">
+                  <Calendar
                     calendarDays={calendarDays}
                     loading={loadingAttendance}
                     canGoPrev={canGoPrev}
@@ -304,13 +375,17 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                     monthYear={monthYear}
                     onPrev={prevMonth}
                     onNext={nextMonth}
+                    itemType="attendance"
+                    title="Attendance Calendar"
                   />
-                  <AttendanceLegend
-                    presentCount={attendanceSummary.presentCount}
-                    absentCount={attendanceSummary.absentCount}
-                    holidayCount={attendanceSummary.holidayCount}
-                    sundayCount={attendanceSummary.sundayCount}
-                  />
+                  <div className="mt-2">
+                    <AttendanceLegend
+                      presentCount={attendanceSummary.presentCount}
+                      absentCount={attendanceSummary.absentCount}
+                      holidayCount={attendanceSummary.holidayCount}
+                      sundayCount={attendanceSummary.sundayCount}
+                    />
+                  </div>
                 </div>
                 <AttendanceSummary
                   data={attendanceSummary}
@@ -319,11 +394,10 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
               </div>
             ) : (
               <UpgradePrompt feature="attendance" />
-            )
-          )}
+            ))}
 
           {activeTab !== "Attendance" && (
-            <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100">
+            <div className="bg-white rounded-2xl p-10 shadow-sm border border-slate-100">
               {activeTab === "Marks" && (
                 <div>
                   <div className="flex items-center gap-4 mb-6">
@@ -333,7 +407,21 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                     </h3>
                   </div>
 
-                  <ExamTypeFilter activeType={activeType} onChange={setActiveType} />
+                  <div className="flex items-center gap-2 flex-wrap mb-6">
+                    {EXAM_TYPES.map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setActiveType(type)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                          activeType === type
+                            ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
+                            : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
 
                   {loadingMarks ? (
                     <div className="flex items-center justify-center h-48">
@@ -347,19 +435,25 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <Award size={48} className="mx-auto text-slate-300 mb-4" />
+                      <Award
+                        size={48}
+                        className="mx-auto text-slate-300 mb-4"
+                      />
                       <p className="text-slate-500">No exam results found</p>
                     </div>
                   )}
                 </div>
               )}
 
-              {activeTab === "Performance" && (
-                hasFeature("analytics") ? (
+              {activeTab === "Performance" &&
+                (hasFeature("analytics") ? (
                   <div className="space-y-6">
                     {loadingMarks ? (
                       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-16 flex items-center justify-center">
-                        <LoadingSpinner size="md" message="Loading performance data..." />
+                        <LoadingSpinner
+                          size="md"
+                          message="Loading performance data..."
+                        />
                       </div>
                     ) : trendData.length > 0 ? (
                       <PerformanceTrendChart
@@ -370,8 +464,13 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                       />
                     ) : (
                       <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center">
-                        <Award size={48} className="mx-auto text-slate-300 mb-4" />
-                        <p className="text-slate-500 font-semibold">No exam results found</p>
+                        <Award
+                          size={48}
+                          className="mx-auto text-slate-300 mb-4"
+                        />
+                        <p className="text-slate-500 font-semibold">
+                          No exam results found
+                        </p>
                         <p className="text-xs text-slate-400 mt-1">
                           Results will appear here once exams are graded.
                         </p>
@@ -380,12 +479,13 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                   </div>
                 ) : (
                   <UpgradePrompt feature="analytics" />
-                )
-              )}
+                ))}
 
               {activeTab === "Fee Status" && (
                 <div>
-                  <h3 className="text-xl font-black text-slate-900 tracking-tight mb-6">Fee Status</h3>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight mb-6">
+                    Fee Status
+                  </h3>
 
                   {loadingFee ? (
                     <div className="flex items-center justify-center h-48">
@@ -420,7 +520,9 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ layout }) => {
                     </>
                   ) : (
                     <div className="text-center py-8">
-                      <p className="text-sm text-slate-500">No fee records found</p>
+                      <p className="text-sm text-slate-500">
+                        No fee records found
+                      </p>
                     </div>
                   )}
                 </div>

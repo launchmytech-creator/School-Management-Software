@@ -1,15 +1,18 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Routes, Route } from "react-router-dom";
 import RequiresActiveYear from "../components/academicYear/RequiresActiveYear";
 import UpgradePrompt from "../components/common/UpgradePrompt";
 import { useAuth } from "../context/AuthContext";
 import TeacherDashboard from "../Pages/Teacher/Dashboard";
 import TeacherSyllabus from "../Pages/Teacher/Syllabus";
-import TeacherAnnouncements from "../Pages/Teacher/Announcements";
-import TeacherLayout from "../layouts/TeacherLayout";
+import Announcements from "../components/common/Announcements";
+import MainLayout from "../layouts/MainLayout";
+import StudentClassSelector from "../components/students/StudentClassSelector";
+import StudentClassList from "../components/students/StudentClassList";
+import StudentProfile from "../components/common/StudentProfile";
 import StudentAttendance from "../components/common/StudentAttendance";
-import TeacherStudentList from "../Pages/Teacher/StudentList";
-import TeacherStudentProfile from "../Pages/Teacher/StudentProfile";
+import { useTeacherAllocations } from "../hooks/queries/useTeachers";
+import { useAcademicYear } from "../context/AcademicYearContext";
 import NotFound from "../Pages/NotFound";
 
 const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({
@@ -23,8 +26,27 @@ const PlanGuard: React.FC<{ feature: string; children: React.ReactNode }> = ({
   return <>{children}</>;
 };
 
+const TeacherStudentSelector: React.FC = () => {
+  const { user } = useAuth();
+  const { selectedYear } = useAcademicYear();
+  const { data: allocations = [] } = useTeacherAllocations(
+    user?.id as number,
+    selectedYear?.id ? Number(selectedYear?.id) : undefined,
+  );
+
+  const teacherClassIds = useMemo(() => {
+    return new Set<string>(allocations.map((a) => String(a.classId)));
+  }, [allocations]);
+
+  return (
+    <RequiresActiveYear>
+      <StudentClassSelector layout="teacher" teacherClassIds={teacherClassIds} />
+    </RequiresActiveYear>
+  );
+};
+
 const TeacherRoutes = () => (
-  <TeacherLayout>
+  <MainLayout>
     <Routes>
       <Route path="dashboard" element={<TeacherDashboard />} />
       <Route
@@ -37,11 +59,12 @@ const TeacherRoutes = () => (
           </PlanGuard>
         }
       />
+      <Route path="students" element={<TeacherStudentSelector />} />
       <Route
-        path="students"
+        path="students/class/:classId"
         element={
           <RequiresActiveYear>
-            <TeacherStudentList />
+            <StudentClassList layout="teacher" />
           </RequiresActiveYear>
         }
       />
@@ -55,11 +78,11 @@ const TeacherRoutes = () => (
           </PlanGuard>
         }
       />
-      <Route path="announcements" element={<TeacherAnnouncements />} />
-      <Route path="students/:id" element={<TeacherStudentProfile />} />
+      <Route path="announcements" element={<Announcements layout="teacher" />} />
+      <Route path="students/:id" element={<StudentProfile layout="teacher" />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
-  </TeacherLayout>
+  </MainLayout>
 );
 
 export default TeacherRoutes;

@@ -22,7 +22,7 @@ const TabBar: React.FC<TabBarProps> = ({
 }) => {
   return (
     <div
-      className={`bg-white p-2 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center gap-2 ${className}`}
+      className={`bg-white p-2 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-2 ${className}`}
     >
       {tabs.map((tab) => {
         const isActive = active === tab.key;

@@ -5,7 +5,7 @@ import {
   Search, Eye, Edit2, Trash2, 
   UserPlus, Loader2
 } from "lucide-react";
-import AccountantDetailsModal from "../../components/accountant/AccountantDetailsModal";
+import AccountantDetailsModal from "../../components/modals/AccountantDetailsModal";
 import { accountantService, type Accountant } from "../../services/accountantService";
 import { useNotification } from "../../context/NotificationContext";
 import { useAccountants } from "../../hooks/queries";
@@ -14,7 +14,7 @@ import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import StatusBadge from "../../components/common/StatusBadge";
 import EmptyState from "../../components/common/EmptyState";
-import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
 
 const AccountantList: React.FC = () => {
   const navigate = useNavigate();

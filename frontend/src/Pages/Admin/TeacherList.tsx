@@ -11,12 +11,12 @@ import {
 } from "lucide-react";
 import { useTeachers } from "../../hooks/queries/useTeachers";
 import { useNotification } from "../../context/NotificationContext";
-import CreateTeacherModal from "../../components/teacher/CreateTeacherModal";
+import CreateTeacherModal from "../../components/modals/CreateTeacherModal";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import StatusBadge from "../../components/common/StatusBadge";
 import EmptyState from "../../components/common/EmptyState";
-import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
 
 const TeacherList: React.FC = () => {
   const navigate = useNavigate();

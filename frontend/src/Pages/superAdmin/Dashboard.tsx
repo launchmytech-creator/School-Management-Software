@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminLayout from '../../layouts/AdminLayout';
+import MainLayout from '../../layouts/MainLayout';
 import AdminStatCard from '../../components/dashboard/AdminStatCard';
 import { SubscriptionPieChart } from '../../components/dashboard/DashboardCharts';
 import type { School } from '../../types/school';
@@ -35,19 +35,19 @@ const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <AdminLayout title="Super Admin Panel">
+<MainLayout title="Super Admin Panel">
         <div className="flex items-center justify-center h-[60vh]">
           <div className="flex flex-col items-center gap-4">
             <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
             <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Loading Platform Data...</p>
           </div>
         </div>
-      </AdminLayout>
+      </MainLayout>
     );
   }
 
   return (
-    <AdminLayout title="Super Admin Panel">
+    <MainLayout title="Super Admin Panel">
       <div className="space-y-10 pb-10">
         {/* Header Section */}
         <div>
@@ -234,7 +234,7 @@ const Dashboard: React.FC = () => {
         }}
         school={viewingSchool} 
       />
-    </AdminLayout>
+    </MainLayout>
   );
 };
 

@@ -1,4 +1,5 @@
 import { apiRequest } from "./api";
+import { logger } from "../lib/logger";
 
 export interface Subject {
   id: number;
@@ -175,7 +176,8 @@ export const subjectService = {
     try {
       const subject = await apiRequest<Subject>(`/subjects/${subjectId}`);
       return subject.code;
-    } catch {
+    } catch (error) {
+      logger.warn(`Failed to get subject code for subject ${subjectId}`, { subjectId, error });
       return '';
     }
   },

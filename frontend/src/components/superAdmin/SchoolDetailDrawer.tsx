@@ -103,6 +103,19 @@ const SchoolDetailDrawer: React.FC<SchoolDetailDrawerProps> = ({
                 >
                   {school.plan} PLAN
                 </span>
+                <span
+                  className={`mt-2 text-[9px] font-black px-3 py-1 rounded-md tracking-wider uppercase ${
+                    school.subscriptionStatus === 'trial'
+                      ? 'bg-blue-100 text-blue-700'
+                      : school.subscriptionStatus === 'active'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : school.subscriptionStatus === 'suspended'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  {school.subscriptionStatus}
+                </span>
               </div>
 
               {/* Info Grid */}

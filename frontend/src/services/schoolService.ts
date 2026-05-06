@@ -38,10 +38,12 @@ const normalizeSchool = (data: Record<string, unknown>): School => ({
   plan: normalizePlan((data.plan as string) || (data.subscription_plan_name as string)),
   feeTerm: mapFeeTerms(data.feeTerm as string | undefined || (data.fee_terms as number | undefined)),
   subscriptionStatus: (data.subscriptionStatus as string) || (data.subscription_status as string) || 'active',
+  subscriptionEndDate: (data.subscriptionEndDate as string) || (data.subscription_end_date as string),
   status: data.status !== undefined ? Boolean(data.status) : Boolean(data.is_active),
   createdAt: (data.createdAt as string) || (data.created_at as string) || new Date().toISOString(),
   teacherCount: Number(data.teacher_count) || 0,
   studentCount: Number(data.student_count) || 0,
+  creditBalance: Number(data.credit_balance) || 0,
 });
 
 export const schoolService = {
@@ -55,6 +57,11 @@ export const schoolService = {
     method: 'POST',
     data,
   }),
+
+  getSchoolById: async (id: string): Promise<School> => {
+    const data = await apiRequest<Record<string, unknown>>(`/schools/${id}`);
+    return normalizeSchool(data);
+  },
 
   toggleSchoolStatus: (id: string, status: boolean): Promise<School> => apiRequest<School>(`/schools/${id}`, {
     method: 'PATCH',
@@ -86,21 +93,63 @@ export const schoolService = {
       data,
     }),
 
-  // [NEW] Get all available subscription plans
-  getAvailablePlans: async (schoolId: string): Promise<SubscriptionPlan[]> => {
-    const data = await apiRequest<Record<string, unknown>[]>(`/schools/${schoolId}/available-plans`);
-    return data.map(plan => ({
-      id: plan.id as number,
-      name: normalizePlan(plan.name as string),
-      features: (plan.features as Record<string, boolean>) || {},
-      created_at: plan.created_at as string,
-    }));
-  },
-
   // [NEW] Change subscription plan
   changePlan: (schoolId: string, data: PlanChangeRequest): Promise<School> => 
     apiRequest<School>(`/schools/${schoolId}`, {
       method: 'PATCH',
       data: { subscriptionPlanId: data.targetPlanId },
+    }),
+
+  // [NEW] Purchase subscription
+  purchaseSubscription: (schoolId: string, data: { planId: number; feeTerm: string; feeTermNumeric: number; paymentMode?: string; transactionReference?: string }): Promise<{ type: string; schoolId: number; planId: number; planName: string; feeTerm: string; originalAmount?: number; creditApplied?: number; payableAmount?: number; remainingDays?: number; amount?: number; startDate: string; endDate: string; message?: string }> =>
+    apiRequest<{ type: string; schoolId: number; planId: number; planName: string; feeTerm: string; originalAmount?: number; creditApplied?: number; payableAmount?: number; remainingDays?: number; amount?: number; startDate: string; endDate: string; message?: string }>(`/schools/${schoolId}/purchase-subscription`, {
+      method: 'POST',
+      data,
+    }),
+
+  // [NEW] Calculate upgrade pricing
+  calculateUpgrade: (schoolId: string, data: { planId: number; feeTerm: string }): Promise<{
+    originalAmount: number;
+    creditApplied: number;
+    existingCreditUsed: number;
+    totalCreditApplied: number;
+    payableAmount: number;
+    remainingDays: number;
+    newPlanName: string;
+    currentPlanName: string;
+    feeTerm: string;
+    newEndDate: string;
+  }> =>
+    apiRequest<{
+      originalAmount: number;
+      creditApplied: number;
+      existingCreditUsed: number;
+      totalCreditApplied: number;
+      payableAmount: number;
+      remainingDays: number;
+      newPlanName: string;
+      currentPlanName: string;
+      feeTerm: string;
+      newEndDate: string;
+    }>(`/schools/${schoolId}/calculate-upgrade`, {
+      method: 'POST',
+      data,
+    }),
+
+  // [NEW] Get subscription payment history
+  getSubscriptionHistory: async (schoolId: string): Promise<Record<string, unknown>[]> => {
+    return apiRequest<Record<string, unknown>[]>(`/schools/${schoolId}/subscription-history`);
+  },
+
+  // [NEW] Get available plans with pricing
+  getAvailablePlansWithPricing: async (): Promise<Record<string, unknown>[]> => {
+    return apiRequest<Record<string, unknown>[]>('/schools/available-plans');
+  },
+
+  // [NEW] Update plan pricing
+  updatePlanPricing: (planId: number, data: { priceYearly?: number; priceHalfYearly?: number; priceQuarterly?: number; priceMonthly?: number }): Promise<Record<string, unknown>> =>
+    apiRequest<Record<string, unknown>>(`/schools/plans/${planId}/pricing`, {
+      method: 'PATCH',
+      data,
     }),
 };

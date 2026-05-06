@@ -13,10 +13,12 @@ export interface School {
   plan: SubscriptionTier;
   feeTerm: FeeTerm;
   subscriptionStatus: string;
+  subscriptionEndDate?: string;
   status: boolean;
   createdAt: string;
   teacherCount?: number;
   studentCount?: number;
+  creditBalance?: number;
 }
 
 export interface SchoolCreateData {

@@ -56,7 +56,7 @@ const AccountantSidebar: React.FC = () => {
   };
 
   return (
-    <aside className="w-[240px] bg-[#1E3A5F] text-white flex flex-col fixed h-full z-20 shadow-2xl">
+    <aside className="w-72 bg-[#1E3A5F] text-white flex flex-col h-screen relative z-20 shadow-2xl flex-shrink-0 overflow-hidden">
       {/* Brand */}
       <div className="p-6 pt-8 flex items-center gap-4 border-b border-white/5">
         <div className="w-10 h-10 bg-[#4A9FD4] rounded-xl flex items-center justify-center shadow-lg shadow-[#4A9FD4]/20 flex-shrink-0">
@@ -73,7 +73,7 @@ const AccountantSidebar: React.FC = () => {
       </div>
 
       {/* Nav Items */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-1">
+      <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-1 custom-scrollbar">
         {navItems.map((item) => (
           <NavLink
             key={item.name}

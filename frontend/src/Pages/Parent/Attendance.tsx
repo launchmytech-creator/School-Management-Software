@@ -8,7 +8,7 @@ import {
   useSchoolOpenDays,
 } from "../../hooks/queries";
 import type { LinkedStudent } from "../../types/parent";
-import { AttendanceCalendar } from "../../components/students/AttendanceCalendar";
+import { Calendar, type CalendarDay as CalendarDayType } from "../../components/common/Calendar";
 import AttendanceSummary from "../../components/students/AttendanceSummary";
 import AttendanceLegend from "../../components/students/AttendanceLegend";
 import { getLocalDateString } from "../../lib/utils";
@@ -17,16 +17,6 @@ import PageHeader from "../../components/common/PageHeader";
 const EMPTY_CHILDREN: LinkedStudent[] = [];
 
 const today = new Date();
-const todayStr = getLocalDateString(today);
-
-interface CalendarDay {
-  date: Date;
-  dateStr: string;
-  status: "present" | "absent" | "holiday" | "sunday" | "none";
-  isCurrentMonth: boolean;
-  isToday?: boolean;
-  holiday?: { description: string } | undefined;
-}
 
 /** Parent Attendance Page
  * 
@@ -84,23 +74,24 @@ const ParentAttendance: React.FC = () => {
   const monthPct =
     monthOpenDays > 0 ? Math.round((monthPresent / monthOpenDays) * 100) : 0;
 
-  const calendarDays = useMemo<CalendarDay[]>(() => {
+  const calendarDays = useMemo<CalendarDayType[]>(() => {
     const year = viewYear;
     const month = viewMonth;
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
 
-    const days: CalendarDay[] = [];
+    const days: CalendarDayType[] = [];
 
     const startPadding = (firstDay.getDay() + 6) % 7;
     for (let i = startPadding - 1; i >= 0; i--) {
       const date = new Date(year, month, -i);
       days.push({
         date,
-        dateStr: getLocalDateString(date),
-        status: "none",
         isCurrentMonth: false,
         isToday: false,
+        isSunday: false,
       });
     }
 
@@ -115,25 +106,33 @@ const ParentAttendance: React.FC = () => {
       const holiday = holidays.find((h) => h.holidayDate === dateStr);
       const isSunday = date.getDay() === 0;
 
-      let dayStatus: "present" | "absent" | "holiday" | "sunday" | "none" =
-        "none";
+      let attendanceStatus: "present" | "absent" | "leave" | "half_day" | null = null;
       if (holiday) {
-        dayStatus = "holiday";
-      } else if (isSunday) {
-        dayStatus = "sunday";
+        attendanceStatus = null;
       } else if (status === "present") {
-        dayStatus = "present";
+        attendanceStatus = "present";
       } else if (status === "absent" || status === "late") {
-        dayStatus = "absent";
+        attendanceStatus = "absent";
       }
 
       days.push({
         date,
-        dateStr,
-        status: dayStatus,
         isCurrentMonth: true,
-        isToday: dateStr === todayStr,
+        isToday: date.getTime() === todayDate.getTime(),
+        isSunday,
         holiday: holiday ? { description: holiday.description } : undefined,
+        attendance: attendanceStatus,
+      });
+    }
+
+    const endPadding = 42 - days.length;
+    for (let i = 1; i <= endPadding; i++) {
+      const date = new Date(year, month + 1, i);
+      days.push({
+        date,
+        isCurrentMonth: false,
+        isToday: false,
+        isSunday: false,
       });
     }
 
@@ -200,9 +199,9 @@ const ParentAttendance: React.FC = () => {
 }}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <AttendanceCalendar
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+        <div className="xl:col-span-3">
+          <Calendar
             calendarDays={calendarDays}
             loading={false}
             canGoPrev={canGoPrev}
@@ -210,16 +209,18 @@ const ParentAttendance: React.FC = () => {
             monthYear={monthYear}
             onPrev={prevMonth}
             onNext={nextMonth}
+            itemType="attendance"
+            title="Attendance Calendar"
           />
         </div>
         <AttendanceSummary
           data={{
             totalDays: calendarDays.filter((d) => d.isCurrentMonth).length,
             holidayCount: calendarDays.filter(
-              (d) => d.status === "holiday" && d.isCurrentMonth,
+              (d) => d.holiday && d.isCurrentMonth,
             ).length,
             sundayCount: calendarDays.filter(
-              (d) => d.status === "sunday" && d.isCurrentMonth,
+              (d) => d.isSunday && d.isCurrentMonth,
             ).length,
             workingDays: monthOpenDays,
             presentCount: monthPresent,
@@ -227,6 +228,7 @@ const ParentAttendance: React.FC = () => {
             percentage: monthPct,
           }}
           studentName={selected?.fullName ?? ""}
+          size="lg"
         />
       </div>
 
@@ -234,11 +236,11 @@ const ParentAttendance: React.FC = () => {
         presentCount={monthPresent}
         absentCount={monthAbsent}
         holidayCount={
-          calendarDays.filter((d) => d.status === "holiday" && d.isCurrentMonth)
+          calendarDays.filter((d) => d.holiday && d.isCurrentMonth)
             .length
         }
         sundayCount={
-          calendarDays.filter((d) => d.status === "sunday" && d.isCurrentMonth)
+          calendarDays.filter((d) => d.isSunday && d.isCurrentMonth)
             .length
         }
         showLate={true}

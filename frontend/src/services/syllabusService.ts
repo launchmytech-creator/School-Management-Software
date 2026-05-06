@@ -1,6 +1,7 @@
 import { apiRequest } from './api';
 import { subjectService } from './subjectService';
 import { classService } from './classService';
+import { logger } from '../lib/logger';
 
 export interface SyllabusCompletion {
   id: number;
@@ -328,7 +329,8 @@ export const syllabusService = {
     const classProgressPromises = classesToProcess.map(async (cls) => {
       try {
         return await getClassProgressByIdInternal(Number(cls.id), cls.name, cls.section || undefined);
-      } catch {
+      } catch (error) {
+        logger.warn(`Failed to get progress for class ${cls.name}`, { classId: cls.id, error });
         return null;
       }
     });
@@ -381,7 +383,8 @@ async function getClassProgressByIdInternal(
     try {
       const progress = await getClassSubjectProgressInternal(cs.id, cs.subjectId, cs.subjectName);
       return progress;
-    } catch {
+    } catch (error) {
+      logger.warn(`Failed to get progress for subject ${cs.subjectName}`, { classSubjectId: cs.id, error });
       return null;
     }
   });

@@ -3,6 +3,18 @@ import { attendanceService, type AttendanceRecord, type MarkAttendanceDto } from
 import { queryKeys } from '../../lib/queryKeys';
 import { QUERY_STALE_TIME } from '../../lib/constants';
 import { useAuth } from '../../context/AuthContext';
+import { handleServiceError } from '../../lib/queryErrorHandler';
+
+const retryConfig = {
+  retry: (failureCount: number, error: unknown): boolean => {
+    if (failureCount >= 3) return false;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('404')) {
+      return false;
+    }
+    return true;
+  },
+};
 
 interface AttendanceFilters {
   classId?: number;
@@ -17,8 +29,16 @@ export const useAttendance = (params: AttendanceFilters = {}) => {
   
   return useQuery<AttendanceRecord[]>({
     queryKey: queryKeys.attendance.byFilters(user?.schoolId ?? null, params),
-    queryFn: () => attendanceService.getAttendance(params),
+    queryFn: async () => {
+      try {
+        return await attendanceService.getAttendance(params);
+      } catch (error) {
+        handleServiceError(error, 'ATTENDANCE', 'FETCH');
+        throw error;
+      }
+    },
     staleTime: QUERY_STALE_TIME.OPERATIONAL,
+    ...retryConfig,
   });
 };
 
@@ -27,9 +47,17 @@ export const useClassAttendance = (classId: number, date: string) => {
   
   return useQuery<AttendanceRecord[]>({
     queryKey: ['attendance', 'class', { schoolId: user?.schoolId ?? null, classId, date }],
-    queryFn: () => attendanceService.getClassAttendanceByDate(classId, date),
+    queryFn: async () => {
+      try {
+        return await attendanceService.getClassAttendanceByDate(classId, date);
+      } catch (error) {
+        handleServiceError(error, 'ATTENDANCE', 'FETCH');
+        throw error;
+      }
+    },
     staleTime: QUERY_STALE_TIME.OPERATIONAL,
     enabled: !!classId && !!date,
+    ...retryConfig,
   });
 };
 
@@ -38,7 +66,14 @@ export const useMarkAttendance = () => {
   const { user } = useAuth();
   
   return useMutation({
-    mutationFn: (data: MarkAttendanceDto) => attendanceService.markAttendance(data),
+    mutationFn: async (data: MarkAttendanceDto) => {
+      try {
+        return await attendanceService.markAttendance(data);
+      } catch (error) {
+        handleServiceError(error, 'ATTENDANCE', 'SAVE');
+        throw error;
+      }
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ 
         queryKey: ['attendance', 'class', { schoolId: user?.schoolId ?? null, classId: variables.classId, date: variables.attendanceDate }] 
