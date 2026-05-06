@@ -17,15 +17,25 @@ class SuperAdminService {
           COALESCE(SUM(CASE WHEN subscription_plan_id = 3 THEN 1 ELSE 0 END), 0) as "businessPlans"
         FROM schools
       `,
+      subscriptionStatus: `
+        SELECT 
+          COALESCE(SUM(CASE WHEN subscription_status = 'trial' THEN 1 ELSE 0 END), 0) as "trialSchools",
+          COALESCE(SUM(CASE WHEN subscription_status = 'active' THEN 1 ELSE 0 END), 0) as "activeSubscriptionSchools",
+          COALESCE(SUM(CASE WHEN subscription_status = 'suspended' THEN 1 ELSE 0 END), 0) as "suspendedSchools",
+          COALESCE(SUM(CASE WHEN subscription_status = 'expired' THEN 1 ELSE 0 END), 0) as "expiredSchools"
+        FROM schools
+      `,
     };
 
-    const [countsResult, plansResult] = await Promise.all([
+    const [countsResult, plansResult, subscriptionStatusResult] = await Promise.all([
       pool.query(queries.counts),
       pool.query(queries.plans),
+      pool.query(queries.subscriptionStatus),
     ]);
 
     const counts = countsResult.rows[0];
     const plans = plansResult.rows[0];
+    const subscriptionStatus = subscriptionStatusResult.rows[0];
 
     return {
       totalSchools: parseInt(counts.totalSchools),
@@ -34,6 +44,10 @@ class SuperAdminService {
       basicPlans: parseInt(plans.basicPlans),
       premiumPlans: parseInt(plans.premiumPlans),
       businessPlans: parseInt(plans.businessPlans),
+      trialSchools: parseInt(subscriptionStatus.trialSchools),
+      activeSubscriptionSchools: parseInt(subscriptionStatus.activeSubscriptionSchools),
+      suspendedSchools: parseInt(subscriptionStatus.suspendedSchools),
+      expiredSchools: parseInt(subscriptionStatus.expiredSchools),
     };
   }
 

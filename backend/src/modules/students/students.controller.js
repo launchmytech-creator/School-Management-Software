@@ -18,16 +18,17 @@ class StudentsController {
   async getStudents(req, res, next) {
     try {
       const schoolId = req.user.schoolId;
-      const { classId, status } = req.query;
+      const { classId, status, search, page, limit } = req.query;
 
-      const students = await studentsService.getStudentsBySchool(schoolId, {
+      const result = await studentsService.getStudentsBySchool(schoolId, {
         classId,
         status,
-      });
+        search,
+      }, { page, limit });
 
       return ApiResponse.success(
         res,
-        students,
+        result,
         "Students retrieved successfully",
       );
     } catch (error) {

@@ -2,6 +2,8 @@ const app = require("./app");
 const config = require("./config");
 const pool = require("./database/connection");
 const logger = require("./utils/logger");
+const { startSubscriptionExpiryCron } = require("./scripts/subscription-expiry-cron");
+const { startSubscriptionExpiryNotifier } = require("./scripts/subscription-expiry-notifier");
 
 const startServer = async () => {
   try {
@@ -16,6 +18,8 @@ const startServer = async () => {
       logger.info(
         `API Base URL: http://localhost:${config.port}${config.api.prefix}`,
       );
+      startSubscriptionExpiryCron();
+      startSubscriptionExpiryNotifier();
     });
   } catch (error) {
     logger.error("Failed to start server", {

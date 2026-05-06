@@ -20,10 +20,12 @@ class FeeTransactionsController {
 
   async getFeeTransactions(req, res, next) {
     try {
+      const { studentId, classId, academicYearId, status, search, page, limit } = req.query;
       const transactions =
         await feeTransactionsService.getFeeTransactionsBySchool(
           req.user.schoolId,
-          req.query,
+          { studentId, classId, academicYearId, status, search },
+          { page, limit },
         );
       return ApiResponse.success(res, transactions);
     } catch (error) {
@@ -33,9 +35,11 @@ class FeeTransactionsController {
 
   async getFeeDefaulters(req, res, next) {
     try {
+      const { classId, academicYearId, search, page, limit } = req.query;
       const defaulters = await feeTransactionsService.getFeeDefaulters(
         req.user.schoolId,
-        req.query,
+        { classId, academicYearId, search },
+        { page, limit },
       );
       return ApiResponse.success(res, defaulters);
     } catch (error) {

@@ -21,9 +21,11 @@ class ExamResultsController {
 
   async getResults(req, res, next) {
     try {
+      const { studentId, examId, classId, subjectId, academicYearId, search, page, limit } = req.query;
       const results = await examResultsService.getResultsBySchool(
         req.user.schoolId,
-        req.query,
+        { studentId, examId, classId, subjectId, academicYearId, search },
+        { page, limit },
       );
       return ApiResponse.success(res, results);
     } catch (error) {

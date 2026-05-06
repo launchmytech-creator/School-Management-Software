@@ -43,6 +43,18 @@ class SyllabusCompletionController {
     }
   }
 
+  async getClassProgress(req, res, next) {
+    try {
+      const progress = await syllabusCompletionService.getClassProgress(
+        req.params.classId,
+        req.user.schoolId,
+      );
+      return ApiResponse.success(res, progress);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getSubjectChapters(req, res, next) {
     try {
       const chapters = await syllabusCompletionService.getSubjectChapters(

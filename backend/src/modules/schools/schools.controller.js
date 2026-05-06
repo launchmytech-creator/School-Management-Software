@@ -77,11 +77,55 @@ class SchoolsController {
     }
   }
 
-  // [NEW] Get all available subscription plans
-  async getAvailablePlans(req, res, next) {
+  // [NEW] Purchase subscription
+  async purchaseSubscription(req, res, next) {
     try {
-      const plans = await schoolsService.getAvailablePlans();
-      return ApiResponse.success(res, plans, "Available plans retrieved successfully");
+      const { id } = req.params;
+      const result = await schoolsService.purchaseSubscription(parseInt(id, 10), req.body);
+      return ApiResponse.success(res, result, "Subscription purchased successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // [NEW] Get subscription payment history
+  async getSubscriptionHistory(req, res, next) {
+    try {
+      const { id } = req.params;
+      const history = await schoolsService.getSchoolSubscriptionHistory(parseInt(id, 10));
+      return ApiResponse.success(res, history, "Subscription history retrieved successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // [NEW] Get available plans with pricing
+  async getAvailablePlansWithPricing(req, res, next) {
+    try {
+      const plans = await schoolsService.getAvailablePlansWithPricing();
+      return ApiResponse.success(res, plans, "Available plans with pricing retrieved successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // [NEW] Calculate upgrade pricing
+  async calculateUpgrade(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await schoolsService.calculateUpgrade(parseInt(id, 10), req.body);
+      return ApiResponse.success(res, result, "Upgrade pricing calculated successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // [NEW] Update plan pricing
+  async updatePlanPricing(req, res, next) {
+    try {
+      const { planId } = req.params;
+      const result = await schoolsService.updatePlanPricing(parseInt(planId, 10), req.body);
+      return ApiResponse.success(res, result, "Plan pricing updated successfully");
     } catch (error) {
       next(error);
     }

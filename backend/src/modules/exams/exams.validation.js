@@ -1,4 +1,5 @@
 const { body } = require("express-validator");
+const { EXAM_TYPES } = require("../../constants");
 
 const createExamValidation = [
   body("classId")
@@ -21,8 +22,8 @@ const createExamValidation = [
 
   body("examType")
     .optional()
-    .isLength({ max: 50 })
-    .withMessage("Exam type must be at most 50 characters"),
+    .isIn(EXAM_TYPES)
+    .withMessage(`Exam type must be one of: ${EXAM_TYPES.join(", ")}`),
 
   body("startDate")
     .notEmpty()
@@ -70,8 +71,8 @@ const updateExamValidation = [
 
   body("examType")
     .optional()
-    .isLength({ max: 50 })
-    .withMessage("Exam type must be at most 50 characters"),
+    .isIn(EXAM_TYPES)
+    .withMessage(`Exam type must be one of: ${EXAM_TYPES.join(", ")}`),
 
   body("startDate")
     .optional()

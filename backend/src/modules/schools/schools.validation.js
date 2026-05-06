@@ -20,6 +20,11 @@ const createSchoolValidation = [
       "Subscription plan ID must be 1 (Basic), 2 (Premium), or 3 (Business)",
     ),
 
+  body("school.feeTerms")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Fee terms must be a positive integer"),
+
 
   body("school.contactEmail")
     .isEmail()
@@ -95,8 +100,56 @@ const updateSchoolAdminValidation = [
     .withMessage("Password must be at least 8 characters"),
 ];
 
+const purchaseSubscriptionValidation = [
+  body("planId")
+    .isInt({ min: 1, max: 3 })
+    .withMessage("Valid plan ID is required (1-3)"),
+
+  body("feeTerm")
+    .isIn(["yearly", "half-yearly", "quarterly", "monthly"])
+    .withMessage("Fee term must be yearly, half-yearly, quarterly, or monthly"),
+
+  body("feeTermNumeric")
+    .isIn([1, 2, 4, 12])
+    .withMessage("Numeric fee term must be 1, 2, 4, or 12"),
+
+  body("paymentMode")
+    .optional()
+    .isString()
+    .withMessage("Payment mode must be a string"),
+
+  body("transactionReference")
+    .optional()
+    .isString()
+    .withMessage("Transaction reference must be a string"),
+];
+
+const updatePricingValidation = [
+  body("priceYearly")
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Yearly price must be a non-negative number"),
+
+  body("priceHalfYearly")
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Half-yearly price must be a non-negative number"),
+
+  body("priceQuarterly")
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Quarterly price must be a non-negative number"),
+
+  body("priceMonthly")
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Monthly price must be a non-negative number"),
+];
+
 module.exports = {
   createSchoolValidation,
   updateSchoolValidation,
   updateSchoolAdminValidation,
+  purchaseSubscriptionValidation,
+  updatePricingValidation,
 };

@@ -102,6 +102,23 @@ const templates = {
   },
 
   /**
+   * Subscription expiry warning
+   */
+  subscriptionExpiry({ recipientName, schoolName, expiryDate, daysLeft }) {
+    const urgencyColor = daysLeft <= 1 ? '#d93025' : daysLeft <= 7 ? '#e37400' : '#1a73e8';
+    const urgencyBg = daysLeft <= 1 ? '#fce8e6' : daysLeft <= 7 ? '#fef7e0' : '#f0f7ff';
+    const body = `
+      <p>Dear <strong>${recipientName}</strong>,</p>
+      <p>This is a reminder that your school subscription is approaching its expiry date.</p>
+      <div class="highlight" style="background:${urgencyBg};border-left-color:${urgencyColor}">
+        <strong style="color:${urgencyColor}">Expires on:</strong> ${expiryDate}<br/>
+        <strong style="color:${urgencyColor}">Days remaining:</strong> ${daysLeft}
+      </div>
+      <p>Please contact the administrator or renew your subscription to avoid any service interruption.</p>`;
+    return baseLayout("Subscription Expiry Warning", body, schoolName);
+  },
+
+  /**
    * Welcome / account created
    */
   welcome({ recipientName, email, tempPassword, role, schoolName }) {
@@ -115,6 +132,17 @@ const templates = {
       </div>
       <p>Please log in and change your password immediately.</p>`;
     return baseLayout("Welcome to " + schoolName, body, schoolName);
+  },
+
+  passwordReset({ recipientName, resetUrl, schoolName }) {
+    const body = `
+      <p>Dear <strong>${recipientName}</strong>,</p>
+      <p>We received a request to reset your password. Click the button below to set a new password:</p>
+      <p style="text-align:center;margin-top:24px;">
+        <a href="${resetUrl}" class="btn" style="color:#ffffff;">Reset Password</a>
+      </p>
+      <p style="font-size:13px;color:#888;margin-top:20px;">This link will expire in 1 hour. If you did not request this, please ignore this email.</p>`;
+    return baseLayout("Password Reset Request", body, schoolName);
   },
 };
 

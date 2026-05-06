@@ -145,6 +145,43 @@ class SyllabusCompletionService {
     return result.rows[0];
   }
 
+  async getClassProgress(classId, schoolId) {
+    const query = `
+      SELECT 
+        cs.id as class_subject_id,
+        s.id as subject_id,
+        s.name as subject_name,
+        COUNT(DISTINCT ch.id) as total_chapters,
+        COUNT(DISTINCT ch.id) FILTER (WHERE sc.status = 'completed') as completed_chapters,
+        COUNT(DISTINCT ch.id) FILTER (WHERE sc.status = 'in_progress') as in_progress_chapters,
+        COUNT(DISTINCT ch.id) FILTER (WHERE sc.status IS NULL OR sc.status = 'pending') as pending_chapters,
+        ROUND(
+          (COUNT(DISTINCT ch.id) FILTER (WHERE sc.status = 'completed')::DECIMAL / 
+          NULLIF(COUNT(DISTINCT ch.id)::DECIMAL, 0)) * 100, 
+          2
+        ) as completion_percentage
+      FROM class_subjects cs
+      JOIN subjects s ON cs.subject_id = s.id
+      LEFT JOIN chapters ch ON ch.subject_id = s.id
+      LEFT JOIN syllabus_completion sc ON sc.chapter_id = ch.id AND sc.class_subject_id = cs.id
+      WHERE cs.class_id = $1 AND cs.school_id = $2
+      GROUP BY cs.id, s.id, s.name
+      ORDER BY s.name
+    `;
+
+    const result = await pool.query(query, [classId, schoolId]);
+    return result.rows.map(row => ({
+      classSubjectId: parseInt(row.class_subject_id, 10),
+      subjectId: parseInt(row.subject_id, 10),
+      subjectName: row.subject_name,
+      totalChapters: parseInt(row.total_chapters, 10) || 0,
+      completedChapters: parseInt(row.completed_chapters, 10) || 0,
+      inProgressChapters: parseInt(row.in_progress_chapters, 10) || 0,
+      pendingChapters: parseInt(row.pending_chapters, 10) || 0,
+      progressPercentage: parseFloat(row.completion_percentage) || 0,
+    }));
+  }
+
   async getSubjectChapters(classSubjectId, schoolId) {
     const query = `
       SELECT ch.*, 

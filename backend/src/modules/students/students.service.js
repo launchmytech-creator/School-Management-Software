@@ -1,6 +1,7 @@
 const pool = require("../../database/connection");
 const { ERROR_CODES, ERROR_MESSAGES } = require("../../constants");
 const AppError = require("../../utils/AppError");
+const { buildPaginationQuery, formatPaginationResult } = require("../../utils/pagination");
 
 class StudentsService {
   async createStudent(studentData, schoolId) {
@@ -32,7 +33,7 @@ class StudentsService {
     return result.rows[0];
   }
 
-  async getStudentsBySchool(schoolId, filters = {}) {
+  async getStudentsBySchool(schoolId, filters = {}, pagination = {}) {
     let query = `
       SELECT s.*, c.name as class_name, c.section as class_section,
              u.full_name as parent_name, u.phone as parent_phone
@@ -55,10 +56,29 @@ class StudentsService {
       params.push(filters.status);
     }
 
+    if (filters.search) {
+      const searchTerm = `%${filters.search}%`;
+      query += ` AND (LOWER(s.full_name) LIKE LOWER($${paramCount}) OR LOWER(s.admission_number) LIKE LOWER($${paramCount}) OR LOWER(s.phone) LIKE LOWER($${paramCount}))`;
+      params.push(searchTerm);
+      paramCount++;
+    }
+
     query += ` ORDER BY s.full_name`;
 
+    if (pagination.page || pagination.limit) {
+      const { query: paginatedQuery, params: paginatedParams, countQuery, countParams, page, limit } =
+        buildPaginationQuery(query, params, pagination);
+
+      const [rowsResult, countResult] = await Promise.all([
+        pool.query(paginatedQuery, paginatedParams),
+        pool.query(countQuery, countParams),
+      ]);
+
+      return formatPaginationResult(rowsResult.rows, countResult.rows, page, limit);
+    }
+
     const result = await pool.query(query, params);
-    return result.rows;
+    return { data: result.rows, pagination: null };
   }
 
   async getStudentById(studentId, schoolId) {

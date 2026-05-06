@@ -14,7 +14,7 @@ const poolConfig = {
   password: config.database.password,
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000, // Increased to 10 seconds
+  connectionTimeoutMillis: 30000, // Increased to 10 seconds
 };
 
 // Add SSL configuration if enabled

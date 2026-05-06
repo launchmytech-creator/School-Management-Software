@@ -37,6 +37,8 @@ const ERROR_CODES = {
   AUTH_TOKEN_INVALID: "AUTH_003",
   AUTH_TOKEN_EXPIRED: "AUTH_004",
   AUTH_UNAUTHORIZED: "AUTH_005",
+  AUTH_RESET_TOKEN_INVALID: "AUTH_006",
+  AUTH_RESET_TOKEN_EXPIRED: "AUTH_007",
 
   // User Errors
   USER_NOT_FOUND: "USER_001",
@@ -51,6 +53,8 @@ const ERROR_CODES = {
   SCHOOL_NOT_FOUND: "SCHOOL_001",
   SCHOOL_INACTIVE: "SCHOOL_002",
   SCHOOL_SUBSCRIPTION_EXPIRED: "SCHOOL_003",
+  SCHOOL_SUBSCRIPTION_SUSPENDED: "SCHOOL_004",
+  SCHOOL_SUBSCRIPTION_TRIAL_EXPIRED: "SCHOOL_005",
 
   // Validation Errors
   VALIDATION_ERROR: "VAL_001",
@@ -76,6 +80,8 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.AUTH_TOKEN_EXPIRED]: "Authentication token has expired",
   [ERROR_CODES.AUTH_UNAUTHORIZED]:
     "You are not authorized to perform this action",
+  [ERROR_CODES.AUTH_RESET_TOKEN_INVALID]: "Invalid reset token",
+  [ERROR_CODES.AUTH_RESET_TOKEN_EXPIRED]: "Reset token has expired",
 
   [ERROR_CODES.USER_NOT_FOUND]: "User not found",
   [ERROR_CODES.USER_ALREADY_EXISTS]: "User with this email already exists",
@@ -84,6 +90,8 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.SCHOOL_NOT_FOUND]: "School not found",
   [ERROR_CODES.SCHOOL_INACTIVE]: "School is inactive",
   [ERROR_CODES.SCHOOL_SUBSCRIPTION_EXPIRED]: "School subscription has expired",
+  [ERROR_CODES.SCHOOL_SUBSCRIPTION_SUSPENDED]: "School subscription is suspended. Please contact support.",
+  [ERROR_CODES.SCHOOL_SUBSCRIPTION_TRIAL_EXPIRED]: "School trial period has expired. Please purchase a subscription.",
 
   [ERROR_CODES.SUBJECT_ALREADY_EXISTS]: "Subject already exists",
   [ERROR_CODES.SUBJECT_NOT_FOUND]: "Subject not found",
@@ -103,6 +111,14 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.SUNDAY_ATTENDANCE_NOT_ALLOWED]: "Attendance cannot be marked on Sundays",
 };
 
+const EXAM_TYPES = [
+  "Class Test",
+  "Unit Test",
+  "Half Yearly",
+  "Annual",
+  "Final",
+];
+
 module.exports = {
   ROLES,
   USER_STATUS,
@@ -110,4 +126,5 @@ module.exports = {
   HTTP_STATUS,
   ERROR_CODES,
   ERROR_MESSAGES,
+  EXAM_TYPES,
 };

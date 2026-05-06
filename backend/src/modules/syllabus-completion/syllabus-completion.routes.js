@@ -31,6 +31,12 @@ router.get(
 );
 
 router.get(
+  "/class/:classId/progress",
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
+  syllabusCompletionController.getClassProgress,
+);
+
+router.get(
   "/class-subject/:classSubjectId/chapters",
   authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER, ROLES.PARENT),
   syllabusCompletionController.getSubjectChapters,

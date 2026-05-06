@@ -16,6 +16,7 @@ const config = {
   jwt: {
     secret: process.env.JWT_SECRET || "your_jwt_secret_key",
     expiresIn: process.env.JWT_EXPIRES_IN || "24h",
+    resetTokenExpiresIn: process.env.JWT_RESET_TOKEN_EXPIRES_IN || "1h",
   },
 
   superAdmin: {

@@ -44,6 +44,34 @@ class AuthController {
       next(error);
     }
   }
+
+  async forgotPassword(req, res, next) {
+    try {
+      const { email } = req.body;
+
+      const result = await authService.forgotPassword(email);
+
+      return ApiResponse.success(
+        res,
+        result,
+        "If an account exists, a reset link has been sent",
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resetPassword(req, res, next) {
+    try {
+      const { token, newPassword } = req.body;
+
+      const result = await authService.resetPassword(token, newPassword);
+
+      return ApiResponse.success(res, result, "Password reset successful");
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new AuthController();

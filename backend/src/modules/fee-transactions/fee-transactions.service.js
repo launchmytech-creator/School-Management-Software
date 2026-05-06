@@ -1,6 +1,7 @@
 const pool = require("../../database/connection");
 const { ERROR_CODES } = require("../../constants");
 const AppError = require("../../utils/AppError");
+const { buildPaginationQuery, formatPaginationResult } = require("../../utils/pagination");
 
 class FeeTransactionsService {
   async generateFeeTransactions(data, schoolId) {
@@ -112,7 +113,7 @@ class FeeTransactionsService {
     return `${y}-${m}-${d}`;
   }
 
-  async getFeeTransactionsBySchool(schoolId, filters = {}) {
+  async getFeeTransactionsBySchool(schoolId, filters = {}, pagination = {}) {
     let query = `
       SELECT ft.*,
              s.full_name as student_name, s.admission_number,
@@ -134,12 +135,32 @@ class FeeTransactionsService {
     if (filters.academicYearId) { query += " AND ft.academic_year_id = $" + p++; params.push(filters.academicYearId); }
     if (filters.status) { query += " AND ft.status = $" + p++; params.push(filters.status); }
 
+    if (filters.search) {
+      const searchTerm = `%${filters.search}%`;
+      query += ` AND (LOWER(s.full_name) LIKE LOWER($${p}) OR LOWER(s.admission_number) LIKE LOWER($${p}) OR LOWER(ft.receipt_number) LIKE LOWER($${p}))`;
+      params.push(searchTerm);
+      p++;
+    }
+
     query += " ORDER BY ft.due_date ASC, s.full_name";
+
+    if (pagination.page || pagination.limit) {
+      const { query: paginatedQuery, params: paginatedParams, countQuery, countParams, page, limit } =
+        buildPaginationQuery(query, params, pagination);
+
+      const [rowsResult, countResult] = await Promise.all([
+        pool.query(paginatedQuery, paginatedParams),
+        pool.query(countQuery, countParams),
+      ]);
+
+      return formatPaginationResult(rowsResult.rows, countResult.rows, page, limit);
+    }
+
     const result = await pool.query(query, params);
-    return result.rows;
+    return { data: result.rows, pagination: null };
   }
 
-  async getFeeDefaulters(schoolId, filters = {}) {
+  async getFeeDefaulters(schoolId, filters = {}, pagination = {}) {
     let query = `
       SELECT ft.*,
              s.full_name as student_name, s.admission_number,
@@ -160,9 +181,29 @@ class FeeTransactionsService {
     if (filters.classId) { query += " AND s.current_class_id = $" + p++; params.push(filters.classId); }
     if (filters.academicYearId) { query += " AND ft.academic_year_id = $" + p++; params.push(filters.academicYearId); }
 
+    if (filters.search) {
+      const searchTerm = `%${filters.search}%`;
+      query += ` AND (LOWER(s.full_name) LIKE LOWER($${p}) OR LOWER(s.admission_number) LIKE LOWER($${p}) OR LOWER(u.phone) LIKE LOWER($${p}))`;
+      params.push(searchTerm);
+      p++;
+    }
+
     query += " ORDER BY ft.due_date ASC, s.full_name";
+
+    if (pagination.page || pagination.limit) {
+      const { query: paginatedQuery, params: paginatedParams, countQuery, countParams, page, limit } =
+        buildPaginationQuery(query, params, pagination);
+
+      const [rowsResult, countResult] = await Promise.all([
+        pool.query(paginatedQuery, paginatedParams),
+        pool.query(countQuery, countParams),
+      ]);
+
+      return formatPaginationResult(rowsResult.rows, countResult.rows, page, limit);
+    }
+
     const result = await pool.query(query, params);
-    return result.rows;
+    return { data: result.rows, pagination: null };
   }
 
   async getStudentFeeTransactions(studentId, schoolId) {
