@@ -16,12 +16,39 @@ function isDowngrade(currentPlanName, newPlanName) {
   return getPlanTier(newPlanName) < getPlanTier(currentPlanName);
 }
 
-function getDaysInBillingCycle(feeTerm) {
+function getDaysInBillingCycle(feeTerm, startDate) {
+  const now = startDate ? new Date(startDate) : new Date();
+  
   switch (feeTerm) {
-    case 'yearly': return 365;
-    case 'half-yearly': return 182;
-    case 'quarterly': return 91;
-    case 'monthly': return 30;
+    case 'yearly':
+      // Handle leap years
+      const year = now.getFullYear();
+      return ((year % 400 === 0) || (year % 4 === 0 && year % 100 !== 0)) ? 366 : 365;
+    
+    case 'half-yearly': {
+      // Use actual days in next 6 months
+      const halfYear = new Date(now);
+      halfYear.setMonth(halfYear.getMonth() + 6);
+      const msInDay = 1000 * 60 * 60 * 24;
+      return Math.ceil((halfYear.getTime() - now.getTime()) / msInDay);
+    }
+    
+    case 'quarterly': {
+      // Use actual days in next 3 months
+      const quarter = new Date(now);
+      quarter.setMonth(quarter.getMonth() + 3);
+      const msInDay = 1000 * 60 * 60 * 24;
+      return Math.ceil((quarter.getTime() - now.getTime()) / msInDay);
+    }
+    
+    case 'monthly': {
+      // Use actual days in next month (28-31 days)
+      const nextMonth = new Date(now);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      const msInDay = 1000 * 60 * 60 * 24;
+      return Math.ceil((nextMonth.getTime() - now.getTime()) / msInDay);
+    }
+    
     default: return 365;
   }
 }

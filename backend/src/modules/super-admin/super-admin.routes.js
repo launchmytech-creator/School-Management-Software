@@ -25,4 +25,12 @@ router.post(
   superAdminController.bulkDeactivate
 );
 
+// Plan management routes
+router.get(
+  "/plans",
+  authenticate,
+  authorize(ROLES.SUPER_ADMIN),
+  superAdminController.getAllPlans
+);
+
 module.exports = router;

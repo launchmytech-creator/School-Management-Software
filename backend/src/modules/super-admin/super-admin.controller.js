@@ -29,6 +29,15 @@ class SuperAdminController {
       next(error);
     }
   }
+
+  async getAllPlans(req, res, next) {
+    try {
+      const plans = await superAdminService.getAllPlans();
+      return ApiResponse.success(res, plans, "Plans retrieved successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new SuperAdminController();

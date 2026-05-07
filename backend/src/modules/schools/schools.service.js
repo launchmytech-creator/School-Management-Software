@@ -330,7 +330,7 @@ class SchoolsService {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-
+      
       const schoolResult = await client.query(
         "SELECT * FROM schools WHERE id = $1", [schoolId]
       );
@@ -338,7 +338,7 @@ class SchoolsService {
       if (!school) {
         throw new AppError(ERROR_CODES.SCHOOL_NOT_FOUND, ERROR_MESSAGES[ERROR_CODES.SCHOOL_NOT_FOUND], 404);
       }
-
+      
       const planResult = await client.query(
         "SELECT * FROM subscription_plans WHERE id = $1", [data.planId]
       );
@@ -346,16 +346,20 @@ class SchoolsService {
       if (!newPlan) {
         throw new AppError(ERROR_CODES.VALIDATION_ERROR, "Invalid subscription plan", 400);
       }
-
+      
       const allowedFeeTerms = newPlan.allowed_fee_terms || ["yearly"];
       if (!allowedFeeTerms.includes(data.feeTerm)) {
         throw new AppError(
           ERROR_CODES.VALIDATION_ERROR,
           `Fee term '${data.feeTerm}' is not allowed for ${newPlan.name} plan. Allowed: ${allowedFeeTerms.join(", ")}`,
-          400,
+          400
         );
       }
-
+      
+      // Derive feeTermNumeric from feeTerm string
+      const feeTermMap = { 'yearly': 1, 'half-yearly': 2, 'quarterly': 4, 'monthly': 12 };
+      const feeTermNumeric = feeTermMap[data.feeTerm] || 1;
+      
       const currentPlanResult = await client.query(
         "SELECT * FROM subscription_plans WHERE id = $1", [school.subscription_plan_id]
       );
@@ -418,7 +422,7 @@ class SchoolsService {
             fee_terms = $3,
             credit_balance = 0
           WHERE id = $4`,
-          [data.planId, endDate.toISOString().split("T")[0], data.feeTermNumeric, schoolId]
+          [data.planId, endDate.toISOString().split("T")[0], feeTermNumeric, schoolId]
         );
 
         await client.query(
@@ -427,7 +431,7 @@ class SchoolsService {
         );
         await client.query(
           "INSERT INTO fee_terms_history (school_id, fee_terms, start_date) VALUES ($1, $2, CURRENT_DATE)",
-          [schoolId, data.feeTermNumeric],
+          [schoolId, feeTermNumeric],
         );
 
         await client.query(
@@ -435,7 +439,7 @@ class SchoolsService {
             (school_id, plan_id, fee_term, amount, original_amount, credit_applied,
              payment_date, payment_mode, transaction_reference,
              subscription_start_date, subscription_end_date, payment_type)
-          VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, $7, $8, $9, $10, 'upgrade')`,
+          VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_DATE, $8, $9, $10, 'upgrade')`,
           [
             schoolId, data.planId, data.feeTerm, prorationResult.payableAmount,
             prorationResult.originalAmount, prorationResult.totalCreditApplied,
@@ -532,7 +536,7 @@ class SchoolsService {
           subscription_end_date = $2,
           fee_terms = $3
         WHERE id = $4`,
-        [data.planId, endDate.toISOString().split("T")[0], data.feeTermNumeric, schoolId]
+        [data.planId, endDate.toISOString().split("T")[0], feeTermNumeric, schoolId]
       );
 
       await client.query(
@@ -541,7 +545,7 @@ class SchoolsService {
       );
       await client.query(
         "INSERT INTO fee_terms_history (school_id, fee_terms, start_date) VALUES ($1, $2, CURRENT_DATE)",
-        [schoolId, data.feeTermNumeric],
+        [schoolId, feeTermNumeric],
       );
 
       await client.query(
@@ -760,20 +764,15 @@ class SchoolsService {
     let paramCount = 1;
 
     if (pricingData.priceYearly !== undefined) {
+      const yearly = pricingData.priceYearly;
       fields.push(`price_yearly = $${paramCount++}`);
-      values.push(pricingData.priceYearly);
-    }
-    if (pricingData.priceHalfYearly !== undefined) {
+      values.push(yearly);
       fields.push(`price_half_yearly = $${paramCount++}`);
-      values.push(pricingData.priceHalfYearly);
-    }
-    if (pricingData.priceQuarterly !== undefined) {
+      values.push(Math.round(yearly / 2));
       fields.push(`price_quarterly = $${paramCount++}`);
-      values.push(pricingData.priceQuarterly);
-    }
-    if (pricingData.priceMonthly !== undefined) {
+      values.push(Math.round(yearly / 4));
       fields.push(`price_monthly = $${paramCount++}`);
-      values.push(pricingData.priceMonthly);
+      values.push(Math.round(yearly / 12));
     }
 
     if (fields.length === 0) {
@@ -782,7 +781,7 @@ class SchoolsService {
 
     values.push(planId);
     const updateQuery = `
-      UPDATE subscription_plans 
+      UPDATE subscription_plans
       SET ${fields.join(", ")}
       WHERE id = $${paramCount}
       RETURNING id, name, price_yearly, price_half_yearly, price_quarterly, price_monthly

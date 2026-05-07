@@ -1,4 +1,6 @@
 const pool = require("../../database/connection");
+const { ERROR_CODES, ERROR_MESSAGES } = require("../../constants");
+const AppError = require("../../utils/AppError");
 
 class SuperAdminService {
   async getStats() {
@@ -80,11 +82,38 @@ class SuperAdminService {
 
   async bulkDeactivate(ids) {
     const query = `
-      UPDATE schools 
-      SET is_active = false 
+      UPDATE schools
+      SET is_active = false
       WHERE id = ANY($1)
     `;
     await pool.query(query, [ids]);
+  }
+
+  async getAllPlans() {
+    const query = `
+      SELECT *
+      FROM subscription_plans
+      ORDER BY id ASC
+    `;
+    const result = await pool.query(query);
+    return result.rows;
+  }
+
+  async createPlan(planData) {
+    const { name, price_yearly, price_half_yearly, price_quarterly, price_monthly, allowed_fee_terms, features } = planData;
+    const query = `
+      INSERT INTO subscription_plans (name, price_yearly, price_half_yearly, price_quarterly, price_monthly, allowed_fee_terms, features)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `;
+    const values = [name, price_yearly, price_half_yearly, price_quarterly, price_monthly, allowed_fee_terms, features ? JSON.stringify(features) : null];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  async deletePlan(planId) {
+    const query = `DELETE FROM subscription_plans WHERE id = $1`;
+    await pool.query(query, [planId]);
   }
 }
 
