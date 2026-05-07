@@ -22,3 +22,4 @@ export { syllabusService } from './syllabusService';
 export { teacherAttendanceService } from './teacherAttendanceService';
 export { teacherService } from './teacherService';
 export { timetableService } from './timetableService';
+export { subscriptionService } from './subscriptionService';

@@ -1,5 +1,5 @@
 export type SubscriptionTier = 'BASIC' | 'PREMIUM' | 'BUSINESS';
-export type FeeTerm = 'YEARLY' | 'HALF-YEARLY' | 'QUARTERLY' | 'MONTHLY';
+export type FeeTerm = 'yearly' | 'half-yearly' | 'quarterly' | 'monthly';
 
 export interface School {
   id: string;

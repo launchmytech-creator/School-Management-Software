@@ -67,18 +67,10 @@ const PlanChangeDialog: React.FC<PlanChangeDialogProps> = ({
     onCalculate(selectedPlanId!, feeTerm);
   };
 
-  const feeTermMap: Record<string, number> = {
-    yearly: 1,
-    'half-yearly': 2,
-    quarterly: 4,
-    monthly: 12,
-  };
-
   const handleConfirm = () => {
     onConfirm({
       planId: selectedPlanId!,
       feeTerm,
-      feeTermNumeric: feeTermMap[feeTerm] || 1,
       paymentMode,
     });
   };

@@ -5,7 +5,6 @@ import {
   Check,
   X,
   Loader2,
-  Calendar,
   Receipt,
   ArrowUpCircle,
   ArrowDownCircle,
@@ -23,27 +22,20 @@ import {
 import type { SubscriptionPlan, SubscriptionTier, FeeTerm } from "../../types/school";
 import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
 import PageHeader from "../../components/common/PageHeader";
-import { useAvailablePlans } from "../../hooks/queries";
+import { useAvailablePlans } from "../../hooks/queries/useSubscriptionPlans";
 
 const FEE_TERM_LABELS: Record<FeeTerm, string> = {
-  'YEARLY': 'Yearly',
-  'HALF-YEARLY': 'Half-Yearly',
-  'QUARTERLY': 'Quarterly',
-  'MONTHLY': 'Monthly',
-};
-
-const FEE_TERM_NUMERIC: Record<FeeTerm, number> = {
-  'YEARLY': 1,
-  'HALF-YEARLY': 2,
-  'QUARTERLY': 4,
-  'MONTHLY': 12,
+  'yearly': 'Yearly',
+  'half-yearly': 'Half-Yearly',
+  'quarterly': 'Quarterly',
+  'monthly': 'Monthly',
 };
 
 const FEE_TO_API_KEY: Record<FeeTerm, string> = {
-  'YEARLY': 'yearly',
-  'HALF-YEARLY': 'half-yearly',
-  'QUARTERLY': 'quarterly',
-  'MONTHLY': 'monthly',
+  'yearly': 'yearly',
+  'half-yearly': 'half-yearly',
+  'quarterly': 'quarterly',
+  'monthly': 'monthly',
 };
 
 const formatCurrency = (value: number | string): string => {
@@ -75,9 +67,10 @@ const AdminProfile: React.FC = () => {
   const { showNotification } = useNotification();
   const queryClient = useQueryClient();
 
-  const { data: plans = [], isLoading: loadingPlans } = useAvailablePlans(String(user?.schoolId || ''));
+  const { data: plansData = [], isLoading: loadingPlans } = useAvailablePlans(String(user?.schoolId || ''));
+  const plans = plansData as PlanWithPricing[];
   const [selectedPlan, setSelectedPlan] = useState<PlanWithPricing | null>(null);
-  const [selectedFeeTerm, setSelectedFeeTerm] = useState<FeeTerm>('YEARLY');
+  const [selectedFeeTerm, setSelectedFeeTerm] = useState<FeeTerm>('yearly');
   const [changingPlan, setChangingPlan] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -99,7 +92,6 @@ const AdminProfile: React.FC = () => {
 
   const currentPlanName = user?.subscriptionPlan as SubscriptionTier;
   const currentPlanId = user?.subscriptionPlanId;
-  const subscriptionStatus = user?.subscriptionStatus;
 
   useEffect(() => {
     loadPaymentHistory();
@@ -118,13 +110,7 @@ const AdminProfile: React.FC = () => {
     }
   };
 
-  const daysRemaining = useMemo(() => {
-    if (!user?.subscriptionEndDate) return 0;
-    const now = new Date();
-    const endDate = new Date(user.subscriptionEndDate);
-    const diff = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return Math.max(0, diff);
-  }, [user?.subscriptionEndDate]);
+  // daysRemaining removed - unused
 
   const getPlanTier = (planName: string) => PLAN_TIER[planName] || 0;
 
@@ -142,10 +128,10 @@ const AdminProfile: React.FC = () => {
 
     const allowedTerms: FeeTerm[] = plan.allowed_fee_terms
       ? plan.allowed_fee_terms.map((t: string) => {
-          const map: Record<string, FeeTerm> = { yearly: 'YEARLY', 'half-yearly': 'HALF-YEARLY', quarterly: 'QUARTERLY', monthly: 'MONTHLY' };
-          return map[t] || 'YEARLY';
-        })
-      : ['YEARLY'];
+            const map: Record<string, FeeTerm> = { yearly: 'yearly', 'half-yearly': 'half-yearly', quarterly: 'quarterly', monthly: 'monthly' };
+            return map[t] || 'yearly';
+          })
+      : ['yearly'];
     setSelectedFeeTerm(allowedTerms[0]);
 
     const changeType = getChangeType(plan.name);
@@ -195,7 +181,6 @@ const AdminProfile: React.FC = () => {
       const result = await schoolService.purchaseSubscription(String(user.schoolId), {
         planId: selectedPlan.id,
         feeTerm: FEE_TO_API_KEY[selectedFeeTerm],
-        feeTermNumeric: FEE_TERM_NUMERIC[selectedFeeTerm],
         paymentMode: 'cash',
       });
 
@@ -249,7 +234,7 @@ const AdminProfile: React.FC = () => {
 
   const getPlanPrice = (plan: PlanWithPricing, feeTerm: FeeTerm): number => {
     const key = `price_${FEE_TO_API_KEY[feeTerm].replace('-', '_')}`;
-    const val = (plan as Record<string, unknown>)[key];
+    const val = (plan as unknown as Record<string, unknown>)[key];
     return val ? Number(val) : 0;
   };
 
@@ -327,12 +312,12 @@ const AdminProfile: React.FC = () => {
               const plan = plans.find((p) => p.name?.toUpperCase() === planName) as PlanWithPricing | undefined;
               const colors = getPlanColor(planName);
               const isCurrent = currentPlanId === plan?.id;
-              const allowedTerms: FeeTerm[] = plan?.allowed_fee_terms
-                ? plan.allowed_fee_terms.map((t: string) => {
-                    const map: Record<string, FeeTerm> = { yearly: 'YEARLY', 'half-yearly': 'HALF-YEARLY', quarterly: 'QUARTERLY', monthly: 'MONTHLY' };
-                    return map[t] || 'YEARLY';
-                  })
-                : ['YEARLY'];
+  const allowedTerms: FeeTerm[] = plan?.allowed_fee_terms
+      ? plan.allowed_fee_terms.map((t: string) => {
+            const map: Record<string, FeeTerm> = { yearly: 'yearly', 'half-yearly': 'half-yearly', quarterly: 'quarterly', monthly: 'monthly' };
+            return map[t] || 'yearly';
+          })
+      : ['yearly'];
 
               const isSelected = selectedPlan?.id === plan?.id;
               const changeType = plan ? getChangeType(plan.name) : null;

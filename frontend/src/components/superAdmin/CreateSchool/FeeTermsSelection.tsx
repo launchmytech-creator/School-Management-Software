@@ -10,10 +10,10 @@ interface FeeTermsSelectionProps {
 const FeeTermsSelection: React.FC<FeeTermsSelectionProps> = ({ feeTerm, setFeeTerm, selectedPlan }) => {
 
   const feeTerms: { id: FeeTerm; label: string; numericId: number }[] = [
-    { id: 'YEARLY', label: 'Yearly', numericId: 1 },
-    { id: 'HALF-YEARLY', label: 'Half-Yearly', numericId: 2 },
-    { id: 'QUARTERLY', label: 'Quarterly', numericId: 4 },
-    { id: 'MONTHLY', label: 'Monthly', numericId: 12 },
+    { id: 'yearly', label: 'Yearly', numericId: 1 },
+    { id: 'half-yearly', label: 'Half-Yearly', numericId: 2 },
+    { id: 'quarterly', label: 'Quarterly', numericId: 4 },
+    { id: 'monthly', label: 'Monthly', numericId: 12 },
   ];
 
   return (
@@ -42,20 +42,6 @@ const FeeTermsSelection: React.FC<FeeTermsSelectionProps> = ({ feeTerm, setFeeTe
           );
         })}
       </div>
-
-      {feeTerm === 'YEARLY' && (
-        <div className="bg-blue-50/50 border border-blue-100/50 p-6 rounded-2xl flex gap-5 items-start">
-          <div className="w-10 h-10 rounded-xl bg-[#E0F2FE] flex items-center justify-center flex-shrink-0 text-primary">
-            <span className="material-symbols-outlined">help</span>
-          </div>
-          <div className="space-y-1">
-            <h4 className="text-sm font-bold text-primary tracking-tight">About Yearly Terms</h4>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              Fees are collected once at the beginning of the academic session. This structure offers a 10% discount to parents and reduces administrative overhead.
-            </p>
-          </div>
-        </div>
-      )}
     </section>
   );
 };

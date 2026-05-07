@@ -54,10 +54,10 @@ export const SUBSCRIPTION_TIERS = {
 } as const;
 
 export const FEE_TERMS = {
-  YEARLY: 'YEARLY',
-  HALF_YEARLY: 'HALF-YEARLY',
-  QUARTERLY: 'QUARTERLY',
-  MONTHLY: 'MONTHLY',
+  YEARLY: 'yearly',
+  HALF_YEARLY: 'half-yearly',
+  QUARTERLY: 'quarterly',
+  MONTHLY: 'monthly',
 } as const;
 
 export const SUBSCRIPTION_STATUSES = {

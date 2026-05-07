@@ -11,14 +11,7 @@ interface Plan {
   price_half_yearly: number;
   price_quarterly: number;
   price_monthly: number;
-  allowed_fee_terms: string[];
-}
-
-interface EditingPrices {
-  yearly: number;
-  halfYearly: number;
-  quarterly: number;
-  monthly: number;
+  features?: Record<string, boolean>;
 }
 
 const formatCurrency = (value: number): string => {
@@ -33,7 +26,7 @@ const PricingManagement: React.FC = () => {
   const { showNotification } = useNotification();
   const queryClient = useQueryClient();
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
-  const [editingPrices, setEditingPrices] = useState<EditingPrices | null>(null);
+  const [editingYearlyPrice, setEditingYearlyPrice] = useState<number>(0);
 
   const { data: plans = [], isLoading } = useQuery<Plan[]>({
     queryKey: ['subscription-plans'],
@@ -44,13 +37,12 @@ const PricingManagement: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ planId, prices }: { planId: number; prices: Partial<Record<string, number>> }) => {
-      return schoolService.updatePlanPricing(planId, prices);
+    mutationFn: async ({ planId, priceYearly }: { planId: number; priceYearly: number }) => {
+      return schoolService.updatePlanPricing(planId, { priceYearly });
     },
     onSuccess: () => {
       showNotification('Pricing updated successfully', 'success');
       setEditingPlanId(null);
-      setEditingPrices(null);
       queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
     },
     onError: (error: Error) => {
@@ -60,29 +52,19 @@ const PricingManagement: React.FC = () => {
 
   const startEditing = (plan: Plan) => {
     setEditingPlanId(plan.id);
-    setEditingPrices({
-      yearly: plan.price_yearly,
-      halfYearly: plan.price_half_yearly,
-      quarterly: plan.price_quarterly,
-      monthly: plan.price_monthly,
-    });
+    setEditingYearlyPrice(plan.price_yearly);
   };
 
   const cancelEditing = () => {
     setEditingPlanId(null);
-    setEditingPrices(null);
+    setEditingYearlyPrice(0);
   };
 
   const savePricing = () => {
-    if (!editingPlanId || !editingPrices) return;
+    if (!editingPlanId) return;
     updateMutation.mutate({
       planId: editingPlanId,
-      prices: {
-        priceYearly: editingPrices.yearly,
-        priceHalfYearly: editingPrices.halfYearly,
-        priceQuarterly: editingPrices.quarterly,
-        priceMonthly: editingPrices.monthly,
-      },
+      priceYearly: editingYearlyPrice,
     });
   };
 
@@ -95,12 +77,13 @@ const PricingManagement: React.FC = () => {
     }
   };
 
-  const feeTermColumns = [
-    { key: 'yearly' as const, label: 'Yearly', allowedFor: ['Basic', 'Premium', 'Business'] },
-    { key: 'halfYearly' as const, label: 'Half-Yearly', allowedFor: ['Premium', 'Business'] },
-    { key: 'quarterly' as const, label: 'Quarterly', allowedFor: ['Premium', 'Business'] },
-    { key: 'monthly' as const, label: 'Monthly', allowedFor: ['Premium', 'Business'] },
-  ];
+  const getCalculatedPrices = (yearlyPrice: number) => {
+    return {
+      halfYearly: Math.round(yearlyPrice / 2),
+      quarterly: Math.round(yearlyPrice / 4),
+      monthly: Math.round(yearlyPrice / 12),
+    };
+  };
 
   return (
     <MainLayout title="Pricing Management">
@@ -110,7 +93,7 @@ const PricingManagement: React.FC = () => {
             Pricing Management
           </h2>
           <p className="text-slate-400 text-sm font-medium">
-            Manage subscription plan prices. Changes only affect new purchases — existing school payments remain unchanged.
+            Set the yearly price for each plan. Half-yearly, quarterly, and monthly prices are calculated automatically.
           </p>
         </div>
 
@@ -123,17 +106,16 @@ const PricingManagement: React.FC = () => {
             {/* Header Row */}
             <div className="bg-[#F8FAFC] border-b border-slate-100 grid grid-cols-5 gap-4 py-5 px-4">
               <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Plan</div>
-              {feeTermColumns.map(col => (
-                <div key={col.key} className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-                  {col.label}
-                </div>
-              ))}
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Yearly (Edit)</div>
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Half-Yearly</div>
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Quarterly</div>
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Monthly</div>
             </div>
 
             {/* Plan Rows */}
             {plans.map((plan) => {
               const isEditing = editingPlanId === plan.id;
-              const isBasic = plan.name === 'Basic';
+              const calculated = getCalculatedPrices(isEditing ? editingYearlyPrice : plan.price_yearly);
 
               return (
                 <div
@@ -157,43 +139,40 @@ const PricingManagement: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Price Columns */}
-                  {feeTermColumns.map(col => {
-                    const isAllowed = col.allowedFor.includes(plan.name);
-                    const dbKey = `price_${col.key === 'yearly' ? 'yearly' : col.key === 'halfYearly' ? 'half_yearly' : col.key === 'quarterly' ? 'quarterly' : 'monthly'}`;
-                    const value = editingPrices ? editingPrices[col.key] : (plan as Record<string, number>)[dbKey];
-
-                    if (!isAllowed) {
-                      return (
-                        <div key={col.key} className="text-center text-slate-300 text-xs font-medium">
-                          —
-                        </div>
-                      );
-                    }
-
-                    if (isEditing && editingPrices) {
-                      return (
-                        <div key={col.key} className="flex items-center justify-center">
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₹</span>
-                            <input
-                              type="number"
-                              min={0}
-                              value={editingPrices[col.key]}
-                              onChange={(e) => setEditingPrices(prev => prev ? { ...prev, [col.key]: Number(e.target.value) } : null)}
-                              className="w-28 h-10 pl-7 pr-3 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                            />
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div key={col.key} className="text-center text-sm font-bold text-slate-700">
-                        {formatCurrency(value)}
+                  {/* Yearly Price (Editable) */}
+                  <div className="flex items-center justify-center">
+                    {isEditing ? (
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₹</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={editingYearlyPrice}
+                          onChange={(e) => setEditingYearlyPrice(Number(e.target.value))}
+                          className="w-28 h-10 pl-7 pr-3 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        />
                       </div>
-                    );
-                  })}
+                    ) : (
+                      <div className="text-center text-sm font-bold text-slate-700">
+                        {formatCurrency(plan.price_yearly)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Half-Yearly (Auto-calculated) */}
+                  <div className="text-center text-sm font-bold text-slate-700">
+                    {formatCurrency(calculated.halfYearly)}
+                  </div>
+
+                  {/* Quarterly (Auto-calculated) */}
+                  <div className="text-center text-sm font-bold text-slate-700">
+                    {formatCurrency(calculated.quarterly)}
+                  </div>
+
+                  {/* Monthly (Auto-calculated) */}
+                  <div className="text-center text-sm font-bold text-slate-700">
+                    {formatCurrency(calculated.monthly)}
+                  </div>
                 </div>
               );
             })}
@@ -223,18 +202,6 @@ const PricingManagement: React.FC = () => {
           </div>
         )}
 
-        {!editingPlanId && plans.length > 0 && (
-          <div className="flex items-center justify-end gap-4">
-            <button
-              onClick={() => startEditing(plans[0])}
-              className="h-12 px-8 rounded-xl border border-primary text-primary font-bold text-xs uppercase tracking-widest hover:bg-primary/5 transition-all cursor-pointer flex items-center gap-3"
-            >
-              <span className="material-symbols-outlined text-lg">edit</span>
-              Edit Prices
-            </button>
-          </div>
-        )}
-
         {/* Info Card */}
         <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-6 flex gap-5 items-start">
           <div className="w-10 h-10 rounded-xl bg-[#E0F2FE] flex items-center justify-center flex-shrink-0 text-primary">
@@ -243,8 +210,9 @@ const PricingManagement: React.FC = () => {
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-primary tracking-tight">Important</h4>
             <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              Updating plan prices only affects <strong className="text-slate-700">new subscription purchases</strong>. 
-              Existing school payment records are stored at the time of purchase and will <strong className="text-slate-700">not be affected</strong> by price changes.
+              Only the yearly price is editable. Half-yearly, quarterly, and monthly prices are automatically calculated.
+              Updates only affect <strong className="text-slate-700">new subscription purchases</strong>.
+              Existing school payment records will <strong className="text-slate-700">not be affected</strong> by price changes.
             </p>
           </div>
         </div>

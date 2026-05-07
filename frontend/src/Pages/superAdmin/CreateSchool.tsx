@@ -41,16 +41,16 @@ const CreateSchool: React.FC = () => {
   };
 
   const feeTermMapping: Record<FeeTerm, number> = {
-    'YEARLY': 1,
-    'HALF-YEARLY': 2,
-    'QUARTERLY': 4,
-    'MONTHLY': 12,
+    'yearly': 1,
+    'half-yearly': 2,
+    'quarterly': 4,
+    'monthly': 12,
   };
 
   const originalPlanId = isEditMode ? planMapping[editSchool?.plan || 'BASIC'] : undefined;
 
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier>(editSchool?.plan || 'PREMIUM');
-  const [feeTerm, setFeeTerm] = useState<FeeTerm>(editSchool?.feeTerm || 'YEARLY');
+  const [feeTerm, setFeeTerm] = useState<FeeTerm>(editSchool?.feeTerm || 'yearly');
   const [schoolAdmin, setSchoolAdmin] = useState<SchoolAdmin | null>(null);
   const [planChangeDialog, setPlanChangeDialog] = useState<{
     isOpen: boolean;
@@ -124,8 +124,8 @@ const CreateSchool: React.FC = () => {
 
   const handlePlanChange = (plan: SubscriptionTier) => {
     setSelectedPlan(plan);
-    if (plan === 'BASIC' && feeTerm !== 'YEARLY') {
-      setFeeTerm('YEARLY');
+    if (plan === 'BASIC' && feeTerm !== 'yearly') {
+      setFeeTerm('yearly');
     }
   };
 

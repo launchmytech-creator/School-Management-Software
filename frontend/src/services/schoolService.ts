@@ -1,22 +1,22 @@
 import { apiRequest } from './api';
-import type { School, CreateSchoolRequest, SubscriptionTier, SchoolUpdateData, SchoolAdmin, UpdateSchoolAdminData, SubscriptionPlan, PlanChangeRequest } from '../types/school';
+import type { School, CreateSchoolRequest, SubscriptionTier, SchoolUpdateData, SchoolAdmin, UpdateSchoolAdminData, PlanChangeRequest } from '../types/school';
 import { getCurrentAcademicYear } from '../lib/utils';
 
 const VALID_SUBSCRIPTION_PLANS: SubscriptionTier[] = ['BASIC', 'PREMIUM', 'BUSINESS'];
 
 const mapFeeTerms = (terms: number | string | undefined): School['feeTerm'] => {
   if (typeof terms === 'string') {
-    const upper = terms.toUpperCase();
-    if (['YEARLY', 'HALF-YEARLY', 'QUARTERLY', 'MONTHLY'].includes(upper)) {
-      return upper as School['feeTerm'];
+    const lower = terms.toLowerCase();
+    if (['yearly', 'half-yearly', 'quarterly', 'monthly'].includes(lower)) {
+      return lower as School['feeTerm'];
     }
   }
   switch (terms) {
-    case 1: return 'YEARLY';
-    case 2: return 'HALF-YEARLY';
-    case 4: return 'QUARTERLY';
-    case 12: return 'MONTHLY';
-    default: return 'YEARLY';
+    case 1: return 'yearly';
+    case 2: return 'half-yearly';
+    case 4: return 'quarterly';
+    case 12: return 'monthly';
+    default: return 'yearly';
   }
 };
 
@@ -101,7 +101,26 @@ export const schoolService = {
     }),
 
   // [NEW] Purchase subscription
-  purchaseSubscription: (schoolId: string, data: { planId: number; feeTerm: string; feeTermNumeric: number; paymentMode?: string; transactionReference?: string }): Promise<{ type: string; schoolId: number; planId: number; planName: string; feeTerm: string; originalAmount?: number; creditApplied?: number; payableAmount?: number; remainingDays?: number; amount?: number; startDate: string; endDate: string; message?: string }> =>
+  purchaseSubscription: (schoolId: string, data: {
+    planId: number;
+    feeTerm: string;
+    paymentMode?: string;
+    transactionReference?: string;
+  }): Promise<{
+    type: string;
+    schoolId: number;
+    planId: number;
+    planName: string;
+    feeTerm: string;
+    originalAmount?: number;
+    creditApplied?: number;
+    payableAmount?: number;
+    remainingDays?: number;
+    amount?: number;
+    startDate: string;
+    endDate: string;
+    message?: string;
+  }> =>
     apiRequest<{ type: string; schoolId: number; planId: number; planName: string; feeTerm: string; originalAmount?: number; creditApplied?: number; payableAmount?: number; remainingDays?: number; amount?: number; startDate: string; endDate: string; message?: string }>(`/schools/${schoolId}/purchase-subscription`, {
       method: 'POST',
       data,
@@ -146,8 +165,8 @@ export const schoolService = {
     return apiRequest<Record<string, unknown>[]>('/schools/available-plans');
   },
 
-  // [NEW] Update plan pricing
-  updatePlanPricing: (planId: number, data: { priceYearly?: number; priceHalfYearly?: number; priceQuarterly?: number; priceMonthly?: number }): Promise<Record<string, unknown>> =>
+  // [NEW] Update plan pricing (only yearly price is editable, others auto-calculated)
+  updatePlanPricing: (planId: number, data: { priceYearly: number }): Promise<Record<string, unknown>> =>
     apiRequest<Record<string, unknown>>(`/schools/plans/${planId}/pricing`, {
       method: 'PATCH',
       data,
