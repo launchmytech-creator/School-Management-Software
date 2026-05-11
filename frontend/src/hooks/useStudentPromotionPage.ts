@@ -167,7 +167,7 @@ export const useStudentPromotionPage = (): UseStudentPromotionPageReturn => {
     try {
       setLoadingStudents(true);
       const data = await studentService.getStudents({ classId: fromClass });
-      setClassStudents(data);
+      setClassStudents(data as unknown as Student[]);
       setSelectedStudents([]);
     } catch {
       showNotification("Failed to fetch students", "error");

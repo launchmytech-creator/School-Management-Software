@@ -105,7 +105,7 @@ export const useExamResults = (
   };
 
   const query = useQuery<PaginatedResponse<ExamResult>>({
-    queryKey: ['exam-results', 'filters', { schoolId: user?.schoolId ?? null, ...filters }] as const,
+    queryKey: queryKeys.examResults.filtered(user?.schoolId ?? null, filters),
     queryFn: () => examResultService.getResults(filters),
     staleTime: QUERY_STALE_TIME.OPERATIONAL,
   });
@@ -134,8 +134,10 @@ export const useExamResults = (
 };
 
 export const useExamResultsPerformance = (examId: number, academicYearId?: number) => {
+  const { user } = useAuth();
+
   return useQuery<ClassPerformance[]>({
-    queryKey: ['exam-results', 'performance', examId, academicYearId] as const,
+    queryKey: ['exam-results', 'performance', { schoolId: user?.schoolId ?? null, examId, academicYearId }] as const,
     queryFn: () => examResultService.getClassPerformance(examId, academicYearId),
     staleTime: QUERY_STALE_TIME.OPERATIONAL,
     enabled: !!examId,

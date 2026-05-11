@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useMemo } from "react";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
-import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
 import { SubjectCard } from "../../components/academic/SubjectCard";
-import { AddSubjectModal } from "../../components/academic/AddSubjectModal";
-import { AddChapterModal } from "../../components/academic/AddChapterModal";
+import { AddSubjectModal } from "../../components/modals/AddSubjectModal";
+import { AddChapterModal } from "../../components/modals/AddChapterModal";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useClasses } from "../../hooks/queries/useClasses";

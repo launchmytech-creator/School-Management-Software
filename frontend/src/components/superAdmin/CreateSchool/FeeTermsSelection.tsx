@@ -7,7 +7,7 @@ interface FeeTermsSelectionProps {
   selectedPlan: SubscriptionTier;
 }
 
-const FeeTermsSelection: React.FC<FeeTermsSelectionProps> = ({ feeTerm, setFeeTerm, selectedPlan }) => {
+const FeeTermsSelection: React.FC<FeeTermsSelectionProps> = ({ feeTerm, setFeeTerm, selectedPlan: _selectedPlan }) => {
 
   const feeTerms: { id: FeeTerm; label: string; numericId: number }[] = [
     { id: 'yearly', label: 'Yearly', numericId: 1 },

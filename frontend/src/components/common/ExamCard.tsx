@@ -81,7 +81,7 @@ export const ExamCard: React.FC<ExamCardProps> = ({
           Enter Marks
         </button>
         <button
-          onClick={() => onNavigate(`${basePath}/exam-results?examId=${exam.id}&classId=${exam.classId}`)}
+          onClick={() => onNavigate(`${basePath}/exam-results/class/${exam.classId}`)}
           className="flex-1 py-2 bg-slate-100 text-slate-700 text-sm font-bold rounded-lg hover:bg-slate-200 transition-colors"
         >
           View Results

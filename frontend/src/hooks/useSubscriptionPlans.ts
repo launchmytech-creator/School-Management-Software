@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { subscriptionService } from '../services/subscriptionService';
-import type { SubscriptionPlan, CreatePlanRequest } from '../types/school';
+import type { SubscriptionPlan } from '../types/school';
 import { toast } from 'sonner';
 import { handleServiceError } from '../lib/queryErrorHandler';
 import { queryKeys } from '../lib/queryKeys';

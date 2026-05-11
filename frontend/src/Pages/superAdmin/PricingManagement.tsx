@@ -32,7 +32,7 @@ const PricingManagement: React.FC = () => {
     queryKey: ['subscription-plans'],
     queryFn: async () => {
       const data = await schoolService.getAvailablePlansWithPricing();
-      return data as Plan[];
+      return data as unknown as Plan[];
     },
   });
 

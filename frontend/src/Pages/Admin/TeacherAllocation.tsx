@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2, Users } from "lucide-react";
+import { Plus, Loader2, Users, Shield, ChevronDown } from "lucide-react";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import {
@@ -13,7 +13,6 @@ import { teacherService } from "../../services/teacherService";
 import { Button } from "../../components/ui/button";
 import AllocateTeacherModal from "../../components/modals/AllocateTeacherModal";
 import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
-import ClassInchargeCard from "../../components/teacher/ClassInchargeCard";
 import { AllocationTabs } from "../../components/teacher/AllocationTabs";
 import { AllocationFilterBar } from "../../components/teacher/AllocationFilterBar";
 import { AllocationTable } from "../../components/teacher/AllocationTable";
@@ -35,6 +34,7 @@ const TeacherAllocation: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabValue>("incharge");
   const [updatingIncharge, setUpdatingIncharge] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const [filterOption, setFilterOption] = useState<FilterOption>("all");
 
@@ -204,16 +204,141 @@ const TeacherAllocation: React.FC = () => {
                     <Loader2 className="size-8 animate-spin text-blue-500 opacity-30" />
                   </div>
                 ) : filteredClasses.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filteredClasses.map((cls) => (
-                      <ClassInchargeCard
-                        key={cls.id}
-                        classData={cls}
-                        teachers={teachers}
-                        onAssign={handleSetIncharge}
-                        isUpdating={updatingIncharge === parseInt(cls.id)}
-                      />
-                    ))}
+                  <div className="space-y-4">
+                    {filteredClasses.map((cls) => {
+                      const getAvatarColor = (name: string) => {
+                        const colors = [
+                          "bg-emerald-100 text-emerald-600",
+                          "bg-blue-100 text-blue-600",
+                          "bg-purple-100 text-purple-600",
+                          "bg-rose-100 text-rose-600",
+                          "bg-amber-100 text-amber-600",
+                          "bg-cyan-100 text-cyan-600",
+                        ];
+                        const index = name.charCodeAt(0) % colors.length;
+                        return colors[index];
+                      };
+
+                      const hasIncharge = !!cls.inchargeId;
+                      const isUpdating = updatingIncharge === parseInt(cls.id);
+                      const showDropdown = openDropdownId === cls.id;
+
+                      return (
+                        <div
+                          key={cls.id}
+                          className="bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                        >
+                          <div className="p-5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
+                                  <span className="font-black text-sm">
+                                    {cls.name.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div>
+                                  <h3 className="font-semibold text-slate-900">
+                                    {cls.name}
+                                    {cls.section && ` - Section ${cls.section}`}
+                                  </h3>
+                                  <p className="text-sm text-slate-500">
+                                    <span className="inline-flex items-center gap-1">
+                                      <Users className="w-3.5 h-3.5" />
+                                      {cls.studentCount} students
+                                    </span>
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="text-right">
+                                  {hasIncharge && cls.inchargeName ? (
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs ${getAvatarColor(
+                                          cls.inchargeName
+                                        )}`}
+                                      >
+                                        {cls.inchargeName.charAt(0).toUpperCase()}
+                                      </div>
+                                      <span className="text-sm font-medium text-slate-600">
+                                        {cls.inchargeName}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 text-xs font-medium">
+                                      <Shield className="size-3" />
+                                      No incharge
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="relative">
+                                  <button
+                                    onClick={() => setOpenDropdownId(showDropdown ? null : cls.id)}
+                                    disabled={isUpdating}
+                                    className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+                                  >
+                                    {isUpdating ? (
+                                      <Loader2 className="size-3 animate-spin" />
+                                    ) : (
+                                      <>
+                                        {hasIncharge ? "Change" : "Assign"}
+                                        <ChevronDown className={`size-3 transition-transform ${showDropdown ? "rotate-180" : ""}`} />
+                                      </>
+                                    )}
+                                  </button>
+                                  {showDropdown && (
+                                    <>
+                                      <div className="fixed inset-0 z-10" onClick={() => setOpenDropdownId(null)} />
+                                      <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20 min-w-[180px]">
+                                        <div className="p-1.5">
+                                          {hasIncharge && (
+                                            <button
+                                              onClick={() => {
+                                                handleSetIncharge(cls.id, null);
+                                                setOpenDropdownId(null);
+                                              }}
+                                              className="w-full px-3 py-2 text-left text-xs text-slate-500 hover:bg-slate-50 rounded-lg"
+                                            >
+                                              Remove Incharge
+                                            </button>
+                                          )}
+                                          {teachers
+                                            .filter((t) => t.isActive && (!hasIncharge || t.id !== cls.inchargeId))
+                                            .map((teacher) => (
+                                              <button
+                                                key={teacher.id}
+                                                onClick={() => {
+                                                  handleSetIncharge(cls.id, teacher.id);
+                                                  setOpenDropdownId(null);
+                                                }}
+                                                className="w-full px-3 py-2 text-left text-xs hover:bg-slate-50 rounded-lg flex items-center gap-2"
+                                              >
+                                                <div
+                                                  className={`w-5 h-5 rounded-full flex items-center justify-center font-black text-[10px] ${getAvatarColor(
+                                                    teacher.fullName
+                                                  )}`}
+                                                >
+                                                  {teacher.fullName.charAt(0)}
+                                                </div>
+                                                <span className="truncate">{teacher.fullName}</span>
+                                              </button>
+                                            ))}
+                                          {teachers.filter((t) => t.isActive).length === 0 && (
+                                            <p className="px-3 py-2 text-xs text-slate-400 text-center">
+                                              No teachers
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <EmptyState

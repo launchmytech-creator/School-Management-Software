@@ -264,7 +264,7 @@ export const feeService = {
 
     return {
       ...response,
-      transactions: response.transactions.map(mapTransaction),
+      transactions: (response.transactions ?? []).map(mapTransaction),
     };
   },
 
@@ -295,7 +295,7 @@ export const feeService = {
       `/fee-transactions${qs ? `?${qs}` : ""}`,
     );
     return {
-      data: response.data.map(mapTransaction),
+      data: (response.data ?? []).map(mapTransaction),
       pagination: response.pagination,
     };
   },
@@ -316,7 +316,7 @@ export const feeService = {
       `/fee-transactions/defaulters${qs}`,
     );
     return {
-      data: groupDefaulters(response.data),
+      data: groupDefaulters(response.data ?? []),
       pagination: response.pagination,
     };
   },

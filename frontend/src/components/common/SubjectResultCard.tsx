@@ -51,6 +51,15 @@ export const SubjectResultCard: React.FC<SubjectResultCardProps> = ({
     ? `${firstResult.className} - ${firstResult.classSection}`
     : firstResult?.className || "";
   const { icon: subjectIconName, bg: iconBg, text: iconText } = subjectIcon(actualSubjectName);
+  const studentInitials = (name: string) => {
+    if (!name) return "?";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+  };
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -150,12 +159,7 @@ export const SubjectResultCard: React.FC<SubjectResultCardProps> = ({
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-xs font-bold text-slate-600">
-                        {result.studentName
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .substring(0, 2)
-                          .toUpperCase()}
+                        {studentInitials(result.studentName)}
                       </div>
                       <span className="text-sm font-semibold text-slate-900">
                         {result.studentName}

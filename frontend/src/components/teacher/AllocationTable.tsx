@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
-import { Trash2, Calendar, Users, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Trash2, Calendar, Users, Loader2 } from "lucide-react";
+import Pagination from "../common/Pagination";
 
 interface TeacherAllocation {
   id: number;
@@ -42,9 +43,6 @@ export const AllocationTable: React.FC<AllocationTableProps> = ({
       currentPage * ITEMS_PER_PAGE
     );
   }, [sortedAllocations, currentPage]);
-
-  const startItem = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-  const endItem = Math.min(currentPage * ITEMS_PER_PAGE, sortedAllocations.length);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -143,40 +141,13 @@ export const AllocationTable: React.FC<AllocationTableProps> = ({
       </div>
 
       {totalPages > 1 && (
-        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            Showing {startItem}-{endItem} of {sortedAllocations.length}
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="p-2 text-slate-400 hover:text-blue-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="size-5" />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`size-9 flex items-center justify-center rounded-xl font-bold text-xs transition-all ${
-                  currentPage === page
-                    ? "bg-slate-900 text-white shadow-lg"
-                    : "text-slate-500 hover:bg-slate-100"
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="p-2 text-slate-400 hover:text-blue-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ChevronRight className="size-5" />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={sortedAllocations.length}
+          pageSize={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
       )}
     </div>
   );

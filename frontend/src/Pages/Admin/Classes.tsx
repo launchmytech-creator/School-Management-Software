@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, BookOpen, Eye, Trash2, ChevronRight, Users } from "lucide-react";
+import { Plus, BookOpen, Eye, Trash2, Users, ChevronRight } from "lucide-react";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useClasses } from "../../hooks/queries/useClasses";
 import { useDeleteClass } from "../../hooks/mutations/useClassMutations";
@@ -120,7 +120,7 @@ const Classes: React.FC = () => {
             {filteredClasses.map((cls) => (
               <div
                 key={cls.id}
-                className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                className="bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => navigate(`/admin/classes/${cls.id}`)}
               >
                 <div className="p-5">

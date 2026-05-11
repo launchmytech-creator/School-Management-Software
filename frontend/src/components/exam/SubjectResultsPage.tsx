@@ -1,19 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Search, GraduationCap, Download } from 'lucide-react';
+import { Search, GraduationCap, Download, AlertCircle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { useClasses } from '../../hooks/queries/useClasses';
 import { useSubjectsByClass } from '../../hooks/queries/useSubjects';
-import { useExamResults } from '../../hooks/queries/useExamResults';
 import { useNotification } from '../../context/NotificationContext';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
-import Pagination from '../../components/common/Pagination';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
 import { ExamResultsStats } from '../../components/common/ExamResultsStats';
 import { SubjectResultCard } from '../../components/common/SubjectResultCard';
 import { EXAM_TYPES } from '../../lib/subject-utils';
+import { examResultService } from '../../services/examResultService';
 import type { ExamResult } from '../../services/examResultService';
 
 interface SubjectResultsPageProps {
@@ -33,54 +33,41 @@ const SubjectResultsPage: React.FC<SubjectResultsPageProps> = ({ layout }) => {
   const subjectData = classSubjects.find((s) => String(s.subjectId) === subjectId);
 
   const [selectedExamType, setSelectedExamType] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
 
-  const {
-    data: results,
-    isLoading,
-    pagination,
-    page,
-    setPage,
-    searchTerm,
-    setSearchTerm,
-  } = useExamResults({
-    classId: classId ? parseInt(classId) : undefined,
-    subjectId: subjectId ? parseInt(subjectId) : undefined,
-    academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
+  const { data, isLoading, error: resultsError } = useQuery({
+    queryKey: ['class-results', classId, subjectId, selectedYear?.id, selectedExamType, searchTerm, page],
+    queryFn: () => examResultService.getClassResults(parseInt(classId!), {
+      subjectId: parseInt(subjectId!),
+      academicYearId: parseInt(selectedYear?.id!),
+      examType: selectedExamType || undefined,
+      search: searchTerm || undefined,
+      page,
+      limit: 20,
+    }),
+    enabled: !!classId && !!subjectId && !!selectedYear?.id,
   });
 
-  const filteredResults = useMemo(() => {
-    if (!selectedExamType || selectedExamType === 'All') return results;
-    return results.filter((r) => r.examType === selectedExamType);
-  }, [results, selectedExamType]);
-
-  const resultsBySubject = useMemo(() => {
-    const grouped: Record<string, ExamResult[]> = {};
-    filteredResults.forEach((result) => {
-      const key = `${result.className}${result.classSection ? ` - ${result.classSection}` : ''} - ${result.subjectName}`;
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(result);
-    });
-    Object.values(grouped).forEach((students) => {
-      students.sort((a, b) => (a.rollNumber || 999) - (b.rollNumber || 999));
-    });
-    return grouped;
-  }, [filteredResults]);
+  const results = data?.data ?? [];
+  const pagination = data?.pagination ?? null;
 
   const stats = useMemo(() => {
-    const total = filteredResults.length;
-    const passed = filteredResults.filter((r) => !r.isAbsent && r.marksObtained >= r.maxMarks * 0.4).length;
-    const failed = filteredResults.filter((r) => !r.isAbsent && r.marksObtained < r.maxMarks * 0.4).length;
-    const passPercentage = total > 0 ? ((passed / total) * 100).toFixed(1) : '0';
+    const total = results.length;
+    const appeared = results.filter((r) => !r.isAbsent);
+    const passed = appeared.filter((r) => r.maxMarks > 0 && r.marksObtained >= r.maxMarks * 0.4).length;
+    const failed = appeared.filter((r) => r.maxMarks > 0 && r.marksObtained < r.maxMarks * 0.4).length;
+    const passPercentage = appeared.length > 0 ? ((passed / appeared.length) * 100).toFixed(1) : '0';
     return { total, passed, failed, passPercentage };
-  }, [filteredResults]);
+  }, [results]);
 
   const getSubjectStats = (subjectResults: ExamResult[]) => {
     const evaluated = subjectResults.filter((r) => !r.isAbsent && r.marksObtained > 0).length;
     const absent = subjectResults.filter((r) => r.isAbsent).length;
-    const avgMarks =
-      evaluated > 0
-        ? subjectResults.filter((r) => !r.isAbsent).reduce((sum, r) => sum + r.marksObtained, 0) / evaluated
-        : 0;
+    const appeared = subjectResults.filter((r) => !r.isAbsent && r.marksObtained > 0);
+    const avgMarks = evaluated > 0
+      ? appeared.reduce((sum, r) => sum + (r.marksObtained || 0), 0) / evaluated
+      : 0;
     return { evaluated, absent, total: subjectResults.length, avgMarks };
   };
 
@@ -94,20 +81,33 @@ const SubjectResultsPage: React.FC<SubjectResultsPageProps> = ({ layout }) => {
     );
   }
 
-  if (!classData || !subjectData) {
+  if (resultsError) {
     return (
       <EmptyState
-        icon={Search}
-        title="Subject not found"
+        icon={AlertCircle}
+        title="Failed to load results"
+        description="There was an error loading subject results. Please try again."
         action={{ label: 'Go Back', onClick: () => navigate(`${basePath}/exam-results/class/${classId}`) }}
       />
     );
   }
 
+  if (!classData) {
+    return (
+      <EmptyState
+        icon={Search}
+        title="Class not found"
+        action={{ label: 'Go Back', onClick: () => navigate(`${basePath}/exam-results`) }}
+      />
+    );
+  }
+
+  const subjectTitle = subjectData?.subjectName || `Subject #${subjectId}`;
+
   return (
     <div className="space-y-6 pb-12">
       <PageHeader
-        title={`${subjectData.subjectName} - ${classData.name}`}
+        title={`${subjectTitle} - ${classData.name}`}
         subtitle={
           classData.section
             ? `Section ${classData.section} • ${selectedYear?.name || ''}`
@@ -120,7 +120,7 @@ const SubjectResultsPage: React.FC<SubjectResultsPageProps> = ({ layout }) => {
               label: classData.name,
               href: `${basePath}/exam-results/class/${classId}`,
             },
-            { label: subjectData.subjectName, active: true },
+            { label: subjectTitle, active: true },
           ],
         }}
         actions={[
@@ -142,7 +142,10 @@ const SubjectResultsPage: React.FC<SubjectResultsPageProps> = ({ layout }) => {
 
       <FilterBar
         searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
+        onSearchChange={(term) => {
+          setSearchTerm(term);
+          setPage(1);
+        }}
         onReset={() => {
           setSearchTerm('');
           setSelectedExamType('');
@@ -166,32 +169,37 @@ const SubjectResultsPage: React.FC<SubjectResultsPageProps> = ({ layout }) => {
         </select>
       </FilterBar>
 
-      {filteredResults.length > 0 ? (
+      {results.length > 0 ? (
         <>
           <div className="space-y-4">
-            {Object.entries(resultsBySubject).map(([groupKey, subjectResults]) => {
-              const subjectStats = getSubjectStats(subjectResults);
-
-              return (
-                <SubjectResultCard
-                  key={groupKey}
-                  subjectResults={subjectResults}
-                  subjectStats={subjectStats}
-                  isExpanded={true}
-                  onToggle={() => {}}
-                />
-              );
-            })}
+            <SubjectResultCard
+              subjectResults={results}
+              subjectStats={getSubjectStats(results)}
+              isExpanded={true}
+              onToggle={() => {}}
+            />
           </div>
 
           {pagination && pagination.totalPages > 1 && (
-            <Pagination
-              currentPage={page}
-              totalPages={pagination.totalPages}
-              totalItems={pagination.total}
-              pageSize={pagination.limit}
-              onPageChange={setPage}
-            />
+            <div className="flex justify-center gap-2">
+              <button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium disabled:opacity-50 hover:bg-slate-50"
+              >
+                Previous
+              </button>
+              <span className="px-4 py-2 text-sm font-medium">
+                Page {page} of {pagination.totalPages}
+              </span>
+              <button
+                onClick={() => setPage(Math.min(pagination.totalPages, page + 1))}
+                disabled={page === pagination.totalPages}
+                className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium disabled:opacity-50 hover:bg-slate-50"
+              >
+                Next
+              </button>
+            </div>
           )}
         </>
       ) : (

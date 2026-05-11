@@ -97,7 +97,7 @@ export const holidayService = {
       monthlyBreakdown: { month: string; holidays: number; workingDays: number }[];
     }>(`/holidays/calendar${queryString}`);
     return {
-      holidays: response.holidays.map(mapFromBackend),
+      holidays: (response.holidays ?? []).map(mapFromBackend),
       totalDays: response.totalDays,
       workingDays: response.workingDays,
       monthlyBreakdown: response.monthlyBreakdown,

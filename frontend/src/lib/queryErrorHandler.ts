@@ -30,7 +30,7 @@ export const getQueryErrorMessage = (
       return contextualMessage;
     }
     
-    return ERROR_MESSAGES.ERROR?.GENERIC || 'An error occurred. Please try again.';
+    return 'An error occurred. Please try again.';
   }
   
   logger.error(`Unhandled error in ${serviceName} (${operation})`, { error });

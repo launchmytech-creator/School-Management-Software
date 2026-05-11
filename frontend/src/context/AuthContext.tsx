@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { authService } from '../services/authService';
 import type { AuthUser, LoginCredentials } from '../types/auth';
 import { clearQueryCache, queryClient } from '../lib/queryClient';

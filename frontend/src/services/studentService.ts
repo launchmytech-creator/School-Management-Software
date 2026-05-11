@@ -80,9 +80,17 @@ export const studentService = {
     const queryString = queryParams.toString();
     const url = `/students${queryString ? `?${queryString}` : ''}`;
     
-    const response = await apiRequest<{ data: BackendStudent[]; pagination: { page: number; limit: number; total: number; totalPages: number } | null }>(url);
+    const response = await apiRequest<{ data: BackendStudent[]; pagination: { page: number; limit: number; total: number; totalPages: number } | null } | BackendStudent[]>(url);
+    
+    if (Array.isArray(response)) {
+      return {
+        data: response.map(mapFromBackend),
+        pagination: null,
+      };
+    }
+    
     return {
-      data: response.data.map(mapFromBackend),
+      data: (response.data ?? []).map(mapFromBackend),
       pagination: response.pagination,
     };
   },

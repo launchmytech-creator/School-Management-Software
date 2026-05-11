@@ -19,7 +19,6 @@ import ExamResultsPage from "../components/exam/ExamResultsPage";
 import SubjectResultsPage from "../components/exam/SubjectResultsPage";
 import MarksEntry from "../components/common/MarksEntry";
 import StudentAttendance from "../components/common/StudentAttendance";
-import Subjects from "../Pages/Admin/Subjects";
 import StudentHistory from "../Pages/Admin/StudentHistory";
 import AccountantDashboard from "../Pages/Accountant/Dashboard";
 import Announcements from "../components/common/Announcements";
@@ -160,7 +159,7 @@ const AccountantRoutes = () => (
         path="subjects"
         element={
           <RequiresActiveYear>
-            <SubjectCatalog />
+            <StudentHistory />
           </RequiresActiveYear>
         }
       />

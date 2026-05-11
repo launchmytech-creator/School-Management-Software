@@ -91,31 +91,42 @@ const StudentClassSelector: React.FC<StudentClassSelectorProps> = ({ layout, tea
         searchPlaceholder="Search class or section..."
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="space-y-4">
         {filteredClasses.map((cls) => {
           const count = studentCountByClass[String(cls.id)] || 0;
           return (
-            <button
+            <div
               key={cls.id}
+              className="bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => navigate(`${basePath}/students/class/${cls.id}`)}
-              className="bg-white rounded-xl border border-slate-200 p-6 text-left hover:border-blue-300 hover:shadow-md transition-all group"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="size-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all">
-                    <BookOpen className="size-5" />
+              <div className="p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
+                      <BookOpen className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-900">
+                        {cls.name}
+                        {cls.section && ` - Section ${cls.section}`}
+                      </h3>
+                      <p className="text-sm text-slate-500">
+                        Section {cls.section || 'A'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-lg">{cls.name}</h3>
-                    <p className="text-sm text-slate-500">Section {cls.section || 'A'}</p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <span className="text-sm font-medium text-slate-600 flex items-center gap-1">
+                        <Users className="w-4 h-4 text-slate-400" />
+                        {count} students
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="mt-4 flex items-center gap-2 text-sm text-slate-600">
-                <Users className="size-4 text-slate-400" />
-                <span className="font-semibold">{count} students</span>
-              </div>
-            </button>
+            </div>
           );
         })}
       </div>

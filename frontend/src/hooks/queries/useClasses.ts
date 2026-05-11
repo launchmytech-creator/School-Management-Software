@@ -5,7 +5,6 @@ import { queryKeys } from '../../lib/queryKeys';
 import { QUERY_STALE_TIME } from '../../lib/constants';
 import { useAuth } from '../../context/AuthContext';
 import { handleServiceError } from '../../lib/queryErrorHandler';
-import { logger } from '../../lib/logger';
 
 const retryConfig = {
   retry: (failureCount: number, error: unknown): boolean => {

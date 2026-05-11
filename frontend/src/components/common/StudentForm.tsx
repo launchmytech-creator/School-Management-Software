@@ -15,6 +15,8 @@ import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { getLocalDateString } from '../../lib/utils';
 import type { Parent, Gender, CreateParentDto } from '../../types/parent';
+import { parentService } from '../../services/parentService';
+import { feeService } from '../../services/feeService';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -92,7 +94,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
 
   // Use React Query hooks for data fetching - provides caching and deduplication
   const { data: classesData, isLoading: loadingClasses } = useClasses(selectedYear?.id);
-  const { data: parentsData, isLoading: loadingParents } = useParents();
+  const { data: parentsData, isLoading: _loadingParents } = useParents();
   const { data: studentData, isLoading: loadingStudent } = useStudentById(mode === 'edit' && id ? parseInt(id, 10) : 0);
 
   const classes = classesData || [];

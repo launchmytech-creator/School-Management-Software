@@ -32,7 +32,7 @@ interface TableRowProps<T> {
   onRowClick?: (item: T) => void;
 }
 
-const TableRow = memo(<T,>({ item, columns, keyExtractor, onRowClick }: TableRowProps<T>) => (
+const TableRow = memo(<T,>({ item, columns, keyExtractor: _keyExtractor, onRowClick }: TableRowProps<T>) => (
   <tr
     onClick={() => onRowClick?.(item)}
     className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors ${
@@ -56,7 +56,7 @@ TableRow.displayName = "TableRow";
 const SkeletonRow = memo(({ columns }: { columns: Column<unknown>[] }) => (
   <tr className="border-b border-slate-100">
     {columns.map((col) => (
-      <td key={col.key} className="px-6 py-4">
+      <td key={col.key as string} className="px-6 py-4">
         <div className="h-4 bg-slate-100 rounded animate-pulse" />
       </td>
     ))}
@@ -67,14 +67,14 @@ SkeletonRow.displayName = "SkeletonRow";
 const EmptyState = memo(({
   emptyMessage,
   emptyDescription,
-  columns,
+  colCount,
 }: {
   emptyMessage: string;
   emptyDescription?: string;
-  columns: Column<unknown>[];
+  colCount: number;
 }) => (
   <tr>
-    <td colSpan={columns.length} className="px-6 py-16 text-center">
+    <td colSpan={colCount} className="px-6 py-16 text-center">
       <div className="flex flex-col items-center">
         <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mb-3">
           <Inbox className="w-6 h-6 text-slate-400" />
@@ -168,22 +168,22 @@ export function DataTable<T>({
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <SkeletonRow key={i} columns={columns} />
+                <SkeletonRow key={i} columns={columns as Column<unknown>[]} />
               ))
             ) : data.length === 0 ? (
               <EmptyState
                 emptyMessage={emptyMessage}
                 emptyDescription={emptyDescription}
-                columns={columns}
+                colCount={columns.length}
               />
             ) : (
               data.map((item) => (
                 <TableRow
                   key={keyExtractor(item)}
                   item={item}
-                  columns={columns}
-                  keyExtractor={keyExtractor}
-                  onRowClick={onRowClick}
+                  columns={columns as unknown as Column<unknown>[]}
+                  keyExtractor={keyExtractor as unknown as (item: unknown) => string | number}
+                  onRowClick={onRowClick as unknown as (item: unknown) => void}
                 />
               ))
             )}

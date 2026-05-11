@@ -1,26 +1,26 @@
-import { useQuery, useMutation, UseQueryOptions, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { handleServiceError, type ServiceName } from '../lib/queryErrorHandler';
 import { logger } from '../lib/logger';
 
-export interface BaseQueryOptions<TData, TError, TQueryKey extends readonly unknown[]>
-  extends Omit<UseQueryOptions<TData, TError, TData, TQueryKey>, 'queryFn'> {
+export interface BaseQueryOptions<TData>
+  extends Omit<UseQueryOptions<TData, Error, TData, readonly unknown[]>, 'queryFn'> {
   serviceName: ServiceName;
   operation?: 'FETCH';
 }
 
-export interface BaseMutationOptions<TData, TVariables, TContext>
-  extends Omit<UseMutationOptions<TData, TError, TVariables, TContext>, 'mutationFn'> {
+export interface BaseMutationOptions<TData, TVariables, TContext = unknown>
+  extends Omit<UseMutationOptions<TData, Error, TVariables, TContext>, 'mutationFn'> {
   serviceName: ServiceName;
   operation?: 'CREATE' | 'UPDATE' | 'DELETE' | 'SAVE';
   onSuccessMessage?: string;
 }
 
-export function useBaseQuery<TData, TError = unknown, TQueryKey extends readonly unknown[] = readonly unknown[]>(
-  options: BaseQueryOptions<TData, TError, TQueryKey>
+export function useBaseQuery<TData>(
+  options: BaseQueryOptions<TData> & { queryFn: () => Promise<TData> }
 ) {
   const { serviceName, operation = 'FETCH', ...queryOptions } = options;
   
-  return useQuery<TData, TError>({
+  return useQuery<TData, Error>({
     ...queryOptions,
     queryFn: async () => {
       try {
@@ -49,13 +49,35 @@ export function useBaseQuery<TData, TError = unknown, TQueryKey extends readonly
 }
 
 export function useBaseMutation<TData, TVariables, TContext = unknown>(
-  options: BaseMutationOptions<TData, TVariables, TContext>
+  options: BaseMutationOptions<TData, TVariables, TContext> & { mutationFn: (variables: TVariables) => Promise<TData> }
 ) {
-  const { serviceName, operation = 'CREATE', onSuccessMessage, onError, onSuccess, ...mutationOptions } = options;
+  const { serviceName, operation = 'CREATE', onSuccessMessage, ...mutationOptions } = options;
   const queryClient = useQueryClient();
+  void queryClient;
   
-  return useMutation<TData, TError, TVariables, TContext>({
+  const originalOnError = mutationOptions.onError as ((error: Error, variables: TVariables, context: TContext | undefined) => void) | undefined;
+  const originalOnSuccess = mutationOptions.onSuccess as ((data: TData, variables: TVariables, context: TContext | undefined) => void) | undefined;
+  
+  return useMutation<TData, Error, TVariables, TContext>({
     ...mutationOptions,
+    onError: (error, variables, context) => {
+      handleServiceError(error, serviceName, operation);
+      
+      if (originalOnError) {
+        originalOnError(error, variables, context);
+      }
+      
+      logger.warn(`Mutation failed in ${serviceName}: ${(error as Error).message}`);
+    },
+    onSuccess: (data, variables, context) => {
+      if (onSuccessMessage) {
+        logger.debug(`Mutation succeeded in ${serviceName}: ${onSuccessMessage}`);
+      }
+      
+      if (originalOnSuccess) {
+        originalOnSuccess(data, variables, context);
+      }
+    },
     mutationFn: async (variables) => {
       try {
         return await options.mutationFn(variables);
@@ -65,26 +87,6 @@ export function useBaseMutation<TData, TVariables, TContext = unknown>(
         throw error;
       }
     },
-    onError: (error, variables, context) => {
-      const errorMessage = handleServiceError(error, serviceName, operation);
-      
-      if (onError) {
-        return onError(error, variables, context);
-      }
-      
-      logger.warn(`Mutation failed in ${serviceName}: ${errorMessage}`);
-    },
-    onSuccess: (data, variables, context) => {
-      if (onSuccessMessage) {
-        logger.debug(`Mutation succeeded in ${serviceName}: ${onSuccessMessage}`);
-      }
-      
-      if (onSuccess) {
-        return onSuccess(data, variables, context);
-      }
-    },
-    // Note: Removed global invalidation - let individual mutations handle cache updates
-    // This prevents unnecessary refetches across the entire app
   });
 }
 

@@ -20,16 +20,6 @@ const navItems = [
     path: "/accountant/exams",
   },
   {
-    name: "Marks Entry",
-    icon: "edit_note",
-    path: "/accountant/marks-entry",
-  },
-  {
-    name: "Exam Results",
-    icon: "grade",
-    path: "/accountant/exam-results",
-  },
-  {
     name: "Subjects",
     icon: "menu_book",
     path: "/accountant/subjects",

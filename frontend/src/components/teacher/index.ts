@@ -4,4 +4,3 @@ export { ClassSyllabusCard } from './ClassSyllabusCard';
 export { AllocationTabs } from './AllocationTabs';
 export { AllocationFilterBar } from './AllocationFilterBar';
 export { AllocationTable } from './AllocationTable';
-export { default as ClassInchargeCard } from './ClassInchargeCard';

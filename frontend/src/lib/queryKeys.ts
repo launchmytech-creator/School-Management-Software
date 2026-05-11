@@ -155,6 +155,8 @@ export const queryKeys = {
   // ── Exam Results ──────────────────────────────────────────
   examResults: {
     all: (schoolId: number | null) => ['exam-results', { schoolId }] as const,
+    filtered: (schoolId: number | null, filters: Filters) =>
+      ['exam-results', 'filtered', { schoolId, ...filters }] as const,
     byStudent: (schoolId: number | null, studentId: number, filters?: Filters) =>
       ['exam-results', 'student', { schoolId, studentId, ...filters }] as const,
     classComparison: (schoolId: number | null, classIds: number[], yearId?: number) =>

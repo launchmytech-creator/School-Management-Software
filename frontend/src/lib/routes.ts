@@ -16,6 +16,7 @@ export type RoutePath =
   | "teachers"
   | "parents"
   | "accountants"
+  | "add-accountant"
   | "fees"
   | "fee-defaulters"
   | "fee-structures"
@@ -183,6 +184,7 @@ export const getRouteMetadata = (
     teachers: { label: "Teachers", icon: "ChalkboardTeacher" },
     parents: { label: "Parents", icon: "Users" },
     accountants: { label: "Accountants", icon: "Calculator" },
+    "add-accountant": { label: "Add Accountant", icon: "UserPlus" },
     fees: { label: "Fee Collection", icon: "IndianRupee" },
     "fee-defaulters": { label: "Fee Defaulters", icon: "AlertTriangle" },
     "fee-structures": { label: "Fee Structures", icon: "FileText" },

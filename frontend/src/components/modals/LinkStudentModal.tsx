@@ -38,8 +38,8 @@ const LinkStudentModal: React.FC<LinkStudentModalProps> = ({
     setLoading(true);
     try {
       const data = await studentService.getStudents({ search: searchTerm });
-      // Filter out students who already have a parent or are already linked to THIS parent
-      setStudents(data.filter(s => !s.parentId));
+      const studentsList = (data as unknown as { data?: Student[] }).data;
+      setStudents((studentsList || []).filter((s: Student) => !s.parentId));
     } catch {
       showNotification('Failed to search students', 'error');
     } finally {

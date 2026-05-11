@@ -19,9 +19,10 @@ const retryConfig = {
 export const useAvailablePlans = (schoolId: string) => {
   return useQuery<SubscriptionPlan[]>({
     queryKey: queryKeys.subscriptionPlans.all(Number(schoolId)),
-    queryFn: async () => {
+    queryFn: async (): Promise<SubscriptionPlan[]> => {
       try {
-        return await schoolService.getAvailablePlansWithPricing();
+        const data = await schoolService.getAvailablePlansWithPricing();
+        return data as unknown as SubscriptionPlan[];
       } catch (error) {
         handleServiceError(error, 'SUBSCRIPTION_PLANS', 'FETCH');
         throw error;

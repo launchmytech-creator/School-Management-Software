@@ -81,7 +81,7 @@ const getDayClass = (day: CalendarDay, itemType: CalendarItemType): string => {
   }
 };
 
-const getTextClass = (day: CalendarDay, itemType: CalendarItemType): string => {
+const getTextClass = (day: CalendarDay, _itemType: CalendarItemType): string => {
   if (!day.isCurrentMonth) return "text-slate-300";
   if (day.holiday) return "text-emerald-700";
   if (day.attendance === "present") return "text-emerald-700";
@@ -95,7 +95,7 @@ const getTextClass = (day: CalendarDay, itemType: CalendarItemType): string => {
 
 const getDayLabel = (
   day: CalendarDay,
-  itemType: CalendarItemType,
+  _itemType: CalendarItemType,
 ): React.ReactNode => {
   if (day.holiday && day.isCurrentMonth) {
     return (

@@ -136,9 +136,9 @@ const AccountantList: React.FC = () => {
           </div>
         </FilterBar>
 
-        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden min-h-[400px] relative">
+<div className="space-y-4">
            {isLoading ? (
-             <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px] z-10">
+             <div className="flex items-center justify-center py-20 bg-white rounded-xl border border-slate-200">
                <Loader2 className="size-10 text-blue-500 animate-spin" />
              </div>
            ) : filteredAccountants.length === 0 ? (
@@ -152,77 +152,65 @@ const AccountantList: React.FC = () => {
                  }}
               />
             ) : (
-              <table className="w-full text-left">
-                 <thead>
-                    <tr className="border-b border-slate-50 bg-slate-50/30">
-                       <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Accountant</th>
-                       <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Gender</th>
-                       <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Email</th>
-                       <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone</th>
-                       <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                       <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-slate-50">
-                    {filteredAccountants.map((accountant) => (
-                      <tr key={accountant.id} className="group hover:bg-slate-50/50 transition-colors">
-                         <td className="px-8 py-6">
-                            <div className="flex items-center gap-4">
-                               <div className="size-12 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-500 rounded-2xl flex items-center justify-center font-black text-lg border border-blue-100 shadow-sm uppercase">
-                                  {accountant.fullName ? accountant.fullName.charAt(0) : "?"}
-                               </div>
-                               <div>
-                                  <span className="font-display font-black text-slate-900 text-base tracking-tight block">{accountant.fullName || "Unnamed Accountant"}</span>
-                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 block">
-                                    Joined: {new Date(accountant.createdAt).toLocaleDateString()}
-                                  </span>
-                               </div>
-                            </div>
-                         </td>
-                         <td className="px-6 py-6 font-bold text-xs text-slate-600 uppercase tracking-widest">
-                            <span className={`px-3 py-1 rounded-lg ${
+              filteredAccountants.map((accountant) => (
+                <div
+                  key={accountant.id}
+                  className="bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                >
+                  <div className="p-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="size-12 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-500 rounded-2xl flex items-center justify-center font-black text-lg border border-blue-100 shadow-sm uppercase">
+                          {accountant.fullName ? accountant.fullName.charAt(0) : "?"}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-slate-900">
+                            {accountant.fullName || "Unnamed Accountant"}
+                          </h3>
+                          <p className="text-sm text-slate-500">
+                            <span>Joined: {new Date(accountant.createdAt).toLocaleDateString()}</span>
+                            <span className="ml-2">•</span>
+                            <span className={`ml-2 px-2 py-0.5 rounded-lg text-xs font-medium ${
                               accountant.gender === "Male" ? "bg-sky-50 text-sky-600" : 
                               accountant.gender === "Female" ? "bg-rose-50 text-rose-600" : 
                               "bg-slate-50 text-slate-500"
                             }`}>
                               {accountant.gender || "N/A"}
                             </span>
-                         </td>
-                         <td className="px-6 py-6">
-                            <span className="text-sm font-bold text-slate-500">{accountant.email}</span>
-                         </td>
-                         <td className="px-6 py-6">
-                            <span className="text-sm font-bold text-slate-500">{accountant.phone || "N/A"}</span>
-                         </td>
-                         <td className="px-6 py-6 text-center">
-                            <StatusBadge label={accountant.isActive ? 'Active' : 'Inactive'} variant={accountant.isActive ? 'success' : 'neutral'} />
-                          </td>
-                          <td className="px-8 py-6">
-                             <div className="flex items-center justify-end gap-2 px-1">
-                                <button 
-                                   onClick={() => navigate(`/admin/accountants/${accountant.id}`)}
-                                   className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
-                                >
-                                   <Eye className="size-4" />
-                                </button>
-                                <button 
-                                   onClick={() => navigate(`/admin/accountants/${accountant.id}/edit`)}
-                                   className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
-                                >
-                                   <Edit2 className="size-4" />
-                                </button>
-                                <button 
-                                   onClick={() => handleDelete(accountant.id)}
-                                   className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                               >
-                                  <Trash2 className="size-4" />
-                              </button>
-                            </div>
-                         </td>
-                      </tr>
-                    ))}
-                 </tbody>
-              </table>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-sm text-slate-500">{accountant.email}</p>
+                          <p className="text-sm text-slate-400">{accountant.phone || "N/A"}</p>
+                        </div>
+                        <StatusBadge label={accountant.isActive ? 'Active' : 'Inactive'} variant={accountant.isActive ? 'success' : 'neutral'} />
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); navigate(`/admin/accountants/${accountant.id}`); }}
+                            className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
+                          >
+                            <Eye className="size-4" />
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); navigate(`/admin/accountants/${accountant.id}/edit`); }}
+                            className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all"
+                          >
+                            <Edit2 className="size-4" />
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleDelete(accountant.id); }}
+                            className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
             )}
           </div>
 

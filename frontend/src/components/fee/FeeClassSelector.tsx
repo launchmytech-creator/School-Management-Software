@@ -114,54 +114,65 @@ const FeeClassSelector: React.FC<FeeClassSelectorProps> = ({ mode, layout }) => 
         searchPlaceholder="Search class or section..."
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="space-y-4">
         {filteredClasses.map((cls) => {
           const stats = classStats[String(cls.id)] || { totalCollected: 0, totalPending: 0, studentCount: 0, defaulterCount: 0 };
           return (
-            <button
+            <div
               key={cls.id}
+              className="bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => navigate(`${basePath}/${targetPath}/class/${cls.id}`)}
-              className="bg-white rounded-xl border border-slate-200 p-6 text-left hover:border-blue-300 hover:shadow-md transition-all group"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`size-10 rounded-xl flex items-center justify-center transition-all ${
-                    mode === 'collection'
-                      ? 'bg-blue-50 text-blue-500 group-hover:bg-blue-500 group-hover:text-white'
-                      : 'bg-rose-50 text-rose-500 group-hover:bg-rose-500 group-hover:text-white'
-                  }`}>
-                    {mode === 'collection' ? <IndianRupee className="size-5" /> : <AlertTriangle className="size-5" />}
+              <div className="p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-xl ${
+                      mode === 'collection' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
+                    }`}>
+                      {mode === 'collection' ? <IndianRupee className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-900">
+                        {cls.name}
+                        {cls.section && ` - Section ${cls.section}`}
+                      </h3>
+                      <p className="text-sm text-slate-500">
+                        Section {cls.section || 'A'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-lg">{cls.name}</h3>
-                    <p className="text-sm text-slate-500">Section {cls.section || 'A'}</p>
+                  <div className="flex items-center gap-6">
+                    {mode === 'collection' ? (
+                      <>
+                        <div className="text-right">
+                          <span className="text-xs text-slate-500 block">Collected</span>
+                          <span className="text-sm font-semibold text-emerald-600">{formatCurrency(stats.totalCollected)}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs text-slate-500 block">Pending</span>
+                          <span className="text-sm font-semibold text-rose-600">{formatCurrency(stats.totalPending)}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs text-slate-500 block">Transactions</span>
+                          <span className="text-sm font-medium text-slate-600 flex items-center gap-1">
+                            <IndianRupee className="w-3.5 h-3.5" />
+                            {stats.studentCount}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-right">
+                        <span className="text-xs text-slate-500 block">Defaulters</span>
+                        <span className={`text-sm font-semibold flex items-center gap-1 ${stats.defaulterCount > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                          <AlertTriangle className={`w-3.5 h-3.5 ${stats.defaulterCount > 0 ? 'text-rose-400' : 'text-slate-300'}`} />
+                          {stats.defaulterCount}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-              <div className="mt-4 space-y-1">
-                {mode === 'collection' ? (
-                  <>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500">Collected</span>
-                      <span className="font-semibold text-emerald-600">{formatCurrency(stats.totalCollected)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500">Pending</span>
-                      <span className="font-semibold text-rose-600">{formatCurrency(stats.totalPending)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-600 pt-1 border-t border-slate-100">
-                      <IndianRupee className="size-4 text-slate-400" />
-                      <span className="font-semibold">{stats.studentCount} transactions</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <AlertTriangle className="size-4 text-rose-400" />
-                    <span className="font-semibold">{stats.defaulterCount} defaulters</span>
-                  </div>
-                )}
-              </div>
-            </button>
+            </div>
           );
         })}
       </div>

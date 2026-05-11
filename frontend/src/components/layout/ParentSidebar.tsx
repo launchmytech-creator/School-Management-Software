@@ -11,7 +11,6 @@ interface NavItem {
 const navItems: NavItem[] = [
   { name: 'Dashboard',       icon: 'dashboard',       path: '/parent/dashboard'    },
   { name: 'Attendance',      icon: 'event_available', path: '/parent/attendance'   },
-  { name: 'Results & Marks', icon: 'quiz',            path: '/parent/exam-results' },
   { name: 'Fees',            icon: 'payments',         path: '/parent/fees'         },
   { name: 'Syllabus',        icon: 'auto_stories',     path: '/parent/syllabus'     },
   { name: 'Announcements',   icon: 'campaign',         path: '/parent/announcements'},

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
@@ -10,14 +10,17 @@ import { useAcademicYear } from "../../context/AcademicYearContext";
 import { examService, type Exam } from "../../services/examService";
 import { useExams, useCreateExam, useUpdateExam, useDeleteExam } from "../../hooks/queries";
 import { useClasses } from "../../hooks/queries";
-import { Plus, GraduationCap } from "lucide-react";
+import { Plus, GraduationCap, ArrowLeft, FileText } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
+import type { Class } from "../../types/class";
 
 interface ExamsListProps {
   layout: "admin" | "accountant";
 }
+
+type ViewMode = "classes" | "exams";
 
 const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
   const { showNotification } = useNotification();
@@ -27,7 +30,12 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
   const isAdmin = layout === "admin";
   const basePath = isAdmin ? "/admin" : "/accountant";
 
-  const [selectedClass, setSelectedClass] = useState<string>("");
+  // View state
+  const [viewMode, setViewMode] = useState<ViewMode>("classes");
+  const [selectedClassData, setSelectedClassData] = useState<Class | null>(null);
+  const [classSearch, setClassSearch] = useState("");
+
+  // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, examId: null as number | null });
 
@@ -37,13 +45,23 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
   const [checkingResults, setCheckingResults] = useState(false);
 
   const { data: exams = [], isLoading } = useExams({
-    classId: selectedClass ? parseInt(selectedClass) : undefined,
+    classId: selectedClassData ? parseInt(selectedClassData.id) : undefined,
   });
-  const { data: classes = [] } = useClasses(selectedYear?.id);
+  const { data: classes = [], isLoading: loadingClasses } = useClasses(selectedYear?.id);
 
   const createExam = useCreateExam();
   const updateExam = useUpdateExam();
   const deleteExam = useDeleteExam();
+
+  const filteredClasses = useMemo(() => {
+    if (!classSearch.trim()) return classes;
+    const s = classSearch.toLowerCase();
+    return classes.filter(
+      (c) =>
+        c.name.toLowerCase().includes(s) ||
+        (c.section && c.section.toLowerCase().includes(s)),
+    );
+  }, [classes, classSearch]);
 
   const handleDeleteExam = () => {
     if (!deleteDialog.examId) return;
@@ -89,32 +107,38 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
     setEditingExam(null);
   };
 
-  const renderContent = () => (
+  const handleViewClassExams = (cls: Class) => {
+    setSelectedClassData(cls);
+    setViewMode("exams");
+  };
+
+  const handleBackToClasses = () => {
+    setViewMode("classes");
+    setSelectedClassData(null);
+  };
+
+  // ── Class list view ──────────────────────────────────────────────
+
+  const renderClassListView = () => (
     <>
       {isAdmin && (
         <PageHeader
           title="Examinations"
-          subtitle="Manage exams and view results"
+          subtitle="Select a class to view and manage exams"
           breadcrumb={{
             links: [
               { label: "Exams", href: `${basePath}/exams` },
               { label: "Examinations", active: true },
             ],
           }}
-          actions={[
-            {
-              label: "Create Exam",
-              icon: Plus,
-              onClick: () => setShowCreateModal(true),
-            },
-          ]}
         />
       )}
 
       <FilterBar
-        searchTerm=""
-        onSearchChange={() => {}}
-        onReset={() => setSelectedClass("")}
+        searchTerm={classSearch}
+        onSearchChange={setClassSearch}
+        onReset={() => setClassSearch("")}
+        searchPlaceholder="Search class or section..."
       >
         {!isAdmin && (
           <Button onClick={() => setShowCreateModal(true)} className="gap-2">
@@ -122,49 +146,150 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
             Create Exam
           </Button>
         )}
-        <select
-          value={selectedClass}
-          onChange={(e) => setSelectedClass(e.target.value)}
-          className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700"
-        >
-          <option value="">All Classes</option>
-          {classes.map((cls) => (
-            <option key={cls.id} value={cls.id}>
-              {cls.name} - Section {cls.section || "A"}
-            </option>
-          ))}
-        </select>
       </FilterBar>
 
-      {isLoading ? (
+      {loadingClasses ? (
         <div className="bg-white rounded-2xl p-12 flex items-center justify-center">
-          <LoadingSpinner size="lg" message="Loading exams..." />
+          <LoadingSpinner size="lg" message="Loading classes..." />
         </div>
-      ) : exams.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {exams.map((exam) => (
-            <ExamCard
-              key={exam.id}
-              exam={exam}
-              basePath={basePath}
-              onEdit={handleEditExam}
-              onDelete={(examId) => setDeleteDialog({ isOpen: true, examId })}
-              onNavigate={navigate}
-              isCheckingResults={checkingResults}
-            />
+      ) : filteredClasses.length > 0 ? (
+        <div className="space-y-4">
+          {filteredClasses.map((cls) => (
+            <div
+              key={cls.id}
+              className="bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => handleViewClassExams(cls)}
+            >
+              <div className="p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-violet-50 text-violet-600">
+                      <GraduationCap className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-900">
+                        {cls.name}
+                        {cls.section && ` - Section ${cls.section}`}
+                      </h3>
+                      <p className="text-sm text-slate-500">
+                        Section {cls.section || "A"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewClassExams(cls);
+                      }}
+                    >
+                      <FileText className="w-4 h-4" />
+                      View Exams
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-12 text-center">
           <GraduationCap className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-slate-900 mb-2">No Exams Found</h3>
-          <p className="text-slate-500 mb-6">Create your first exam to get started</p>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Exam
-          </Button>
+          <h3 className="text-lg font-bold text-slate-900 mb-2">No Classes Found</h3>
+          <p className="text-slate-500">
+            {classSearch
+              ? "Try adjusting your search"
+              : "No classes available for the selected academic year"}
+          </p>
         </div>
       )}
+    </>
+  );
+
+  // ── Class exams view ────────────────────────────────────────────
+
+  const renderClassExamsView = () => {
+    if (!selectedClassData) return null;
+
+    return (
+      <>
+        {isAdmin && (
+          <PageHeader
+            title={`${selectedClassData.name} - Section ${selectedClassData.section || "A"}`}
+            subtitle="Manage exams for this class"
+            breadcrumb={{
+              links: [
+                { label: "Exams", href: `${basePath}/exams` },
+                { label: selectedClassData.name, active: true },
+              ],
+            }}
+            actions={[
+              {
+                label: "Create Exam",
+                icon: Plus,
+                onClick: () => setShowCreateModal(true),
+              },
+            ]}
+          />
+        )}
+
+        <div className="flex items-center justify-between">
+          <button
+            onClick={handleBackToClasses}
+            className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Classes
+          </button>
+          {!isAdmin && (
+            <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Create Exam
+            </Button>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="bg-white rounded-2xl p-12 flex items-center justify-center">
+            <LoadingSpinner size="lg" message="Loading exams..." />
+          </div>
+        ) : exams.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {exams.map((exam) => (
+              <ExamCard
+                key={exam.id}
+                exam={exam}
+                basePath={basePath}
+                onEdit={handleEditExam}
+                onDelete={(examId) => setDeleteDialog({ isOpen: true, examId })}
+                onNavigate={navigate}
+                isCheckingResults={checkingResults}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-12 text-center">
+            <GraduationCap className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-slate-900 mb-2">No Exams Found</h3>
+            <p className="text-slate-500 mb-6">Create your first exam for this class</p>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Exam
+            </Button>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  // ── Render ──────────────────────────────────────────────────────
+
+  return (
+    <div className="space-y-6">
+      {viewMode === "classes" ? renderClassListView() : renderClassExamsView()}
 
       <CreateExamModal
         isOpen={showCreateModal}
@@ -173,6 +298,7 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
         classes={classes}
         academicYearId={selectedYear?.id ? Number(selectedYear.id) : 0}
         loading={createExam.isPending}
+        preSelectedClassId={selectedClassData ? parseInt(selectedClassData.id) : undefined}
       />
 
       <EditExamModal
@@ -196,10 +322,8 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
         confirmText="Delete"
         variant="danger"
       />
-    </>
+    </div>
   );
-
-  return <div className="space-y-6">{renderContent()}</div>;
 };
 
 export default ExamsList;

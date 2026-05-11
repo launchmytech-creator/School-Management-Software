@@ -48,7 +48,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   const pageNumbers = getPageNumbers();
 
   return (
-    <div className={`flex items-center justify-between mt-4 px-2 ${className}`}>
+    <div className={`flex items-center justify-between mt-4 px-2 py-4 ${className}`}>
       <p className="text-sm text-slate-500">
         Showing <span className="font-semibold text-slate-700">{startItem}</span> to{' '}
         <span className="font-semibold text-slate-700">{endItem}</span> of{' '}

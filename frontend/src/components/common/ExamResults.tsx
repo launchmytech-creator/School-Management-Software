@@ -113,19 +113,13 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
     return grouped;
   }, [filteredResults]);
 
-  const stats = {
-    total: results.length,
-    passed: results.filter((r) => r.marksObtained >= r.maxMarks * 0.4).length,
-    failed: results.filter((r) => r.marksObtained < r.maxMarks * 0.4).length,
-    passPercentage:
-      results.length > 0
-        ? (
-            (results.filter((r) => r.marksObtained >= r.maxMarks * 0.4).length /
-              results.length) *
-            100
-          ).toFixed(1)
-        : "0",
-  };
+  const stats = useMemo(() => {
+    const appeared = results.filter((r) => !r.isAbsent);
+    const passed = appeared.filter((r) => r.maxMarks > 0 && r.marksObtained >= r.maxMarks * 0.4).length;
+    const failed = appeared.filter((r) => r.maxMarks > 0 && r.marksObtained < r.maxMarks * 0.4).length;
+    const passPercentage = appeared.length > 0 ? ((passed / appeared.length) * 100).toFixed(1) : '0';
+    return { total: results.length, passed, failed, passPercentage };
+  }, [results]);
 
   const getSubjectStats = (subjectResults: ExamResult[]) => {
     const evaluated = subjectResults.filter(
@@ -135,7 +129,7 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
     const avgMarks =
       evaluated > 0
         ? subjectResults
-            .filter((r) => !r.isAbsent)
+            .filter((r) => !r.isAbsent && r.marksObtained > 0)
             .reduce((sum, r) => sum + r.marksObtained, 0) / evaluated
         : 0;
     return { evaluated, absent, total: subjectResults.length, avgMarks };

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { schoolService } from '../../services/schoolService';
 import { queryKeys } from '../../lib/queryKeys';
 import { QUERY_STALE_TIME } from '../../lib/constants';
-import type { School, CreateSchoolRequest, SchoolUpdateData, SubscriptionPlan, SchoolAdmin } from '../../types/school';
+import type { School, CreateSchoolRequest, SchoolUpdateData, SchoolAdmin } from '../../types/school';
 import { handleServiceError } from '../../lib/queryErrorHandler';
 import { toast } from 'sonner';
 
@@ -66,7 +66,7 @@ export const useSchoolById = (id: string) => {
         throw error;
       }
     },
-    staleTime: QUERY_STALE_TIME.DEFAULT,
+    staleTime: QUERY_STALE_TIME.REFERENCE,
     enabled: !!id,
     ...retryConfig,
   });
@@ -199,7 +199,7 @@ export const useSchoolDetail = (id: string) => {
         throw error;
       }
     },
-    staleTime: QUERY_STALE_TIME.DEFAULT,
+    staleTime: QUERY_STALE_TIME.REFERENCE,
     enabled: !!id,
     ...retryConfig,
   });
@@ -216,7 +216,7 @@ export const useAvailablePlansWithPricing = () => {
         throw error;
       }
     },
-    staleTime: QUERY_STALE_TIME.LONG,
+    staleTime: QUERY_STALE_TIME.LISTS,
     ...retryConfig,
   });
 };
@@ -228,7 +228,7 @@ export const useSubscriptionHistory = (schoolId: string) => {
       try {
         return await schoolService.getSubscriptionHistory(schoolId);
       } catch (error) {
-        handleServiceError(error, 'SUBSCRIPTION_HISTORY', 'FETCH');
+        handleServiceError(error, 'SUBSCRIPTION_PLANS' as unknown as import('../../lib/queryErrorHandler').ServiceName, 'FETCH');
         throw error;
       }
     },
@@ -243,7 +243,7 @@ export const useCalculateUpgrade = () => {
       try {
         return await schoolService.calculateUpgrade(schoolId, data);
       } catch (error) {
-        handleServiceError(error, 'SUBSCRIPTION', 'CALCULATE');
+        handleServiceError(error, 'SUBSCRIPTION_PLANS' as unknown as import('../../lib/queryErrorHandler').ServiceName, 'FETCH');
         throw error;
       }
     },
@@ -261,7 +261,7 @@ export const usePurchaseSubscription = () => {
       try {
         return await schoolService.purchaseSubscription(schoolId, data);
       } catch (error) {
-        handleServiceError(error, 'SUBSCRIPTION', 'PURCHASE');
+        handleServiceError(error, 'SUBSCRIPTION_PLANS' as unknown as import('../../lib/queryErrorHandler').ServiceName, 'FETCH');
         throw error;
       }
     },
@@ -288,7 +288,7 @@ export const useSchoolAdmin = (schoolId: string) => {
       try {
         return await schoolService.getSchoolAdmin(schoolId);
       } catch (error) {
-        handleServiceError(error, 'SCHOOL_ADMIN', 'FETCH');
+        handleServiceError(error, 'SCHOOLS' as unknown as import('../../lib/queryErrorHandler').ServiceName, 'FETCH');
         throw error;
       }
     },
@@ -305,7 +305,7 @@ export const useUpdateSchoolAdmin = () => {
       try {
         return await schoolService.updateSchoolAdmin(schoolId, data);
       } catch (error) {
-        handleServiceError(error, 'SCHOOL_ADMIN', 'UPDATE');
+        handleServiceError(error, 'SCHOOLS' as unknown as import('../../lib/queryErrorHandler').ServiceName, 'UPDATE');
         throw error;
       }
     },

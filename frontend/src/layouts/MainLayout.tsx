@@ -1,5 +1,4 @@
 import React, { useMemo } from "react";
-import { useLocation } from "react-router-dom";
 import { useStudentCache } from "../hooks/useStudentCache";
 import RouteErrorBoundary from "../components/error/RouteErrorBoundary";
 import AppHeader from "../components/common/AppHeader";
@@ -30,7 +29,6 @@ const HEADER_ROLES: Record<string, string> = {
 };
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children, title }) => {
-  const location = useLocation();
   const { user } = useAuth();
   
   useStudentCache();

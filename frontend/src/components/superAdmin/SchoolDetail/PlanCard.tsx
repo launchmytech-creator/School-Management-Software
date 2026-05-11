@@ -37,7 +37,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
   priceHalfYearly,
   priceQuarterly,
   priceMonthly,
-  features,
+  features: _features,
   isCurrentPlan,
   isSelected,
   onSelect,

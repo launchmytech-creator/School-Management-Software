@@ -33,6 +33,7 @@ interface CreateExamModalProps {
   classes: Class[];
   academicYearId: number;
   loading?: boolean;
+  preSelectedClassId?: number;
 }
 
 const createExamSchema = z.object({
@@ -51,6 +52,7 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
   classes,
   academicYearId,
   loading = false,
+  preSelectedClassId,
 }) => {
   const [classSubjects, setClassSubjects] = useState<ClassSubject[]>([]);
   const [selectedSubjects, setSelectedSubjects] = useState<SubjectFormItem[]>([]);
@@ -61,10 +63,17 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<z.infer<typeof createExamSchema>>({
     resolver: zodResolver(createExamSchema),
   });
+
+  useEffect(() => {
+    if (isOpen && preSelectedClassId) {
+      setValue('classId', String(preSelectedClassId));
+    }
+  }, [isOpen, preSelectedClassId, setValue]);
 
   const selectedClassId = watch("classId");
 
@@ -166,9 +175,10 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
               {errors.classId && <span className="text-[10px] font-bold text-red-500">{errors.classId.message}</span>}
             </div>
             <select
+              disabled={!!preSelectedClassId}
               className={`w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 ${
                 errors.classId ? "border-red-500 bg-red-50/30 focus:ring-red-500/10" : "border border-slate-200 focus:ring-blue-500"
-              }`}
+              } ${preSelectedClassId ? "bg-slate-100 cursor-not-allowed" : ""}`}
               {...register("classId")}
             >
               <option value="">Select Class</option>

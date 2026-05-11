@@ -5,8 +5,7 @@ import { useParents } from "../../hooks/queries";
 import type { Parent } from "../../types/parent";
 import { queryKeys } from "../../lib/queryKeys";
 import { parentService } from "../../services/parentService";
-import ViewToggle from "../../components/common/ViewToggle";
-import StatusBadge, { getStatusBadge } from "../../components/common/StatusBadge";
+import StatusBadge from "../../components/common/StatusBadge";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import EmptyState from "../../components/common/EmptyState";
@@ -32,7 +31,6 @@ const ParentList: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingParent, setEditingParent] = useState<Parent | null>(null);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, parentId: null as number | null });
 
   const handleDelete = (id: number) => {
@@ -74,13 +72,10 @@ const ParentList: React.FC = () => {
               ]
             }}
           />
-           <div className="flex items-center gap-3">
-              <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
-              <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-                <UserPlus className="size-4" />
-                New Parent
-              </Button>
-           </div>
+<Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+               <UserPlus className="size-4" />
+               New Parent
+             </Button>
         </div>
 
         <FilterBar 
@@ -102,112 +97,61 @@ const ParentList: React.FC = () => {
             description="Try a different search term or add a new parent."
             action={{ label: "Clear Search", onClick: () => setSearchTerm("") }}
           />
-        ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+) : (
+          <div className="space-y-4">
             {filteredParents.map((parent) => (
-              <div key={parent.id} className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-blue-500/5 transition-all group flex flex-col">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="size-16 bg-gradient-to-br from-indigo-50 to-blue-50 text-indigo-500 border border-indigo-100 rounded-[1.5rem] flex items-center justify-center text-2xl font-black transition-transform group-hover:scale-110">
-                    {parent.fullName.charAt(0)}
+              <div
+                key={parent.id}
+                className="bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <div className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="size-12 bg-gradient-to-br from-indigo-50 to-blue-50 text-indigo-500 rounded-2xl flex items-center justify-center font-black text-xl border border-indigo-100 uppercase">
+                        {parent.fullName.charAt(0)}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-slate-900">
+                          {parent.fullName}
+                        </h3>
+                        <p className="text-sm text-slate-500">
+                          <span className="text-xs">ID: PRT-{parent.id.toString().padStart(4, '0')}</span>
+                          <span className="ml-2">•</span>
+                          <span className="ml-2 flex items-center gap-1">
+                            <GraduationCap className="w-3.5 h-3.5" />
+                            {parent.childrenCount || 0} Children
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-sm text-slate-500 flex items-center gap-1">
+                          <Mail className="w-3.5 h-3.5" />
+                          {parent.email}
+                        </p>
+                        <p className="text-sm text-slate-400 flex items-center gap-1">
+                          <Phone className="w-3.5 h-3.5" />
+                          {parent.phone || 'N/A'}
+                        </p>
+                      </div>
+                      <StatusBadge label={parent.isActive ? 'Active' : 'Inactive'} variant={parent.isActive ? 'success' : 'neutral'} />
+                      <div className="flex items-center gap-1">
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedParent(parent); setIsDetailsOpen(true); }} className="p-2.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
+                          <Eye className="size-5" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setEditingParent(parent); setIsEditOpen(true); }} className="p-2.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all">
+                          <Edit2 className="size-4" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(parent.id); }} className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                   <div className="flex gap-1">
-                      <button onClick={() => { setSelectedParent(parent); setIsDetailsOpen(true); }} className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
-                       <Eye className="size-5" />
-                      </button>
-                      <button onClick={() => { setEditingParent(parent); setIsEditOpen(true); }} className="p-2 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all">
-                       <Edit2 className="size-4" />
-                      </button>
-                   </div>
-                </div>
-                
-                <h3 className="text-xl font-display font-black text-slate-900 tracking-tight leading-none mb-4 group-hover:text-blue-600 transition-colors uppercase">{parent.fullName}</h3>
-                
-                <div className="space-y-3 mb-8">
-                   <div className="flex items-center gap-3 text-slate-400">
-                      <Mail className="size-4" />
-                      <span className="text-xs font-bold truncate">{parent.email}</span>
-                   </div>
-                   <div className="flex items-center gap-3 text-slate-400">
-                      <Phone className="size-4" />
-                      <span className="text-xs font-bold">{parent.phone || "No phone added"}</span>
-                   </div>
-                </div>
-
-                <div className="mt-auto pt-6 border-t border-slate-50 flex items-center justify-between">
-                   <div className="flex items-center gap-2">
-                      <div className={`size-2 rounded-full ${parent.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{parent.isActive ? 'Active' : 'Inactive'}</span>
-                   </div>
-                   <div className="flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full">
-                      <GraduationCap className="size-3" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">{parent.childrenCount || 0} Children</span>
-                   </div>
                 </div>
               </div>
-              ))}
-          </div>
-        ) : (
-          <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
-             <table className="w-full text-left">
-                <thead>
-                   <tr className="bg-slate-50/50 border-b border-slate-50">
-                      <th className="pl-10 pr-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Name</th>
-                      <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Info</th>
-                      <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Linked Children</th>
-                      <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                      <th className="pl-6 pr-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                   {filteredParents.map((parent) => (
-                     <tr key={parent.id} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="pl-10 pr-6 py-6">
-                           <div className="flex items-center gap-4">
-                              <div className="size-10 bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500 rounded-xl flex items-center justify-center font-black transition-all group-hover:bg-blue-500 group-hover:text-white group-hover:shadow-lg group-hover:shadow-blue-500/20">
-                                 {parent.fullName.charAt(0)}
-                              </div>
-                              <div>
-                                 <span className="font-display font-black text-slate-900 tracking-tight block uppercase">{parent.fullName}</span>
-                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mt-0.5">ID: PRT-{parent.id.toString().padStart(4, '0')}</span>
-                              </div>
-                           </div>
-                        </td>
-                        <td className="px-6 py-6">
-                           <div className="space-y-1">
-                              <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                                 <Mail className="size-3 text-slate-300" /> {parent.email}
-                              </div>
-                              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                 <Phone className="size-3 text-slate-200" /> {parent.phone || 'N/A'}
-                              </div>
-                           </div>
-                        </td>
-                        <td className="px-6 py-6 text-center">
-                            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100/50 shadow-sm transition-all hover:scale-110">
-                               <GraduationCap className="size-3" />
-                               {parent.childrenCount || 0} Children
-                            </span>
-                        </td>
-                        <td className="px-6 py-6 text-center">
-                           <StatusBadge label={parent.isActive ? 'Active' : 'Inactive'} variant={parent.isActive ? 'success' : 'neutral'} />
-                        </td>
-                        <td className="pl-6 pr-10 py-6">
-                            <div className="flex items-center justify-end gap-2">
-                               <button onClick={() => { setSelectedParent(parent); setIsDetailsOpen(true); }} className="p-2.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
-                                 <Eye className="size-5" />
-                               </button>
-                               <button onClick={() => { setEditingParent(parent); setIsEditOpen(true); }} className="p-2.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all">
-                                 <Edit2 className="size-4" />
-                               </button>
-                               <button onClick={() => handleDelete(parent.id)} className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
-                                 <Trash2 className="size-4" />
-                               </button>
-                            </div>
-                        </td>
-                     </tr>
-                   ))}
-                </tbody>
-             </table>
+            ))}
           </div>
         )}
       </div>
