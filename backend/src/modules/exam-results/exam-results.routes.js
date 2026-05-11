@@ -64,4 +64,16 @@ router.delete(
   examResultsController.deleteResult,
 );
 
+router.get(
+  "/class/:classId/subjects",
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  examResultsController.getClassSubjects,
+);
+
+router.get(
+  "/class/:classId/results",
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  examResultsController.getClassResults,
+);
+
 module.exports = router;

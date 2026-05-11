@@ -159,6 +159,52 @@ class ExamResultsController {
       next(error);
     }
   }
+
+  async getClassSubjects(req, res, next) {
+    try {
+      const { classId } = req.params;
+      const { academicYearId, examType } = req.query;
+
+      if (!academicYearId) {
+        return ApiResponse.error(res, "academicYearId is required", 400);
+      }
+
+      const subjects = await examResultsService.getClassSubjectsWithStats(
+        parseInt(classId),
+        parseInt(academicYearId),
+        examType || null,
+      );
+      return ApiResponse.success(res, subjects);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getClassResults(req, res, next) {
+    try {
+      const { classId } = req.params;
+      const { academicYearId, subjectId, examType, search, page, limit } = req.query;
+
+      if (!academicYearId) {
+        return ApiResponse.error(res, "academicYearId is required", 400);
+      }
+
+      const results = await examResultsService.getClassResults(
+        parseInt(classId),
+        {
+          academicYearId: parseInt(academicYearId),
+          subjectId: subjectId ? parseInt(subjectId) : null,
+          examType: examType || null,
+          search: search || null,
+          page: page ? parseInt(page) : 1,
+          limit: limit ? parseInt(limit) : 20,
+        },
+      );
+      return ApiResponse.success(res, results);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new ExamResultsController();
