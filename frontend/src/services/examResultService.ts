@@ -69,6 +69,7 @@ export interface ClassPerformance {
 
 export interface StudentResult {
   id: number;
+  examId: number;
   maxMarks: number;
   examDate: string;
   subjectName: string;
@@ -207,6 +208,7 @@ interface BackendClassPerformance {
 
 interface BackendStudentResult {
   id: number;
+  exam_id: number;
   max_marks: number;
   exam_date: string;
   subject_name: string;
@@ -268,6 +270,7 @@ const mapClassPerformance = (data: BackendClassPerformance): ClassPerformance =>
 
 const mapStudentResult = (data: BackendStudentResult): StudentResult => ({
   id: data.id,
+  examId: data.exam_id,
   maxMarks: data.max_marks || 0,
   examDate: data.exam_date,
   subjectName: data.subject_name,

@@ -52,10 +52,10 @@ const FeeCollection: React.FC = () => {
 
     try {
       setLoading(true);
-      const data = await feeService.getFeeTransactions({
+      const response = await feeService.getFeeTransactions({
         classId: parseInt(selectedClass),
       });
-      const aggregated = feeService.aggregateByStudent(data);
+      const aggregated = feeService.aggregateByStudent(response.data);
       setStudentFees(aggregated);
     } catch {
       showNotification('Failed to fetch fee data', 'error');

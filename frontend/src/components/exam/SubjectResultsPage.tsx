@@ -57,11 +57,11 @@ const SubjectResultsPage: React.FC<SubjectResultsPageProps> = ({ layout }) => {
 
   const { data: examData } = useQuery({
     queryKey: ['exam', examId],
-    queryFn: () => examService.getById(parseInt(examId)),
+    queryFn: () => examService.getExamById(parseInt(examId)),
     enabled: !!examId,
   });
 
-  const { data: students = [], isLoading: loadingStudents } = useQuery({
+  const { data: studentsPage, isLoading: loadingStudents } = useQuery({
     queryKey: ['exam-students', classId, subjectId, examId, selectedYear?.id],
     queryFn: () => examResultService.getResults({
       examId: parseInt(examId),
@@ -71,6 +71,7 @@ const SubjectResultsPage: React.FC<SubjectResultsPageProps> = ({ layout }) => {
     }),
     enabled: !!classId && !!subjectId && !!examId && !!selectedYear?.id,
   });
+  const students = studentsPage?.data ?? [];
 
   const filteredStudents = useMemo(() => {
     if (!searchTerm) return students;
@@ -204,7 +205,7 @@ const SubjectResultsPage: React.FC<SubjectResultsPageProps> = ({ layout }) => {
         <div className="space-y-3">
           {filteredStudents.map((student) => (
             <div
-              key={student.resultId}
+              key={student.id}
               className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between hover:border-blue-300 transition-colors"
             >
               <div className="flex items-center gap-4">

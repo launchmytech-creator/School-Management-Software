@@ -31,7 +31,7 @@ const ExamResultsPage: React.FC<ExamResultsPageProps> = ({ layout }) => {
 
   const { data: examData } = useQuery({
     queryKey: ['exam', examId],
-    queryFn: () => examService.getById(parseInt(examId)),
+    queryFn: () => examService.getExamById(parseInt(examId)),
     enabled: !!examId,
   });
 

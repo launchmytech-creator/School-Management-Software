@@ -356,7 +356,7 @@ const ParentExamResults: React.FC = () => {
         />
       ) : (
         <ExamListView
-          child={selectedChild}
+          child={selectedChild ?? null}
           onSelectExam={handleSelectExam}
           onSelectSubject={handleSelectSubject}
         />

@@ -48,10 +48,11 @@ const StudentAttendance: React.FC = () => {
   const fetchStudents = useCallback(async () => {
     if (!selectedClass?.classId || !selectedYear?.id) return;
     try {
-      const data = await studentService.getStudents({ 
+      const response = await studentService.getStudents({
         classId: String(selectedClass.classId),
         academicYear: String(selectedYear.id)
       });
+      const data = response.data;
       setStudents(data);
       
       const initialRecords = new Map<number, AttendanceStatus>();
