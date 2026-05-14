@@ -12,6 +12,7 @@ const navItems: NavItem[] = [
   { name: 'Dashboard',       icon: 'dashboard',       path: '/parent/dashboard'    },
   { name: 'Attendance',      icon: 'event_available', path: '/parent/attendance'   },
   { name: 'Fees',            icon: 'payments',         path: '/parent/fees'         },
+  { name: 'Exam Results',    icon: 'school',          path: '/parent/exam-results' },
   { name: 'Syllabus',        icon: 'auto_stories',     path: '/parent/syllabus'     },
   { name: 'Announcements',   icon: 'campaign',         path: '/parent/announcements'},
 ];
