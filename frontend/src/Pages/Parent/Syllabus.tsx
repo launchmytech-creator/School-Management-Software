@@ -8,7 +8,7 @@ import {
   useParentSubjects,
 } from "../../hooks/queries";
 import type { LinkedStudent } from "../../types/parent";
-import type { ChapterWithStatus } from "../../services/syllabusService";
+import { syllabusService, type ChapterWithStatus } from "../../services/syllabusService";
 import PageHeader from "../../components/common/PageHeader";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { getSubjectIcon } from "../../lib/subject-utils";
@@ -196,17 +196,61 @@ const ParentSyllabus: React.FC = () => {
     selectedYear?.id ? Number(selectedYear.id) : 0,
   );
 
-  const subjectCards = React.useMemo<SubjectCard[]>(() => {
-    return subjectsData.map((cs) => ({
-      classSubjectId: cs.id,
-      subjectId: cs.subjectId,
-      subjectName: cs.subjectName,
-      totalChapters: 0,
-      completedChapters: 0,
-      progressPercentage: 0,
-      chapters: [],
-    }));
-  }, [subjectsData]);
+  const [subjectCards, setSubjectCards] = useState<SubjectCard[]>([]);
+
+  React.useEffect(() => {
+    if (!classId || !selectedYear?.id || subjectsData.length === 0) {
+      setSubjectCards([]);
+      return;
+    }
+
+    const fetchChapters = async () => {
+      const academicYearId = Number(selectedYear.id);
+      const cards = await Promise.all(
+        subjectsData.map(async (cs) => {
+          try {
+            const chapters = await syllabusService.getChaptersWithStatusDirect(
+              classId,
+              cs.subjectId,
+              academicYearId
+            );
+            const completedChapters = chapters.filter(
+              (ch) => ch.status === "completed"
+            ).length;
+            const progressPercentage =
+              chapters.length > 0
+                ? Math.round((completedChapters / chapters.length) * 100)
+                : 0;
+            
+            return {
+              classSubjectId: cs.id,
+              subjectId: cs.subjectId,
+              subjectName: cs.subjectName,
+              teacherName: undefined as string | undefined,
+              totalChapters: chapters.length,
+              completedChapters,
+              progressPercentage,
+              chapters,
+            };
+          } catch {
+            return {
+              classSubjectId: cs.id,
+              subjectId: cs.subjectId,
+              subjectName: cs.subjectName,
+              teacherName: undefined as string | undefined,
+              totalChapters: 0,
+              completedChapters: 0,
+              progressPercentage: 0,
+              chapters: [] as ChapterWithStatus[],
+            };
+          }
+        })
+      );
+      setSubjectCards(cards);
+    };
+
+    fetchChapters();
+  }, [subjectsData, classId, selectedYear?.id]);
 
   const toggleExpand = (classSubjectId: number) => {
     setExpanded((prev) => {

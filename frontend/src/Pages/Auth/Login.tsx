@@ -51,7 +51,8 @@ const Login: React.FC = () => {
       ) {
         return {
           type: "validation",
-          message: "Your school subscription has expired. Please contact your administrator to renew.",
+          message:
+            "Your school subscription has expired. Please contact your administrator to renew.",
         };
       }
       if (
@@ -60,7 +61,8 @@ const Login: React.FC = () => {
       ) {
         return {
           type: "validation",
-          message: "Your school subscription is suspended. Please contact support for assistance.",
+          message:
+            "Your school subscription is suspended. Please contact support for assistance.",
         };
       }
       if (
@@ -69,7 +71,8 @@ const Login: React.FC = () => {
       ) {
         return {
           type: "validation",
-          message: "Your trial period has expired. Please purchase a subscription plan to continue.",
+          message:
+            "Your trial period has expired. Please purchase a subscription plan to continue.",
         };
       }
       if (
@@ -152,7 +155,9 @@ const Login: React.FC = () => {
 
   const handleRetry = () => {
     setLoginError(null);
-    document.querySelector("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    document
+      .querySelector("form")
+      ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
   };
 
   const getErrorStyles = () => {
@@ -245,7 +250,7 @@ const Login: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 id="remember"
@@ -257,7 +262,7 @@ const Login: React.FC = () => {
               >
                 Remember me
               </label>
-            </div>
+            </div> */}
 
             <button
               type="submit"
@@ -300,8 +305,7 @@ const Login: React.FC = () => {
           </form>
 
           <div className="mt-auto pt-12 text-center">
-            <p className="text-[#133257]/30 text-[10px] font-medium uppercase tracking-wider">
-            </p>
+            <p className="text-[#133257]/30 text-[10px] font-medium uppercase tracking-wider"></p>
           </div>
         </div>
       </div>

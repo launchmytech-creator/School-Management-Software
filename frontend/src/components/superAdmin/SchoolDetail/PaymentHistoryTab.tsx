@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatDate } from '../../../lib/utils';
 
 interface PaymentHistoryTabProps {
   payments: Record<string, unknown>[];
@@ -95,7 +96,7 @@ const PaymentHistoryTab: React.FC<PaymentHistoryTabProps> = ({ payments, isLoadi
                   return (
                     <tr key={String(payment.id) || index} className="hover:bg-slate-50 transition-colors">
                       <td className="py-4 px-4 text-sm font-medium text-slate-700">
-                        {payment.payment_date ? new Date(payment.payment_date as string).toLocaleDateString() : 'N/A'}
+                        {payment.payment_date ? formatDate(payment.payment_date as string) : 'N/A'}
                       </td>
                       <td className="py-4 px-4 text-sm font-bold text-slate-700">
                         {(payment.plan_name as string) || 'N/A'}
@@ -127,7 +128,7 @@ const PaymentHistoryTab: React.FC<PaymentHistoryTabProps> = ({ payments, isLoadi
                       </td>
                       <td className="py-4 px-4 text-xs font-medium text-slate-500">
                         {payment.subscription_start_date && payment.subscription_end_date
-                          ? `${new Date(payment.subscription_start_date as string).toLocaleDateString()} - ${new Date(payment.subscription_end_date as string).toLocaleDateString()}`
+                          ? `${formatDate(payment.subscription_start_date as string)} - ${formatDate(payment.subscription_end_date as string)}`
                           : 'N/A'}
                       </td>
                     </tr>

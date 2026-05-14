@@ -226,14 +226,14 @@ const TeacherAllocation: React.FC = () => {
                       return (
                         <div
                           key={cls.id}
-                          className="bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                          className="bg-white rounded-xl border border-slate-200 cursor-pointer hover:shadow-md transition-shadow"
                         >
                           <div className="p-5">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-4">
                                 <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
                                   <span className="font-black text-sm">
-                                    {cls.name.charAt(0).toUpperCase()}
+                                    
                                   </span>
                                 </div>
                                 <div>

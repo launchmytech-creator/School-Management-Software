@@ -80,9 +80,9 @@ const PageHeader: React.FC<PageHeaderProps> = ({
       
       {actions && actions.length > 0 && (
         <div className="flex items-center gap-2 flex-shrink-0">
-          {actions.map((action, index) => (
+          {actions.map((action) => (
             <Button
-              key={index}
+              key={action.label}
               variant={action.variant || 'default'}
               onClick={action.onClick}
               className={`gap-2 ${action.className || ''}`}

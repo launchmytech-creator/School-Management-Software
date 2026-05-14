@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, GraduationCap, Download, ChevronRight, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAcademicYear } from '../../context/AcademicYearContext';
@@ -9,8 +9,9 @@ import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
-import { EXAM_TYPES, subjectIcon } from '../../lib/subject-utils';
+import { subjectIcon } from '../../lib/subject-utils';
 import { examResultService } from '../../services/examResultService';
+import { examService } from '../../services/examService';
 
 interface ExamResultsPageProps {
   layout: 'admin' | 'accountant';
@@ -19,21 +20,28 @@ interface ExamResultsPageProps {
 const ExamResultsPage: React.FC<ExamResultsPageProps> = ({ layout }) => {
   const { classId } = useParams<{ classId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { selectedYear } = useAcademicYear();
   const { showNotification } = useNotification();
+
+  const examId = searchParams.get('examId') || '';
 
   const { data: allClasses = [] } = useClasses(selectedYear?.id);
   const classData = allClasses.find((c) => String(c.id) === classId);
 
-  const [selectedExamType, setSelectedExamType] = useState<string>('');
+  const { data: examData } = useQuery({
+    queryKey: ['exam', examId],
+    queryFn: () => examService.getById(parseInt(examId)),
+    enabled: !!examId,
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
 
   const { data: subjects = [], isLoading, error } = useQuery({
-    queryKey: ['class-subjects', classId, selectedYear?.id, selectedExamType],
+    queryKey: ['class-subjects', classId, selectedYear?.id],
     queryFn: () => examResultService.getClassSubjects(
       parseInt(classId!),
       parseInt(selectedYear?.id!),
-      selectedExamType || undefined
     ),
     enabled: !!classId && !!selectedYear?.id,
   });
@@ -49,6 +57,32 @@ const ExamResultsPage: React.FC<ExamResultsPageProps> = ({ layout }) => {
 
   const basePath = layout === 'admin' ? '/admin' : '/accountant';
 
+  if (!examId) {
+    return (
+      <div className="space-y-6 pb-12">
+        <PageHeader
+          title="Select an Exam"
+          subtitle={`View results for ${classData?.name || 'Class'}`}
+          breadcrumb={{
+            links: [
+              { label: 'Exams', href: `${basePath}/exams` },
+              { label: classData?.name || '', active: true },
+            ],
+          }}
+        />
+        <EmptyState
+          icon={GraduationCap}
+          title="No exam selected"
+          description="Please select an exam from the Examinations page to view results."
+          action={{
+            label: 'Go to Examinations',
+            onClick: () => navigate(`${basePath}/exams`)
+          }}
+        />
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -59,42 +93,71 @@ const ExamResultsPage: React.FC<ExamResultsPageProps> = ({ layout }) => {
 
   if (error) {
     return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Failed to load results"
-        description="There was an error loading exam results. Please try again."
-        action={{ label: 'Go Back', onClick: () => navigate(`${basePath}/exam-results`) }}
-      />
+      <div className="space-y-6 pb-12">
+        <PageHeader
+          title="Error Loading Results"
+          subtitle={`${classData?.name || ''}`}
+          breadcrumb={{
+            links: [
+              { label: 'Exams', href: `${basePath}/exams` },
+              { label: 'Results', active: true },
+            ],
+          }}
+        />
+        <EmptyState
+          icon={AlertCircle}
+          title="Failed to load results"
+          description="There was an error loading exam results. Please try again."
+          action={{ label: 'Go Back', onClick: () => navigate(`${basePath}/exams`) }}
+        />
+      </div>
     );
   }
 
   if (!classData) {
     return (
-      <EmptyState
-        icon={Search}
-        title="Class not found"
-        action={{ label: 'Go Back', onClick: () => navigate(`${basePath}/exam-results`) }}
-      />
+      <div className="space-y-6 pb-12">
+        <PageHeader
+          title="Class Not Found"
+          breadcrumb={{
+            links: [
+              { label: 'Exams', href: `${basePath}/exams` },
+              { label: 'Error', active: true },
+            ],
+          }}
+        />
+        <EmptyState
+          icon={Search}
+          title="Class not found"
+          description="The class you are looking for does not exist."
+          action={{ label: 'Go Back', onClick: () => navigate(`${basePath}/exams`) }}
+        />
+      </div>
     );
   }
 
   return (
     <div className="space-y-6 pb-12">
       <PageHeader
-        title={`Exam Results - ${classData.name}`}
+        title={examData?.name || 'Exam Results'}
         subtitle={
           classData.section
-            ? `Section ${classData.section} • ${selectedYear?.name || ''}`
-            : selectedYear?.name || ''
+            ? `${classData.name} - Section ${classData.section} • ${examData?.examType || ''}`
+            : `${classData.name} • ${examData?.examType || ''}`
         }
         breadcrumb={{
           links: [
-            { label: 'Exams', href: `${basePath}/exam-results` },
-            { label: classData.name, href: `${basePath}/exam-results/class/${classId}` },
-            { label: 'Exam Results', active: true },
+            { label: 'Exams', href: `${basePath}/exams` },
+            { label: examData?.name || 'Results', active: true },
           ],
         }}
         actions={[
+          {
+            label: 'Back to Exams',
+            icon: ChevronRight,
+            onClick: () => navigate(`${basePath}/exams`),
+            variant: 'outline',
+          },
           {
             label: 'Export',
             icon: Download,
@@ -109,22 +172,9 @@ const ExamResultsPage: React.FC<ExamResultsPageProps> = ({ layout }) => {
         onSearchChange={setSearchTerm}
         onReset={() => {
           setSearchTerm('');
-          setSelectedExamType('');
         }}
         searchPlaceholder="Search subjects..."
-      >
-        <select
-          value={selectedExamType}
-          onChange={(e) => setSelectedExamType(e.target.value)}
-          className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 min-w-48"
-        >
-          {EXAM_TYPES.map((type) => (
-            <option key={type} value={type === 'All' ? '' : type}>
-              {type}
-            </option>
-          ))}
-        </select>
-      </FilterBar>
+      />
 
       {filteredSubjects.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -139,7 +189,7 @@ const ExamResultsPage: React.FC<ExamResultsPageProps> = ({ layout }) => {
               <button
                 key={subject.subjectId}
                 onClick={() => {
-                  navigate(`${basePath}/exam-results/class/${classId}/subject/${subject.subjectId}`);
+                  navigate(`${basePath}/exam-results/class/${classId}/subject/${subject.subjectId}/exam/${examId}`);
                 }}
                 className="bg-white rounded-xl border border-slate-200 p-5 text-left hover:border-blue-300 hover:shadow-md transition-all group"
               >
@@ -192,11 +242,7 @@ const ExamResultsPage: React.FC<ExamResultsPageProps> = ({ layout }) => {
         <EmptyState
           icon={GraduationCap}
           title="No results found"
-          description={
-            selectedExamType
-              ? 'Try adjusting your filter'
-              : 'No exam results recorded for this class'
-          }
+          description="No exam results recorded for this class"
         />
       )}
     </div>

@@ -10,6 +10,7 @@ import { accountantService } from "../../services/accountantService";
 import { useNotification } from "../../context/NotificationContext";
 import { useAccountantById } from "../../hooks/queries";
 import { queryKeys } from "../../lib/queryKeys";
+import { formatDate } from "../../lib/utils";
 
 const AccountantProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -117,7 +118,7 @@ const AccountantProfile: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">Date of Birth</p>
-                    <p className="text-sm font-bold text-slate-700">{accountant.dateOfBirth ? new Date(accountant.dateOfBirth).toLocaleDateString() : 'Not set'}</p>
+                    <p className="text-sm font-bold text-slate-700">{accountant.dateOfBirth ? formatDate(accountant.dateOfBirth) : 'Not set'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

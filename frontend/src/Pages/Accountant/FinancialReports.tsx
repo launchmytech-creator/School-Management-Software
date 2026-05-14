@@ -42,8 +42,8 @@ const FinancialReports: React.FC = () => {
       try {
         const types = await feeStructureService.getUniqueFeeTypes();
         setFeeTypes(types);
-      } catch {
-        // Ignore error
+      } catch (error) {
+        console.error('Failed to fetch fee types:', error);
       }
     };
     fetchFeeTypes();

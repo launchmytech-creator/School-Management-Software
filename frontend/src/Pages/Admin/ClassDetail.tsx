@@ -11,18 +11,10 @@ import {
   useAllAllocations,
 } from "../../hooks/queries";
 import AdminStatCard from "../../components/dashboard/AdminStatCard";
-import {
-  Users,
-  Library,
-  ChevronRight,
-  Eye,
-  Shield,
-  Pencil,
-  ListChecks,
-} from "lucide-react";
+import { Users, Library, Eye, Shield, Pencil, ListChecks } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import { Button } from "../../components/ui/button";
-import { subjectIcon } from "../../lib/subject-utils";
+import { SubjectCard } from "../../components/class/SubjectCard";
 
 const ClassDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -220,51 +212,14 @@ const ClassDetail: React.FC = () => {
 
           <div className="flex flex-col gap-4">
             {subjects.length > 0 ? (
-              subjects.map((sub) => {
-                const teacher = allocations.find(
-                  (a) =>
-                    a.subjectId === sub.subjectId && a.classId === Number(id),
-                );
-
-                return (
-                  <div
-                    key={sub.id}
-                    className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <SubjectIcon name={sub.subjectName} />
-                          <h4 className="font-black text-slate-900 text-lg tracking-tight">
-                            {sub.subjectName}
-                          </h4>
-                        </div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                          Teacher:{" "}
-                          <span className="text-slate-600">
-                            {teacher?.teacherName || "Not Assigned"}
-                          </span>
-                        </p>
-                      </div>
-                      <ChevronRight className="size-5 text-slate-300" />
-                    </div>
-
-                    <div className="mt-4 pt-4 border-t border-slate-50">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          navigate(`/admin/classes/${id}/subjects/${sub.subjectId}/chapters`)
-                        }
-                        className="gap-2 w-full"
-                      >
-                        <ListChecks className="w-4 h-4" />
-                        Manage Chapters
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })
+              subjects.map((sub) => (
+                <SubjectCard
+                  key={sub.id}
+                  subject={sub}
+                  classId={id || ""}
+                  allocations={allocations}
+                />
+              ))
             ) : (
               <div className="bg-slate-50/50 p-8 rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-400">
                 <Library className="size-10 mb-2 opacity-20" />
@@ -287,20 +242,6 @@ const ClassDetail: React.FC = () => {
         variant="danger"
         loading={deleteDialog.loading}
       />
-    </div>
-  );
-};
-
-const SubjectIcon: React.FC<{ name: string }> = ({ name }) => {
-  const { icon, bg, text } = subjectIcon(name);
-  return (
-    <div className={`p-2 rounded-lg ${bg}`}>
-      <span
-        className={`material-symbols-outlined text-lg ${text}`}
-        style={{ fontVariationSettings: "'FILL' 1" }}
-      >
-        {icon}
-      </span>
     </div>
   );
 };

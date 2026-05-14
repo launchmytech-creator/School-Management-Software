@@ -2,7 +2,7 @@ import React, { useState, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminStatCard from "../../components/dashboard/AdminStatCard";
 import { useAccountantDashboard } from "../../hooks/queries";
-import { formatCurrency } from "../../lib/utils";
+import { formatCurrency, formatDate } from "../../lib/utils";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import {
   TrendingUp,
@@ -43,15 +43,6 @@ const AccountantDashboard: React.FC = () => {
     }
     return chartData;
   }, [data?.monthlyChart, chartFilter]);
-
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "N/A";
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
 
   const handlePrintReceipt = (receipt: {
     id: number;

@@ -203,11 +203,7 @@ const Subjects: React.FC = () => {
   };
 
   const onSubmitChapter = async (data: CreateChapterFormData) => {
-    console.log("onSubmitChapter - selectedSubjectId:", selectedSubjectId);
-    console.log("onSubmitChapter - allClassSubjects:", allClassSubjects);
-
     if (!selectedSubjectId) {
-      console.log("FAIL: selectedSubjectId is null");
       showNotification("No subject selected", "error");
       return;
     }
@@ -216,13 +212,6 @@ const Subjects: React.FC = () => {
       (cs) => cs.id === selectedSubjectId,
     );
     if (!classSubject) {
-      console.log("FAIL: classSubject not found in allClassSubjects");
-      console.log(
-        "Looking for id:",
-        selectedSubjectId,
-        "in:",
-        allClassSubjects.map((cs) => cs.id),
-      );
       showNotification("Subject not found in current academic year", "error");
       return;
     }
@@ -248,7 +237,7 @@ const Subjects: React.FC = () => {
         [selectedSubjectId]: chapterData,
       }));
     } catch (err) {
-      console.log("onSubmitChapter - Error:", err);
+      console.error("Failed to create chapter:", err);
       showNotification("Failed to create chapter", "error");
     }
   };

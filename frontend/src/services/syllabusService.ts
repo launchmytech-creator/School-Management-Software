@@ -320,6 +320,45 @@ export const syllabusService = {
     return apiRequest<SubjectProgress[]>(`/syllabus-completion/class/${classId}/progress`);
   },
 
+  getStudentProgress: async (studentId: number, academicYearId: number): Promise<{
+    studentId: number;
+    totalSubjects: number;
+    totalChapters: number;
+    completedChapters: number;
+    overallPercentage: number;
+    subjects: SubjectProgress[];
+  }> => {
+    const studentData = await studentService.getStudentById(studentId);
+    const classId = studentData.currentClassId;
+    
+    if (!classId) {
+      return {
+        studentId,
+        totalSubjects: 0,
+        totalChapters: 0,
+        completedChapters: 0,
+        overallPercentage: 0,
+        subjects: [],
+      };
+    }
+
+    const subjectsProgress = await syllabusService.getClassProgress(classId);
+    
+    const totalSubjects = subjectsProgress.length;
+    const totalChapters = subjectsProgress.reduce((sum, s) => sum + s.totalChapters, 0);
+    const completedChapters = subjectsProgress.reduce((sum, s) => sum + s.completedChapters, 0);
+    const overallPercentage = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
+
+    return {
+      studentId,
+      totalSubjects,
+      totalChapters,
+      completedChapters,
+      overallPercentage,
+      subjects: subjectsProgress,
+    };
+  },
+
   getAllClassesProgress: async (classIds?: number[]): Promise<AllClassesProgress> => {
     const classesData = await classService.getClasses();
     const classesToProcess = classIds 

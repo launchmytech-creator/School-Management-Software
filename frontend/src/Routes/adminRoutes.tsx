@@ -30,6 +30,7 @@ import ExamsList from "../components/common/ExamsList";
 import ExamClassSelector from "../components/exam/ExamClassSelector";
 import ExamResultsPage from "../components/exam/ExamResultsPage";
 import SubjectResultsPage from "../components/exam/SubjectResultsPage";
+import SingleExamResultsPage from "../components/exam/SingleExamResultsPage";
 import ClassSubjects from "../Pages/Admin/ClassSubjects";
 import SubjectChapters from "../Pages/Admin/SubjectChapters";
 import SyllabusTracking from "../Pages/Admin/SyllabusTracking";
@@ -273,6 +274,14 @@ const AdminRoutes = () => (
         element={
           <RequiresActiveYear>
             <SubjectResultsPage layout="admin" />
+          </RequiresActiveYear>
+        }
+      />
+      <Route
+        path="exam-results/class/:classId/subject/:subjectId/exam/:examId"
+        element={
+          <RequiresActiveYear>
+            <SingleExamResultsPage layout="admin" />
           </RequiresActiveYear>
         }
       />

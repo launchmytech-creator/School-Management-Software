@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, type ReactNode } from 'react';
 import { MoreVertical } from 'lucide-react';
 
 export interface MenuItem {
+  id?: string;
   label: string;
   icon: ReactNode;
   onClick: () => void;
@@ -46,9 +47,9 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ items }) => {
 
       {isOpen && (
         <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-50">
-          {items.map((item, index) => (
+          {items.map((item) => (
             <button
-              key={index}
+              key={item.id || item.label}
               onClick={() => handleItemClick(item.onClick)}
               className={`w-full px-4 py-2.5 text-left flex items-center gap-2 text-sm transition-colors ${
                 item.variant === 'danger'

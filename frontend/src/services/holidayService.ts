@@ -40,12 +40,10 @@ export interface CreateHolidayDto {
 
 export const holidayService = {
   createHoliday: async (data: CreateHolidayDto): Promise<Holiday> => {
-    console.log(data)
     const response = await apiRequest<BackendHoliday>('/holidays', {
       method: 'POST',
       data,
     });
-    console.log(response)
     return mapFromBackend(response);
   },
 

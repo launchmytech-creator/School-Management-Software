@@ -9,7 +9,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { useTeacherById, useTeacherAllocations, useTeacherAttendance, useHolidays } from "../../hooks/queries";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
-import { getLocalDateString } from "../../lib/utils";
+import { getLocalDateString, formatDate } from "../../lib/utils";
 import PageHeader from "../../components/common/PageHeader";
 import { TabBar } from "../../components/ui";
 import ProfileInfoRow from "../../components/common/ProfileInfoRow";
@@ -215,7 +215,7 @@ const TeacherProfile: React.FC = () => {
                 <ProfileInfoRow
                   icon={Calendar}
                   label="Date of Birth"
-                  value={teacher.dateOfBirth ? new Date(teacher.dateOfBirth).toLocaleDateString() : "Not set"}
+                  value={teacher.dateOfBirth ? formatDate(teacher.dateOfBirth) : "Not set"}
                 />
                 <ProfileInfoRow
                   icon={User}
@@ -232,10 +232,18 @@ const TeacherProfile: React.FC = () => {
               </div>
 
               <div className="mt-8 space-y-3">
-                <button className="w-full py-3.5 rounded-2xl border-2 border-slate-900 text-slate-900 font-black text-sm hover:bg-slate-900 hover:text-white transition-all active:scale-95 shadow-sm">
+                <button 
+                  className="w-full py-3.5 rounded-2xl border-2 border-slate-900 text-slate-900 font-black text-sm hover:bg-slate-900 hover:text-white transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled
+                  title="Coming soon"
+                >
                   Edit Profile
                 </button>
-                <button className="w-full py-3.5 rounded-2xl border-2 border-rose-100 text-rose-500 font-black text-sm hover:bg-rose-50 transition-all active:scale-95">
+                <button 
+                  className="w-full py-3.5 rounded-2xl border-2 border-rose-100 text-rose-500 font-black text-sm hover:bg-rose-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled
+                  title="Coming soon"
+                >
                   Deactivate
                 </button>
               </div>

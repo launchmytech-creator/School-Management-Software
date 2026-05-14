@@ -269,16 +269,8 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
       
       navigate(`${basePath}/students`);
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.response?.data?.error;
-      
-      // Check for roll number duplicate error
-      if (errorMessage?.toLowerCase().includes('roll number') || errorMessage?.toLowerCase().includes('rollnumber')) {
-        showNotification('A student with this roll number already exists in this class', 'error');
-      } else if (mode === 'create') {
-        showNotification('Failed to enroll student. Please check all fields.', 'error');
-      } else {
-        showNotification('Failed to update student. Please check all fields.', 'error');
-      }
+      const errorMessage = error?.response?.data?.message || error?.message || 'An unexpected error occurred';
+      showNotification(errorMessage, 'error');
     } finally {
       setLoading(false);
     }

@@ -228,9 +228,9 @@ export const Calendar: React.FC<CalendarProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-7 gap-1">
-          {calendarDays.map((day, index) => (
+          {calendarDays.map((day) => (
             <div
-              key={index}
+              key={day.date.toISOString()}
               onClick={() => onDayClick?.(day)}
               className={`
                 h-16 p-1.5 rounded-lg transition-colors cursor-default

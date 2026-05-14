@@ -24,6 +24,26 @@ export interface ExamResult {
   academicYearName?: string;
 }
 
+export interface ExamStudentResult {
+  resultId: number;
+  studentId: number;
+  studentName: string;
+  admissionNumber: string;
+  rollNumber: number | null;
+  marksObtained: number;
+  grade: string;
+  isAbsent: boolean;
+}
+
+export interface ExamResultGroup {
+  examId: number;
+  examName: string;
+  examType: string;
+  examDate: string;
+  maxMarks: number;
+  students: ExamStudentResult[];
+}
+
 export interface ExamSubjectResult {
   id: number;
   studentId: number;
@@ -444,27 +464,144 @@ export const examResultService = {
       academicYearId?: number;
       examType?: string;
       search?: string;
-      page?: number;
-      limit?: number;
     }
-  ): Promise<PaginatedResponse<ExamResult>> => {
+  ): Promise<{ data: ExamResultGroup[]; totalExams: number }> => {
     const params = new URLSearchParams();
     if (filters?.academicYearId) params.append('academicYearId', String(filters.academicYearId));
     if (filters?.subjectId) params.append('subjectId', String(filters.subjectId));
     if (filters?.examType) params.append('examType', filters.examType);
     if (filters?.search) params.append('search', filters.search);
-    if (filters?.page) params.append('page', String(filters.page));
-    if (filters?.limit) params.append('limit', String(filters.limit));
+
+    interface BackendExamResultGroup {
+      examId: number;
+      examName: string;
+      examType: string;
+      examDate: string;
+      maxMarks: number;
+      students: Array<{
+        resultId: number;
+        studentId: number;
+        studentName: string;
+        admissionNumber: string;
+        rollNumber: number | null;
+        marksObtained: number;
+        grade: string;
+        isAbsent: boolean;
+      }>;
+    }
 
     const response = await apiRequest<{
-      data: BackendExamResult[];
-      pagination: { page: number; limit: number; total: number; totalPages: number };
+      data: BackendExamResultGroup[];
+      totalExams: number;
     }>(`/exam-results/class/${classId}/results?${params.toString()}`);
 
     return {
-      data: (response.data ?? []).map(mapExamResult),
-      pagination: response.pagination,
+      data: response.data ?? [],
+      totalExams: response.totalExams ?? 0,
     };
+  },
+
+  getClassExamsForSubject: async (
+    classId: number,
+    subjectId: number,
+    filters?: {
+      academicYearId?: number;
+      examType?: string;
+    }
+  ): Promise<{ exams: Array<{
+    examId: number;
+    examName: string;
+    examType: string;
+    examDate: string;
+    maxMarks: number;
+    totalStudents: number;
+    evaluated: number;
+    passed: number;
+    failed: number;
+    absent: number;
+  }> }> => {
+    const params = new URLSearchParams();
+    if (filters?.academicYearId) params.append('academicYearId', String(filters.academicYearId));
+    if (filters?.examType) params.append('examType', filters.examType);
+
+    const response = await apiRequest<{
+      exams: Array<{
+        examId: number;
+        examName: string;
+        examType: string;
+        examDate: string;
+        maxMarks: number;
+        totalStudents: number;
+        evaluated: number;
+        passed: number;
+        failed: number;
+        absent: number;
+      }>;
+    }>(`/exam-results/class/${classId}/subject/${subjectId}/exams?${params.toString()}`);
+
+    return response;
+  },
+
+  getSingleExamResults: async (
+    classId: number,
+    subjectId: number,
+    examId: number,
+    academicYearId: number,
+    search?: string
+  ): Promise<{
+    examId: number;
+    examName: string;
+    examType: string;
+    examDate: string;
+    maxMarks: number;
+    subjectName: string;
+    subjectCode: string;
+    totalStudents: number;
+    evaluated: number;
+    passed: number;
+    failed: number;
+    absent: number;
+    students: Array<{
+      resultId: number;
+      studentId: number;
+      studentName: string;
+      admissionNumber: string;
+      rollNumber: number | null;
+      marksObtained: number;
+      grade: string;
+      isAbsent: boolean;
+    }>;
+  }> => {
+    const params = new URLSearchParams();
+    params.append('academicYearId', String(academicYearId));
+    if (search) params.append('search', search);
+
+    const response = await apiRequest<{
+      examId: number;
+      examName: string;
+      examType: string;
+      examDate: string;
+      maxMarks: number;
+      subjectName: string;
+      subjectCode: string;
+      totalStudents: number;
+      evaluated: number;
+      passed: number;
+      failed: number;
+      absent: number;
+      students: Array<{
+        resultId: number;
+        studentId: number;
+        studentName: string;
+        admissionNumber: string;
+        rollNumber: number | null;
+        marksObtained: number;
+        grade: string;
+        isAbsent: boolean;
+      }>;
+    }>(`/exam-results/class/${classId}/subject/${subjectId}/exam/${examId}?${params.toString()}`);
+
+    return response;
   },
 };
 

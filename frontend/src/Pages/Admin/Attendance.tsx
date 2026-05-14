@@ -70,7 +70,8 @@ const Attendance: React.FC = () => {
             {
               label: "Mark Attendance",
               icon: CalendarCheck,
-              onClick: () => setShowMarkModal(true)
+              onClick: () => showNotification('Attendance marking feature coming soon', 'info'),
+              disabled: true
             }
           ]}
         />
