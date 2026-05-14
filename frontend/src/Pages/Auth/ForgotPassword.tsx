@@ -21,6 +21,7 @@ const ForgotPassword: React.FC = () => {
   } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
   });
+  
 
   const onSubmit = async (data: ForgotPasswordFormData) => {
     try {
@@ -34,6 +35,7 @@ const ForgotPassword: React.FC = () => {
       setLoading(false);
     }
   };
+
 
   if (showSuccess) {
     return (

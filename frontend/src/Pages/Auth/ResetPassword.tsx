@@ -19,6 +19,7 @@ const ResetPassword: React.FC = () => {
 
   const token = searchParams.get("token");
 
+  
   const {
     register,
     handleSubmit,
