@@ -6,14 +6,7 @@ import {
 } from "../lib/constants";
 import { logger } from "../lib/logger";
 
-// const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
-const BASE_URL = "http://localhost:3000/api/v1";
-
-// if (!import.meta.env.VITE_API_URL) {
-//   logger.warn(
-//     "API URL not configured. Using default localhost. Set VITE_API_URL for production.",
-//   );
-// }
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
 
 class ApiError extends Error {
   statusCode?: number;
