@@ -9,10 +9,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { name: 'Dashboard',  icon: 'dashboard',      path: '/parent/dashboard'   },
-  { name: 'Attendance', icon: 'event_available', path: '/parent/attendance'  },
-  { name: 'Syllabus',   icon: 'auto_stories',    path: '/parent/syllabus'   },
-  { name: 'Fees',       icon: 'payments',        path: '/parent/fees'        },
+  { name: 'Dashboard',       icon: 'dashboard',       path: '/parent/dashboard'    },
+  { name: 'Attendance',      icon: 'event_available', path: '/parent/attendance'   },
+  { name: 'Fees',            icon: 'payments',         path: '/parent/fees'         },
+  { name: 'Exam Results',    icon: 'school',          path: '/parent/exam-results' },
+  { name: 'Syllabus',        icon: 'auto_stories',     path: '/parent/syllabus'     },
+  { name: 'Announcements',   icon: 'campaign',         path: '/parent/announcements'},
 ];
 
 const ParentSidebar: React.FC = () => {
@@ -25,7 +27,7 @@ const ParentSidebar: React.FC = () => {
   };
 
   return (
-    <div className="w-56 bg-[#1E3A5F] h-screen flex flex-col text-white/60 relative z-20 shadow-2xl flex-shrink-0">
+    <div className="w-72 bg-[#1E3A5F] h-screen flex flex-col text-white/60 relative z-20 shadow-2xl flex-shrink-0">
       {/* Brand */}
       <div className="p-5 pt-7 flex items-center gap-3 border-b border-white/5">
         <div className="w-9 h-9 bg-[#4A9FD4] rounded-xl flex items-center justify-center shadow-lg shadow-[#4A9FD4]/20 flex-shrink-0">
@@ -75,10 +77,15 @@ const ParentSidebar: React.FC = () => {
 
       {/* Contact Support */}
       <div className="p-4 border-t border-white/5 space-y-3">
-        <button className="w-full flex items-center justify-center gap-2 bg-[#4A9FD4] hover:bg-[#3a8fc4] text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-colors">
+        <a
+          href="https://wa.me/91628384605"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-center gap-2 bg-[#4A9FD4] hover:bg-[#3a8fc4] text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-colors"
+        >
           <span className="material-symbols-outlined text-[16px]">support_agent</span>
           Contact Support
-        </button>
+        </a>
         <button
           onClick={handleLogout}
           className="flex items-center gap-2 text-white/40 hover:text-white transition-all text-xs font-bold tracking-tight w-full px-2"

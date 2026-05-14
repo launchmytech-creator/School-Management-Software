@@ -1,19 +1,19 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import AdminLayout from "../../layouts/AdminLayout";
+import React, { useState, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import { 
   User, Mail, Phone, Calendar, 
   BookOpen, ChevronLeft, ChevronRight, Loader2, Clock,
   Users, MapPin,
   Briefcase
 } from "lucide-react";
-import { teacherService } from "../../services/teacherService";
-import { teacherAttendanceService, type TeacherAttendance } from "../../services/teacherAttendanceService";
-import { holidayService, type Holiday } from "../../services/holidayService";
-import { useNotification } from "../../context/NotificationContext";
-import type { Teacher, TeacherAllocation } from "../../types/teacher";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { useTeacherById, useTeacherAllocations, useTeacherAttendance, useHolidays } from "../../hooks/queries";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
-import { getLocalDateString } from "../../lib/utils";
+import { getLocalDateString, formatDate } from "../../lib/utils";
+import PageHeader from "../../components/common/PageHeader";
+import { TabBar } from "../../components/ui";
+import ProfileInfoRow from "../../components/common/ProfileInfoRow";
+import AttendanceLegend from "../../components/students/AttendanceLegend";
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'holiday' | 'sunday' | 'none';
 
@@ -22,86 +22,34 @@ interface CalendarDay {
   dateStr: string;
   status: AttendanceStatus;
   isCurrentMonth: boolean;
-  holiday?: Holiday;
+  holiday?: { holidayDate: string; description: string };
 }
 
 const TeacherProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { showNotification } = useNotification();
   
   // Tab state
   const [activeTab, setActiveTab] = useState('Attendance');
   
-  // Data state
-  const [teacher, setTeacher] = useState<Teacher | null>(null);
-  const [allocations, setAllocations] = useState<TeacherAllocation[]>([]);
-  const [loading, setLoading] = useState(true);
-  
+  const teacherId = Number(id);
+  const { data: teacher, isLoading: teacherLoading } = useTeacherById(teacherId);
+  const { data: allocationsData, isLoading: allocLoading } = useTeacherAllocations(teacherId);
+  const allocations = allocationsData ?? [];
+  const loading = teacherLoading || allocLoading;
+
   // Attendance state
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [attendanceRecords, setAttendanceRecords] = useState<TeacherAttendance[]>([]);
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
-  const [loadingAttendance, setLoadingAttendance] = useState(false);
 
-  const fetchTeacherData = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    try {
-      const [tData, aData] = await Promise.all([
-        teacherService.getTeacherById(Number(id)),
-        teacherService.getAllocationsByTeacher(Number(id))
-      ]);
-      setTeacher(tData);
-      setAllocations(aData);
-    } catch {
-      showNotification("Failed to fetch teacher profile", "error");
-      navigate("/admin/teachers");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, navigate, showNotification]);
+  const monthStart = getLocalDateString(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1));
+  const monthEnd = getLocalDateString(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0));
 
-  const fetchAttendance = useCallback(async () => {
-    if (!id) return;
-    try {
-      setLoadingAttendance(true);
-      const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-      const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
-      
-      const data = await teacherAttendanceService.getAttendance({
-        teacherId: parseInt(id),
-        startDate: getLocalDateString(monthStart),
-        endDate: getLocalDateString(monthEnd)
-      });
-      setAttendanceRecords(data);
-    } catch {
-      setAttendanceRecords([]);
-    } finally {
-      setLoadingAttendance(false);
-    }
-  }, [id, currentMonth]);
+  const { data: attendanceRecords = [] } = useTeacherAttendance({
+    teacherId: teacherId,
+    startDate: monthStart,
+    endDate: monthEnd,
+  });
 
-  const fetchHolidays = useCallback(async () => {
-    try {
-      const year = currentMonth.getFullYear();
-      const data = await holidayService.getHolidays(year);
-      setHolidays(data);
-    } catch {
-      setHolidays([]);
-    }
-  }, [currentMonth]);
-
-  useEffect(() => {
-    fetchTeacherData();
-  }, [fetchTeacherData]);
-
-  useEffect(() => {
-    if (activeTab === 'Attendance') {
-      fetchAttendance();
-      fetchHolidays();
-    }
-  }, [activeTab, fetchAttendance, fetchHolidays]);
+  const { data: holidays = [] } = useHolidays(currentMonth.getFullYear());
 
   const calendarDays = useMemo<CalendarDay[]>(() => {
     const year = currentMonth.getFullYear();
@@ -125,7 +73,7 @@ const TeacherProfile: React.FC = () => {
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const date = new Date(year, month, day);
       const dateStr = getLocalDateString(date);
-      const attendance = attendanceRecords.find(r => r.attendanceDate === dateStr);
+      const attendance = attendanceRecords.find(r => getLocalDateString(new Date(r.attendanceDate)) === dateStr);
       const holiday = holidays.find(h => h.holidayDate === dateStr);
       const isSunday = date.getDay() === 0;
 
@@ -168,15 +116,35 @@ const TeacherProfile: React.FC = () => {
     return { totalDays, holidayCount, sundayCount, workingDays, presentCount, absentCount, lateCount, percentage };
   }, [calendarDays, attendanceRecords]);
 
+  const pieChartData = useMemo(() => {
+    const data = [
+      { name: "Present", value: attendanceStats.presentCount, color: "#10B981" },
+      { name: "Late", value: attendanceStats.lateCount, color: "#F59E0B" },
+      { name: "Absent", value: attendanceStats.absentCount, color: "#EF4444" },
+    ].filter(d => d.value > 0);
+    
+    if (attendanceStats.workingDays > 0 && data.length > 0) {
+      const attendedDays = attendanceStats.presentCount + attendanceStats.lateCount + attendanceStats.absentCount;
+      const unrecordedDays = attendanceStats.workingDays - attendedDays;
+      if (unrecordedDays > 0) {
+        data.push({ name: "Working Days", value: unrecordedDays, color: "#f1f5f9" });
+      }
+    }
+    
+    return data;
+  }, [attendanceStats]);
+
   const canGoPrev = useMemo(() => {
     const prevMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
-    const year = new Date().getFullYear();
-    return prevMonth >= new Date(year - 2, 0, 1);
+    return prevMonth >= new Date(new Date().getFullYear() - 1, 0, 1);
   }, [currentMonth]);
 
   const canGoNext = useMemo(() => {
     const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
-    return nextMonth <= new Date();
+    const today = new Date();
+    today.setDate(1);
+    today.setHours(0, 0, 0, 0);
+    return nextMonth <= today;
   }, [currentMonth]);
 
   const prevMonth = () => {
@@ -191,40 +159,27 @@ const TeacherProfile: React.FC = () => {
 
   if (loading) {
     return (
-      <AdminLayout title="Teacher Profile">
-        <div className="h-[60vh] flex flex-col items-center justify-center gap-4 text-slate-400">
-          <Loader2 className="size-12 animate-spin text-blue-500 opacity-50" />
-          <p className="font-display font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">Loading Profile...</p>
-        </div>
-      </AdminLayout>
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-4 text-slate-400">
+        <Loader2 className="size-12 animate-spin text-blue-500 opacity-50" />
+        <p className="font-display font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">Loading Profile...</p>
+      </div>
     );
   }
 
   if (!teacher) return null;
 
   return (
-    <AdminLayout title={`Profile: ${teacher.fullName}`}>
-      <div className="space-y-6 pb-20">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate("/admin/teachers")}
-              className="p-3 bg-white border border-slate-100 rounded-2xl text-slate-400 hover:text-slate-600 hover:shadow-md transition-all active:scale-95"
-            >
-              <ChevronLeft className="size-5" />
-            </button>
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              <span>Teachers</span>
-              <span className="text-slate-200">/</span>
-              <span className="text-blue-500">Profile</span>
-            </div>
-          </div>
-          <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 ${teacher.isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-500'}`}>
-            <div className={`size-2 rounded-full ${teacher.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-            {teacher.isActive ? 'Active' : 'Inactive'}
-          </div>
-        </div>
+    <div className="space-y-6 pb-20">
+      <PageHeader
+        title="Teacher Profile"
+        subtitle={teacher.fullName}
+        breadcrumb={{
+          links: [
+            { label: "People", href: "/admin/teachers" },
+            { label: "Teacher Profile", active: true },
+          ],
+        }}
+      />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column - Profile Card */}
@@ -246,60 +201,49 @@ const TeacherProfile: React.FC = () => {
               <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-8">ID: #{teacher.id.toString().padStart(4, '0')}</p>
 
               <div className="space-y-4 text-left border-t border-slate-50 pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                    <Mail size={16} />
-                  </div>
-                  <div className="overflow-hidden">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">Email</p>
-                    <p className="text-sm font-bold text-slate-700 truncate">{teacher.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                    <Phone size={16} />
-                  </div>
-                  <div className="overflow-hidden">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">Phone</p>
-                    <p className="text-sm font-bold text-slate-700">{teacher.phone || 'Not provided'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                    <Calendar size={16} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">Date of Birth</p>
-                    <p className="text-sm font-bold text-slate-700">{teacher.dateOfBirth ? new Date(teacher.dateOfBirth).toLocaleDateString() : 'Not set'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                    <User size={16} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">Gender</p>
-                    <p className="text-sm font-bold text-slate-700">{teacher.gender || 'Not set'}</p>
-                  </div>
-                </div>
+                <ProfileInfoRow
+                  icon={Mail}
+                  label="Email"
+                  value={teacher.email}
+                  truncate
+                />
+                <ProfileInfoRow
+                  icon={Phone}
+                  label="Phone"
+                  value={teacher.phone || "Not provided"}
+                />
+                <ProfileInfoRow
+                  icon={Calendar}
+                  label="Date of Birth"
+                  value={teacher.dateOfBirth ? formatDate(teacher.dateOfBirth) : "Not set"}
+                />
+                <ProfileInfoRow
+                  icon={User}
+                  label="Gender"
+                  value={teacher.gender || "Not set"}
+                />
                 {teacher.address && (
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-slate-50 rounded-xl text-slate-400">
-                      <MapPin size={16} />
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">Address</p>
-                      <p className="text-sm font-bold text-slate-700">{teacher.address}</p>
-                    </div>
-                  </div>
+                  <ProfileInfoRow
+                    icon={MapPin}
+                    label="Address"
+                    value={teacher.address}
+                  />
                 )}
               </div>
 
               <div className="mt-8 space-y-3">
-                <button className="w-full py-3.5 rounded-2xl border-2 border-slate-900 text-slate-900 font-black text-sm hover:bg-slate-900 hover:text-white transition-all active:scale-95 shadow-sm">
+                <button 
+                  className="w-full py-3.5 rounded-2xl border-2 border-slate-900 text-slate-900 font-black text-sm hover:bg-slate-900 hover:text-white transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled
+                  title="Coming soon"
+                >
                   Edit Profile
                 </button>
-                <button className="w-full py-3.5 rounded-2xl border-2 border-rose-100 text-rose-500 font-black text-sm hover:bg-rose-50 transition-all active:scale-95">
+                <button 
+                  className="w-full py-3.5 rounded-2xl border-2 border-rose-100 text-rose-500 font-black text-sm hover:bg-rose-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled
+                  title="Coming soon"
+                >
                   Deactivate
                 </button>
               </div>
@@ -309,21 +253,17 @@ const TeacherProfile: React.FC = () => {
             {/* Right Column - Tabs Content */}
           <div className="lg:col-span-9 space-y-6">
             {/* Tab Navigation */}
-            <div className="bg-white p-2 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center gap-2 overflow-x-auto">
-              {['Attendance', 'Classes', 'Schedule'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-3 px-6 rounded-2xl text-[13px] font-black transition-all whitespace-nowrap ${
-                    activeTab === tab 
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/20' 
-                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
+            <TabBar
+              variant="gradient"
+              tabs={[
+                { key: "Attendance", label: "Attendance" },
+                { key: "Classes", label: "Classes" },
+                { key: "Schedule", label: "Schedule" },
+              ]}
+              active={activeTab}
+              onChange={setActiveTab}
+              className="overflow-x-auto"
+            />
 
             {/* Attendance Tab */}
             {activeTab === 'Attendance' && (
@@ -363,7 +303,7 @@ const TeacherProfile: React.FC = () => {
                     ))}
                   </div>
 
-                  {loadingAttendance ? (
+                  {false ? (
                     <div className="h-64 flex items-center justify-center">
                       <LoadingSpinner size="md" message="Loading attendance..." />
                     </div>
@@ -390,68 +330,95 @@ const TeacherProfile: React.FC = () => {
                     </div>
                   )}
 
-                  <div className="mt-6 flex items-center gap-6 text-[10px] font-black uppercase tracking-widest flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <div className="size-3 rounded-full bg-emerald-500"></div>
-                      <span className="text-slate-500">Present ({attendanceStats.presentCount})</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="size-3 rounded-full bg-amber-500"></div>
-                      <span className="text-slate-500">Late ({attendanceStats.lateCount})</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="size-3 rounded-full bg-rose-500"></div>
-                      <span className="text-slate-500">Absent ({attendanceStats.absentCount})</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="size-3 rounded-full bg-purple-500"></div>
-                      <span className="text-slate-500">Holiday ({attendanceStats.holidayCount})</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="size-3 rounded-full bg-red-50 border border-red-200"></div>
-                      <span className="text-slate-300">Sunday ({attendanceStats.sundayCount})</span>
-                    </div>
-                  </div>
+                  <AttendanceLegend
+                    presentCount={attendanceStats.presentCount}
+                    absentCount={attendanceStats.absentCount}
+                    holidayCount={attendanceStats.holidayCount}
+                    sundayCount={attendanceStats.sundayCount}
+                    lateCount={attendanceStats.lateCount}
+                    showLate
+                    holidayColor="purple"
+                  />
                 </div>
 
-                <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 flex flex-col items-center justify-center text-center">
-                  <h3 className="text-lg font-black text-slate-900 mb-6">Attendance Rate</h3>
-                  <div className="relative size-40 mb-6">
-                    <svg className="size-full transform -rotate-90">
-                      <circle cx="80" cy="80" r="70" className="stroke-slate-50" strokeWidth="12" fill="transparent" />
-                      <circle 
-                        cx="80" cy="80" r="70" 
-                        className={`stroke-${attendanceStats.percentage >= 75 ? 'emerald' : attendanceStats.percentage >= 50 ? 'amber' : 'rose'}-500`}
-                        strokeWidth="12"
-                        fill="transparent"
-                        strokeDasharray={2 * Math.PI * 70}
-                        strokeDashoffset={2 * Math.PI * 70 * (1 - attendanceStats.percentage / 100)}
-                        strokeLinecap="round"
-                      />
-                    </svg>
+                <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center">
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight mb-8">
+                    Attendance Summary
+                  </h3>
+
+                  <div className="relative w-48 h-48 mb-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {pieChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-4xl font-black text-slate-800">{attendanceStats.percentage}%</span>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rate</span>
+                      <span className="text-4xl font-black text-slate-800 tracking-tight">
+                        {attendanceStats.percentage}%
+                      </span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Attendance
+                      </span>
                     </div>
                   </div>
-                  <div className="w-full space-y-2">
+
+                  <div className="w-full space-y-3 mb-6">
                     <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl">
-                      <span className="text-xs font-bold text-emerald-600">Working Days</span>
-                      <span className="text-lg font-black text-emerald-700">{attendanceStats.workingDays}</span>
+                      <span className="text-xs font-bold text-emerald-600">
+                        Working Days
+                      </span>
+                      <span className="text-lg font-black text-emerald-700">
+                        {attendanceStats.workingDays}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl">
-                      <span className="text-xs font-bold text-emerald-600">Present</span>
-                      <span className="text-lg font-black text-emerald-700">{attendanceStats.presentCount}</span>
+                      <span className="text-xs font-bold text-emerald-600">
+                        Present Days
+                      </span>
+                      <span className="text-lg font-black text-emerald-700">
+                        {attendanceStats.presentCount}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-amber-50 rounded-xl">
-                      <span className="text-xs font-bold text-amber-600">Late</span>
-                      <span className="text-lg font-black text-amber-700">{attendanceStats.lateCount}</span>
+                      <span className="text-xs font-bold text-amber-600">
+                        Late Days
+                      </span>
+                      <span className="text-lg font-black text-amber-700">
+                        {attendanceStats.lateCount}
+                      </span>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-rose-50 rounded-xl">
-                      <span className="text-xs font-bold text-rose-600">Absent</span>
-                      <span className="text-lg font-black text-rose-700">{attendanceStats.absentCount}</span>
+                    <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                      <span className="text-xs font-bold text-slate-500">
+                        Absent Days
+                      </span>
+                      <span className="text-lg font-black text-slate-700">
+                        {attendanceStats.absentCount}
+                      </span>
                     </div>
                   </div>
+
+                  <p className="text-xs font-bold text-slate-400 leading-relaxed px-4">
+                    {teacher.fullName?.split(" ")[0]} has{" "}
+                    {attendanceStats.percentage >= 90
+                      ? "excellent"
+                      : attendanceStats.percentage >= 75
+                        ? "good"
+                        : "needs improvement"}{" "}
+                    attendance this month.
+                  </p>
                 </div>
               </div>
             )}
@@ -521,8 +488,7 @@ const TeacherProfile: React.FC = () => {
           </div>
         </div>
       </div>
-    </AdminLayout>
-  );
-};
+    );
+  };
 
 export default TeacherProfile;

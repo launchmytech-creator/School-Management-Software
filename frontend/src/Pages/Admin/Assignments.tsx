@@ -1,84 +1,51 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
+import React, { useState } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
-import { assignmentService, type Assignment, type CreateAssignmentDto } from '../../services/assignmentService';
-import { classService } from '../../services/classService';
-import { academicYearService } from '../../services/academicYearService';
-import { subjectService } from '../../services/subjectService';
-import type { Class } from '../../types/class';
-import type { AcademicYear } from '../../types/academicYear';
-import type { Subject } from '../../services/subjectService';
+import { useAssignments, useCreateAssignment, useDeleteAssignment } from '../../hooks/queries';
+import { useClasses, useSubjects } from '../../hooks/queries';
+import { useAcademicYears } from '../../hooks/queries';
 import { FileText, Plus, Trash2, Clock, CheckCircle, Users } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
-import { BaseModal } from '../../components/common/BaseModal';
+import { BaseModal } from '../../components/modals/BaseModal';
+import { ConfirmDialog } from '../../components/modals/ConfirmDialog';
 import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
 import { SkeletonTable } from '../../components/common/Skeleton';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { createAssignmentSchema, type CreateAssignmentFormData } from '../../schemas/academic.schema';
 
 const Assignments: React.FC = () => {
   const { showNotification } = useNotification();
-  const [loading, setLoading] = useState(true);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState<number | null>(null);
-  const [formData, setFormData] = useState<CreateAssignmentDto>({
-    classId: 0,
-    subjectId: 0,
-    academicYearId: 0,
-    title: '',
-    description: '',
-    dueDate: '',
-    maxMarks: 100,
-    assignmentType: 'homework',
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; id: number | null }>({ isOpen: false, id: null });
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CreateAssignmentFormData>({
+    resolver: zodResolver(createAssignmentSchema),
   });
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const filters: { classId?: number; academicYearId?: number } = {};
-      if (selectedClass) filters.classId = parseInt(selectedClass);
-      if (selectedYear) filters.academicYearId = parseInt(selectedYear);
-      
-      const data = await assignmentService.getAssignments(filters);
-      setAssignments(data);
-    } catch {
-      showNotification('Failed to fetch assignments', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedClass, selectedYear, showNotification]);
+  const filters = {
+    classId: selectedClass ? parseInt(selectedClass) : undefined,
+    academicYearId: selectedYear ? parseInt(selectedYear) : undefined,
+  };
 
-  useEffect(() => {
-    const fetchDropdowns = async () => {
-      try {
-        const [cls, yrs, subs] = await Promise.all([
-          classService.getClasses(),
-          academicYearService.getAllYears(),
-          subjectService.getSubjects(),
-        ]);
-        setClasses(cls);
-        setAcademicYears(yrs);
-        setSubjects(subs);
-      } catch {
-        showNotification('Failed to fetch data', 'error');
-      }
-    };
-    fetchDropdowns();
-  }, []);
+  const { data: assignments = [], isLoading } = useAssignments(filters);
+  const { data: classes = [] } = useClasses();
+  const { data: subjects = [] } = useSubjects();
+  const { data: academicYears = [] } = useAcademicYears();
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const createAssignment = useCreateAssignment();
+  const deleteAssignment = useDeleteAssignment();
 
   const filteredAssignments = assignments.filter(a =>
     a.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -102,7 +69,7 @@ const Assignments: React.FC = () => {
   };
 
   const handleOpenCreate = () => {
-    setFormData({
+    reset({
       classId: Number(selectedClass) || Number(classes[0]?.id) || 0,
       subjectId: subjects[0]?.id || 0,
       academicYearId: Number(selectedYear) || Number(academicYears[0]?.id) || 0,
@@ -115,43 +82,39 @@ const Assignments: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      await assignmentService.createAssignment(formData);
-      showNotification('Assignment created successfully', 'success');
-      setShowModal(false);
-      fetchData();
-    } catch {
-      showNotification('Failed to create assignment', 'error');
-    } finally {
-      setSaving(false);
-    }
+  const onSubmit = (data: CreateAssignmentFormData) => {
+    createAssignment.mutate(data as any, {
+      onSuccess: () => {
+        showNotification('Assignment created successfully', 'success');
+        setShowModal(false);
+      },
+      onError: () => {
+        showNotification('Failed to create assignment', 'error');
+      },
+    });
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this assignment?')) return;
-    try {
-      setDeleting(id);
-      await assignmentService.deleteAssignment(id);
-      showNotification('Assignment deleted successfully', 'success');
-      fetchData();
-    } catch {
-      showNotification('Failed to delete assignment', 'error');
-    } finally {
-      setDeleting(null);
-    }
+  const handleDelete = () => {
+    if (!deleteDialog.id) return;
+    deleteAssignment.mutate(deleteDialog.id, {
+      onSuccess: () => {
+        showNotification('Assignment deleted successfully', 'success');
+        setDeleteDialog({ isOpen: false, id: null });
+      },
+      onError: () => {
+        showNotification('Failed to delete assignment', 'error');
+      },
+    });
   };
 
   return (
-    <AdminLayout title="Assignments">
-      <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
         <PageHeader 
           title="Assignments"
           subtitle="Create and manage student assignments"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Schedule", href: "/admin/announcements" },
               { label: "Assignments", active: true }
             ]
           }}
@@ -236,7 +199,7 @@ const Assignments: React.FC = () => {
           searchPlaceholder="Search assignments..."
         />
 
-        {loading ? (
+        {isLoading ? (
           <SkeletonTable columns={4} rows={5} />
         ) : filteredAssignments.length > 0 ? (
           <div className="space-y-4">
@@ -281,8 +244,8 @@ const Assignments: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleDelete(assignment.id)}
-                      disabled={deleting === assignment.id}
+                      onClick={() => setDeleteDialog({ isOpen: true, id: assignment.id })}
+                      disabled={deleteAssignment.isPending}
                       className="p-2 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                     >
                       <Trash2 className="w-4 h-4 text-red-500" />
@@ -311,30 +274,28 @@ const Assignments: React.FC = () => {
           title="Create Assignment"
           size="md"
         >
-          <div className="p-6 space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
             <InputField
               label="Title"
               placeholder="Assignment title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              error={errors.title?.message}
+              {...register('title')}
             />
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
               <textarea
-                value={formData.description || ''}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Assignment description"
                 rows={3}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                {...register('description')}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Class</label>
               <select
-                value={formData.classId || ''}
-                onChange={(e) => setFormData({ ...formData, classId: parseInt(e.target.value) || 0 })}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                {...register('classId', { valueAsNumber: true })}
               >
                 {classes.map(cls => (
                   <option key={cls.id} value={cls.id}>{cls.name}</option>
@@ -344,9 +305,8 @@ const Assignments: React.FC = () => {
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Subject</label>
               <select
-                value={formData.subjectId || ''}
-                onChange={(e) => setFormData({ ...formData, subjectId: parseInt(e.target.value) || 0 })}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                {...register('subjectId', { valueAsNumber: true })}
               >
                 {subjects.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
@@ -358,22 +318,21 @@ const Assignments: React.FC = () => {
               <InputField
                 label="Due Date"
                 type="date"
-                value={formData.dueDate || ''}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                error={errors.dueDate?.message}
+                {...register('dueDate')}
               />
               <InputField
                 label="Max Marks"
                 type="number"
-                value={formData.maxMarks || ''}
-                onChange={(e) => setFormData({ ...formData, maxMarks: Number(e.target.value) })}
+                error={errors.maxMarks?.message}
+                {...register('maxMarks', { valueAsNumber: true })}
               />
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Type</label>
               <select
-                value={formData.assignmentType}
-                onChange={(e) => setFormData({ ...formData, assignmentType: e.target.value as any })}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                {...register('assignmentType')}
               >
                 <option value="homework">Homework</option>
                 <option value="classwork">Classwork</option>
@@ -383,13 +342,23 @@ const Assignments: React.FC = () => {
               </select>
             </div>
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button>
-              <Button onClick={handleSave} loading={saving} className="flex-1">Create</Button>
+              <Button variant="outline" type="button" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button>
+              <Button type="submit" loading={createAssignment.isPending} className="flex-1">Create</Button>
             </div>
-          </div>
+          </form>
         </BaseModal>
-      </div>
-    </AdminLayout>
+
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, id: null })}
+        onConfirm={handleDelete}
+        title="Delete Assignment"
+        message="Are you sure you want to delete this assignment? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+        loading={deleteAssignment.isPending}
+      />
+    </div>
   );
 };
 

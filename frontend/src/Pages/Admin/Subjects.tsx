@@ -1,315 +1,510 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import AdminLayout from '../../layouts/AdminLayout';
-import PageHeader from '../../components/common/PageHeader';
-import { useNotification } from '../../context/NotificationContext';
-import { subjectService, type Subject, type Chapter } from '../../services/subjectService';
-import { BaseModal } from '../../components/common/BaseModal';
-import { Button } from '../../components/ui/button';
-import InputField from '../../components/ui/InputField';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { Plus, BookOpen, Trash2, ChevronRight, List } from 'lucide-react';
+import React, { useState, useCallback, useMemo } from "react";
+import PageHeader from "../../components/common/PageHeader";
+import EmptyState from "../../components/common/EmptyState";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
+import { SubjectCard } from "../../components/academic/SubjectCard";
+import { AddSubjectModal } from "../../components/modals/AddSubjectModal";
+import { AddChapterModal } from "../../components/modals/AddChapterModal";
+import { useNotification } from "../../context/NotificationContext";
+import { useAcademicYear } from "../../context/AcademicYearContext";
+import { useClasses } from "../../hooks/queries/useClasses";
+import {
+  useSubjects,
+  useAllClassSubjects,
+  useCheckExistingAssignments,
+} from "../../hooks/queries/useSubjects";
+import {
+  useCreateSubject,
+  useAssignSubjectToClasses,
+  useRemoveSubjectFromClass,
+  useCreateChapter,
+  useDeleteChapter,
+} from "../../hooks/mutations/useSubjectMutations";
+import { type CreateChapterFormData } from "../../schemas/subject.schema";
+import type { Class } from "../../types/class";
+import type { ClassSubject, Chapter } from "../../services/subjectService";
+import { Button } from "../../components/ui/button";
+import { Plus, BookOpen, ChevronDown } from "lucide-react";
 
 const Subjects: React.FC = () => {
   const { showNotification } = useNotification();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [chapters, setChapters] = useState<Record<number, Chapter[]>>({});
-  const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
-  const [showCreateSubjectModal, setShowCreateSubjectModal] = useState(false);
-  const [showCreateChapterModal, setShowCreateChapterModal] = useState(false);
-  const [showChapterListModal, setShowChapterListModal] = useState(false);
-  const [subjectForm, setSubjectForm] = useState({ name: '', code: '', description: '' });
-  const [chapterForm, setChapterForm] = useState({ name: '', sequenceNumber: '' });
-  const [creating, setCreating] = useState(false);
+  const { selectedYear } = useAcademicYear();
 
-  const fetchSubjects = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await subjectService.getSubjects();
-      setSubjects(data);
-    } catch {
-      showNotification('Failed to fetch subjects', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [showNotification]);
+  const { data: classesData, isLoading: loadingClasses } = useClasses();
+  const classes = classesData || [];
 
-  const fetchChapters = useCallback(async (subjectId: number) => {
-    try {
-      const data = await subjectService.getChaptersBySubject(subjectId);
-      setChapters(prev => ({ ...prev, [subjectId]: data }));
-    } catch {
-      showNotification('Failed to fetch chapters', 'error');
-    }
-  }, [showNotification]);
+  const { data: allSubjectsData } = useSubjects();
+  const allSubjects = allSubjectsData || [];
 
-  useEffect(() => {
-    fetchSubjects();
-  }, [fetchSubjects]);
+  const {
+    data: allClassSubjectsData,
+    isLoading: loadingClassSubjects,
+    refetch: refetchClassSubjects,
+  } = useAllClassSubjects(selectedYear?.id ? Number(selectedYear.id) : 0);
+  const allClassSubjects = allClassSubjectsData || [];
 
-  const handleCreateSubject = async () => {
-    if (!subjectForm.name || !subjectForm.code) {
-      showNotification('Name and code are required', 'error');
-      return;
-    }
+  const [chaptersCache, setChaptersCache] = useState<Record<number, Chapter[]>>(
+    {},
+  );
+  const [loadingChaptersMap, setLoadingChaptersMap] = useState<
+    Record<number, boolean>
+  >({});
 
-    try {
-      setCreating(true);
-      await subjectService.createSubject(subjectForm);
-      showNotification('Subject created successfully', 'success');
-      setShowCreateSubjectModal(false);
-      setSubjectForm({ name: '', code: '', description: '' });
-      fetchSubjects();
-    } catch {
-      showNotification('Failed to create subject', 'error');
-    } finally {
-      setCreating(false);
+  const [expandedSection, setExpandedSection] = useState<number | null>(null);
+  const [expandedSubject, setExpandedSubject] = useState<number | null>(null);
+
+  const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
+  const [showAddChapterModal, setShowAddChapterModal] = useState(false);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(
+    null,
+  );
+
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    classSubjectId: number | null;
+    subjectName: string;
+  }>({ isOpen: false, classSubjectId: null, subjectName: "" });
+
+  const allClassIds = useMemo(
+    () => classes.map((c) => parseInt(c.id)).filter((id) => !isNaN(id)),
+    [classes],
+  );
+
+  const { data: checkAssignmentsData } = useCheckExistingAssignments(
+    allClassIds,
+    selectedYear?.id ? Number(selectedYear.id) : 0,
+  );
+
+  const existingClassSubjectIds = useMemo(() => {
+    const set = new Set<number>();
+    (checkAssignmentsData || []).forEach((a) => {
+      set.add(a.classId * 1000 + a.subjectId);
+    });
+    return set;
+  }, [checkAssignmentsData]);
+
+  const createSubjectMutation = useCreateSubject();
+  const assignSubjectMutation = useAssignSubjectToClasses();
+  const removeSubjectMutation = useRemoveSubjectFromClass();
+  const createChapterMutation = useCreateChapter();
+  const deleteChapterMutation = useDeleteChapter();
+
+  const fetchChapters = useCallback(
+    async (classSubjectId: number, subjectId: number) => {
+      if (chaptersCache[classSubjectId]) return;
+      if (loadingChaptersMap[classSubjectId]) return;
+
+      setLoadingChaptersMap((prev) => ({ ...prev, [classSubjectId]: true }));
+      try {
+        const { data } = await import("../../services/subjectService").then(
+          (m) =>
+            m.subjectService
+              .getChaptersBySubject(subjectId)
+              .then((r) => ({ data: r })),
+        );
+        setChaptersCache((prev) => ({ ...prev, [classSubjectId]: data }));
+      } catch {
+        showNotification("Failed to fetch chapters", "error");
+      } finally {
+        setLoadingChaptersMap((prev) => ({ ...prev, [classSubjectId]: false }));
+      }
+    },
+    [chaptersCache, loadingChaptersMap, showNotification],
+  );
+
+  const groupedByClass = useMemo(() => {
+    const grouped: Record<string, Class[]> = {};
+    classes.forEach((cls) => {
+      if (!grouped[cls.name]) grouped[cls.name] = [];
+      grouped[cls.name].push(cls);
+    });
+    Object.keys(grouped).forEach((key) => {
+      grouped[key].sort((a, b) =>
+        (a.section || "A").localeCompare(b.section || "A"),
+      );
+    });
+    return grouped;
+  }, [classes]);
+
+  const getSubjectsForClass = useCallback(
+    (classId: number): ClassSubject[] => {
+      return allClassSubjects.filter((cs) => cs.classId === Number(classId));
+    },
+    [allClassSubjects],
+  );
+
+  const toggleSection = (classId: number) => {
+    setExpandedSection((prev) => (prev === classId ? null : classId));
+    setExpandedSubject(null);
+  };
+
+  const handleSubjectClick = async (
+    classSubjectId: number,
+    subjectId: number,
+  ) => {
+    if (expandedSubject === classSubjectId) {
+      setExpandedSubject(null);
+    } else {
+      setExpandedSubject(classSubjectId);
+      await fetchChapters(classSubjectId, subjectId);
     }
   };
 
-  const handleCreateChapter = async () => {
-    if (!chapterForm.name || !selectedSubject) {
-      showNotification('Chapter name is required', 'error');
+  const onSubmitSubject = async (data: {
+    subjectId?: number;
+    name: string;
+    code: string;
+    classIds: string[];
+  }) => {
+    if (!selectedYear?.id) {
+      showNotification(
+        "No academic year selected. Please set an academic year first.",
+        "error",
+      );
       return;
     }
 
     try {
-      setCreating(true);
-      await subjectService.createChapter({
-        subjectId: selectedSubject,
-        name: chapterForm.name,
-        sequenceNumber: chapterForm.sequenceNumber ? parseInt(chapterForm.sequenceNumber) : undefined,
+      let subjectId: number;
+
+      if (data.subjectId) {
+        subjectId = data.subjectId;
+      } else {
+        const result = await createSubjectMutation.mutateAsync({
+          name: data.name,
+          code: data.code,
+        });
+        subjectId = result.id;
+      }
+
+      await assignSubjectMutation.mutateAsync({
+        classIds: data.classIds
+          .map((id) => parseInt(id))
+          .filter((id) => !isNaN(id)),
+        subjectId,
+        academicYearId: parseInt(selectedYear.id),
       });
-      showNotification('Chapter created successfully', 'success');
-      setShowCreateChapterModal(false);
-      setChapterForm({ name: '', sequenceNumber: '' });
-      fetchChapters(selectedSubject);
-    } catch {
-      showNotification('Failed to create chapter', 'error');
-    } finally {
-      setCreating(false);
+
+      showNotification(
+        `Subject assigned to ${data.classIds.length} class(es) successfully`,
+        "success",
+      );
+      setShowAddSubjectModal(false);
+      refetchClassSubjects();
+    } catch (err: any) {
+      const errorMessage =
+        err?.response?.data?.message || "Failed to create subject";
+      if (err?.response?.data?.errorCode === "SUBJECT_001") {
+        showNotification(err.response.data.message, "warning");
+      } else {
+        showNotification(errorMessage, "error");
+      }
     }
   };
 
-  const handleDeleteSubject = async (id: number) => {
-    if (!confirm('Are you sure? This will also delete all chapters.')) return;
-    
+  const onSubmitChapter = async (data: CreateChapterFormData) => {
+    if (!selectedSubjectId) {
+      showNotification("No subject selected", "error");
+      return;
+    }
+
+    const classSubject = allClassSubjects.find(
+      (cs) => cs.id === selectedSubjectId,
+    );
+    if (!classSubject) {
+      showNotification("Subject not found in current academic year", "error");
+      return;
+    }
+
     try {
-      await subjectService.deleteSubject(id);
-      showNotification('Subject deleted successfully', 'success');
-      fetchSubjects();
-    } catch {
-      showNotification('Failed to delete subject', 'error');
+      await createChapterMutation.mutateAsync({
+        subjectId: classSubject.subjectId,
+        name: data.name,
+        sequenceNumber: data.sequenceNumber ? +data.sequenceNumber : undefined,
+      });
+
+      showNotification("Chapter created successfully", "success");
+      setShowAddChapterModal(false);
+
+      const { data: chapterData } =
+        await import("../../services/subjectService").then((m) =>
+          m.subjectService
+            .getChaptersBySubject(classSubject.subjectId)
+            .then((r) => ({ data: r })),
+        );
+      setChaptersCache((prev) => ({
+        ...prev,
+        [selectedSubjectId]: chapterData,
+      }));
+    } catch (err) {
+      console.error("Failed to create chapter:", err);
+      showNotification("Failed to create chapter", "error");
     }
   };
 
-  const openChapterModal = (subjectId: number) => {
-    setSelectedSubject(subjectId);
-    if (!chapters[subjectId]) {
-      fetchChapters(subjectId);
-    }
-    setShowChapterListModal(true);
+  const handleDeleteSubject = (classSubjectId: number, subjectName: string) => {
+    setDeleteConfirm({ isOpen: true, classSubjectId, subjectName });
   };
+
+  const confirmDeleteSubject = async () => {
+    if (!deleteConfirm.classSubjectId) return;
+    try {
+      await removeSubjectMutation.mutateAsync(deleteConfirm.classSubjectId);
+      showNotification("Subject removed successfully", "success");
+      setDeleteConfirm({
+        isOpen: false,
+        classSubjectId: null,
+        subjectName: "",
+      });
+      refetchClassSubjects();
+    } catch (error: any) {
+      showNotification(
+        error?.message ||
+          error?.response?.data?.message ||
+          "Failed to remove subject",
+        "error",
+      );
+    }
+  };
+
+  const handleDeleteChapter = async (
+    chapterId: number,
+    classSubjectId: number,
+    subjectId: number,
+  ) => {
+    try {
+      await deleteChapterMutation.mutateAsync(chapterId);
+      showNotification("Chapter deleted successfully", "success");
+
+      const classSubject = allClassSubjects.find(
+        (cs) => cs.id === classSubjectId,
+      );
+      if (classSubject) {
+        const { data } = await import("../../services/subjectService").then(
+          (m) =>
+            m.subjectService
+              .getChaptersBySubject(subjectId)
+              .then((r) => ({ data: r })),
+        );
+        setChaptersCache((prev) => ({ ...prev, [classSubjectId]: data }));
+      }
+    } catch {
+      showNotification("Failed to delete chapter", "error");
+    }
+  };
+
+  const openAddChapter = (classSubjectId: number) => {
+    setSelectedSubjectId(classSubjectId);
+    setShowAddChapterModal(true);
+  };
+
+  const isLoading = loadingClasses || loadingClassSubjects;
+  const isSaving =
+    createSubjectMutation.isPending || assignSubjectMutation.isPending;
+  const isChapterSaving = createChapterMutation.isPending;
 
   return (
-    <AdminLayout title="Subjects">
-      <div className="space-y-8 pb-12">
-        <PageHeader 
+    <div className="space-y-6 pb-12">
+      <div className="flex items-center justify-between">
+        <PageHeader
           title="Subjects"
-          subtitle="Manage subjects and chapters"
+          subtitle="Manage subjects and chapters for each class"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
-              { label: "Subjects", active: true }
-            ]
+              { label: "Academics", href: "/admin/subjects" },
+              { label: "Subjects", active: true },
+            ],
           }}
-          actions={[
-            {
-              label: "Add Subject",
-              icon: Plus,
-              onClick: () => setShowCreateSubjectModal(true)
-            }
-          ]}
         />
-
-        {loading ? (
-          <div className="bg-white rounded-2xl p-12 flex items-center justify-center">
-            <LoadingSpinner size="lg" message="Loading subjects..." />
-          </div>
-        ) : subjects.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {subjects.map((subject) => (
-              <div key={subject.id} className="bg-white rounded-xl border border-slate-100 p-5 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="p-3 bg-indigo-50 rounded-xl">
-                    <BookOpen className="w-5 h-5 text-indigo-500" />
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => { setSelectedSubject(subject.id); setShowCreateChapterModal(true); }}
-                      className="p-2 hover:bg-slate-100 rounded-lg"
-                      title="Add Chapter"
-                    >
-                      <Plus className="w-4 h-4 text-slate-400" />
-                    </button>
-                    <button
-                      onClick={() => openChapterModal(subject.id)}
-                      className="p-2 hover:bg-slate-100 rounded-lg"
-                      title="View Chapters"
-                    >
-                      <List className="w-4 h-4 text-slate-400" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteSubject(subject.id)}
-                      className="p-2 hover:bg-rose-50 rounded-lg"
-                    >
-                      <Trash2 className="w-4 h-4 text-rose-400" />
-                    </button>
-                  </div>
-                </div>
-
-                <h3 className="font-bold text-slate-900 mb-1">{subject.name}</h3>
-                <p className="text-sm text-slate-500 mb-3">Code: {subject.code}</p>
-                {subject.description && (
-                  <p className="text-sm text-slate-600 line-clamp-2">{subject.description}</p>
-                )}
-
-                <div className="flex gap-2 mt-4">
-                  <button
-                    onClick={() => navigate(`/admin/subjects/${subject.id}/chapters`)}
-                    className="flex-1 py-2 text-sm font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center justify-center gap-1"
-                  >
-                    Manage Chapters
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl p-12 text-center">
-            <BookOpen className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-slate-900 mb-2">No Subjects Found</h3>
-            <p className="text-slate-500 mb-6">Create your first subject to get started</p>
-            <Button onClick={() => setShowCreateSubjectModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Subject
-            </Button>
-          </div>
+        {selectedYear?.id && !isLoading && classes.length > 0 && (
+          <Button
+            onClick={() => setShowAddSubjectModal(true)}
+            className="gap-2"
+          >
+            <Plus className="size-4" />
+            Add Subject
+          </Button>
         )}
-
-        {/* Create Subject Modal */}
-        <BaseModal
-          isOpen={showCreateSubjectModal}
-          onClose={() => setShowCreateSubjectModal(false)}
-          title="Add New Subject"
-          size="md"
-        >
-          <div className="p-6 space-y-4">
-            <InputField
-              label="Subject Name"
-              placeholder="e.g., Mathematics"
-              value={subjectForm.name}
-              onChange={(e) => setSubjectForm({ ...subjectForm, name: e.target.value })}
-              required
-            />
-            <InputField
-              label="Subject Code"
-              placeholder="e.g., MATH"
-              value={subjectForm.code}
-              onChange={(e) => setSubjectForm({ ...subjectForm, code: e.target.value })}
-              required
-            />
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
-              <textarea
-                value={subjectForm.description}
-                onChange={(e) => setSubjectForm({ ...subjectForm, description: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
-                placeholder="Optional description..."
-              />
-            </div>
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowCreateSubjectModal(false)} className="flex-1">Cancel</Button>
-              <Button onClick={handleCreateSubject} loading={creating} className="flex-1">Create Subject</Button>
-            </div>
-          </div>
-        </BaseModal>
-
-        {/* Create Chapter Modal */}
-        <BaseModal
-          isOpen={showCreateChapterModal}
-          onClose={() => setShowCreateChapterModal(false)}
-          title="Add New Chapter"
-          size="md"
-        >
-          <div className="p-6 space-y-4">
-            <InputField
-              label="Chapter Name"
-              placeholder="e.g., Chapter 1 - Introduction"
-              value={chapterForm.name}
-              onChange={(e) => setChapterForm({ ...chapterForm, name: e.target.value })}
-              required
-            />
-            <InputField
-              label="Sequence Number"
-              type="number"
-              placeholder="e.g., 1"
-              value={chapterForm.sequenceNumber}
-              onChange={(e) => setChapterForm({ ...chapterForm, sequenceNumber: e.target.value })}
-            />
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowCreateChapterModal(false)} className="flex-1">Cancel</Button>
-              <Button onClick={handleCreateChapter} loading={creating} className="flex-1">Add Chapter</Button>
-            </div>
-          </div>
-        </BaseModal>
-
-        {/* Chapter List Modal */}
-        <BaseModal
-          isOpen={showChapterListModal}
-          onClose={() => setShowChapterListModal(false)}
-          title="Chapters"
-          size="lg"
-        >
-          <div className="p-6">
-            {selectedSubject && chapters[selectedSubject] ? (
-              chapters[selectedSubject].length > 0 ? (
-                <div className="space-y-2">
-                  {chapters[selectedSubject].map((chapter) => (
-                    <div key={chapter.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center font-bold text-sm">
-                          {chapter.sequenceNumber}
-                        </span>
-                        <span className="font-medium text-slate-700">{chapter.name}</span>
-                      </div>
-                      <button
-                        onClick={() => showNotification('Delete coming soon', 'info')}
-                        className="p-2 hover:bg-rose-50 rounded-lg"
-                      >
-                        <Trash2 className="w-4 h-4 text-rose-400" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-slate-500">
-                  No chapters yet. Add your first chapter!
-                </div>
-              )
-            ) : (
-              <div className="text-center py-8">
-                <LoadingSpinner size="md" />
-              </div>
-            )}
-          </div>
-        </BaseModal>
       </div>
-    </AdminLayout>
+
+      {!selectedYear?.id ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+          <p className="text-amber-700 font-medium">
+            Please set an academic year first to manage subjects.
+          </p>
+        </div>
+      ) : isLoading ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-12 flex items-center justify-center">
+          <div className="animate-pulse text-slate-400">
+            Loading subjects...
+          </div>
+        </div>
+      ) : Object.keys(groupedByClass).length === 0 ? (
+        <EmptyState
+          icon={BookOpen}
+          title="No classes found"
+          description="No classes have been set up yet."
+        />
+      ) : (
+        <div className="space-y-12">
+          {Object.entries(groupedByClass).map(([className, sections]) => (
+            <div key={className} className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="h-px flex-1 bg-slate-100" />
+                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100">
+                  {className}
+                </h2>
+                <div className="h-px flex-1 bg-slate-100" />
+              </div>
+
+              <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-visible">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/50 border-b border-slate-100">
+                      <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Section
+                      </th>
+                      <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
+                        Subjects
+                      </th>
+                      <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
+                        Expand
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {sections.map((section) => {
+                      const sectionSubjects = getSubjectsForClass(
+                        Number(section.id),
+                      );
+                      const isExpanded = expandedSection === Number(section.id);
+
+                      return (
+                        <React.Fragment key={section.id}>
+                          <tr
+                            className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
+                            onClick={() => toggleSection(Number(section.id))}
+                          >
+                            <td className="px-10 py-6">
+                              <div className="flex items-center gap-4">
+                                <div className="size-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
+                                  <BookOpen className="size-5" />
+                                </div>
+                                <span className="font-display font-black text-slate-900 text-lg tracking-tight">
+                                  Section {section.section || "N/A"}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-8 py-6 text-center">
+                              <span className="font-display font-black text-slate-900 text-lg">
+                                {sectionSubjects.length}
+                              </span>
+                            </td>
+                            <td className="py-6 text-center">
+                              <ChevronDown
+                                className={`size-5 text-slate-400 mx-auto transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+                              />
+                            </td>
+                          </tr>
+
+                          {isExpanded && (
+                            <tr>
+                              <td colSpan={3} className="bg-slate-50 p-4">
+                                <div className="space-y-2">
+                                  {sectionSubjects.length > 0 ? (
+                                    sectionSubjects.map((cs) => {
+                                      const isSubjectExpanded =
+                                        expandedSubject === cs.id;
+                                      const chapters =
+                                        chaptersCache[cs.id] || [];
+                                      const isLoadingChapters =
+                                        loadingChaptersMap[cs.id];
+
+                                      return (
+                                        <SubjectCard
+                                          key={cs.id}
+                                          classSubject={cs}
+                                          isExpanded={isSubjectExpanded}
+                                          chapters={chapters}
+                                          isLoadingChapters={isLoadingChapters}
+                                          onToggle={() =>
+                                            handleSubjectClick(
+                                              cs.id,
+                                              cs.subjectId,
+                                            )
+                                          }
+                                          onAddChapter={() =>
+                                            openAddChapter(cs.id)
+                                          }
+                                          onDeleteSubject={() =>
+                                            handleDeleteSubject(
+                                              cs.id,
+                                              cs.subjectName,
+                                            )
+                                          }
+                                          onDeleteChapter={(chapterId) =>
+                                            handleDeleteChapter(
+                                              chapterId,
+                                              cs.id,
+                                              cs.subjectId,
+                                            )
+                                          }
+                                        />
+                                      );
+                                    })
+                                  ) : (
+                                    <p className="text-sm text-slate-400 text-center py-4 bg-white rounded-xl border border-slate-200">
+                                      No subjects added to this section
+                                    </p>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <AddSubjectModal
+        isOpen={showAddSubjectModal}
+        onClose={() => setShowAddSubjectModal(false)}
+        onSubmit={onSubmitSubject}
+        allSubjects={allSubjects}
+        classes={classes}
+        existingClassSubjectIds={existingClassSubjectIds}
+        loading={isSaving}
+      />
+
+      <AddChapterModal
+        isOpen={showAddChapterModal}
+        onClose={() => setShowAddChapterModal(false)}
+        onSubmit={onSubmitChapter}
+        loading={isChapterSaving}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() =>
+          setDeleteConfirm({
+            isOpen: false,
+            classSubjectId: null,
+            subjectName: "",
+          })
+        }
+        onConfirm={confirmDeleteSubject}
+        title="Delete Subject"
+        message={`Are you sure you want to remove "${deleteConfirm.subjectName}" from this class? This will also remove all chapters associated with this subject.`}
+        confirmText="Delete"
+        variant="danger"
+      />
+    </div>
   );
 };
 

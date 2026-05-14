@@ -1,97 +1,56 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
+import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { timetableService, type TimetableEntry } from '../../services/timetableService';
-import { classService } from '../../services/classService';
-import { academicYearService } from '../../services/academicYearService';
-import { subjectService } from '../../services/subjectService';
-import type { Class } from '../../types/class';
-import type { AcademicYear } from '../../types/academicYear';
-import type { Subject } from '../../services/subjectService';
+import { useClasses, useSubjects, useTimetables } from '../../hooks/queries';
+import { useAcademicYear } from '../../context/AcademicYearContext';
 import { Calendar, Plus, Clock, BookOpen, User } from 'lucide-react';
-import { BaseModal } from '../../components/common/BaseModal';
+import { BaseModal } from '../../components/modals/BaseModal';
 import { Button } from '../../components/ui/button';
 import InputField from '../../components/ui/InputField';
 import { SkeletonTable } from '../../components/common/Skeleton';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { timetableSchema, type TimetableFormData } from '../../schemas/academic.schema';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const Timetables: React.FC = () => {
   const { showNotification } = useNotification();
-  const [loading, setLoading] = useState(true);
-  const [timetables, setTimetables] = useState<TimetableEntry[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const queryClient = useQueryClient();
+  const { allYears: academicYears } = useAcademicYear();
+  const { data: classes = [] } = useClasses();
+  const { data: subjects = [] } = useSubjects();
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    classId: 0,
-    academicYearId: 0,
-    dayOfWeek: 1,
-    periodNumber: 1,
-    subjectId: 0,
-    teacherId: 0,
-    startTime: '09:00',
-    endTime: '10:00',
-    room: '',
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<TimetableFormData>({
+    resolver: zodResolver(timetableSchema),
   });
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const filters: { classId?: number; academicYearId?: number } = {};
-      if (selectedClass) filters.classId = parseInt(selectedClass);
-      if (selectedYear) filters.academicYearId = parseInt(selectedYear);
-      
-      const data = await timetableService.getTimetables(filters);
-      setTimetables(data);
-    } catch {
-      showNotification('Failed to fetch timetables', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedClass, selectedYear, showNotification]);
+  const filters = {
+    classId: selectedClass ? parseInt(selectedClass) : undefined,
+    academicYearId: selectedYear ? parseInt(selectedYear) : undefined,
+  };
 
-  useEffect(() => {
-    const fetchDropdowns = async () => {
-      try {
-        const [cls, yrs, subs] = await Promise.all([
-          classService.getClasses(),
-          academicYearService.getAllYears(),
-          subjectService.getSubjects(),
-        ]);
-        setClasses(cls);
-        setAcademicYears(yrs);
-        setSubjects(subs);
-      } catch {
-        showNotification('Failed to fetch data', 'error');
-      }
-    };
-    fetchDropdowns();
-  }, []);
-
-  useEffect(() => {
-    if (selectedClass || selectedYear) {
-      fetchData();
-    } else {
-      setTimetables([]);
-      setLoading(false);
-    }
-  }, [selectedClass, selectedYear, fetchData]);
+  const { data: timetables = [], isLoading } = useTimetables(filters);
 
   const handleOpenCreate = () => {
-    setFormData({
+    reset({
       classId: Number(selectedClass) || Number(classes[0]?.id) || 0,
       academicYearId: Number(selectedYear) || Number(academicYears[0]?.id) || 0,
       dayOfWeek: 1,
       periodNumber: 1,
       subjectId: 0,
-      teacherId: 0,
       startTime: '09:00',
       endTime: '10:00',
       room: '',
@@ -99,13 +58,13 @@ const Timetables: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleSave = async () => {
+  const onSubmit = async (data: TimetableFormData) => {
     try {
       setSaving(true);
-      await timetableService.createTimetable(formData);
+      await timetableService.createTimetable(data as any);
       showNotification('Timetable entry created successfully', 'success');
       setShowModal(false);
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: ['timetables'] });
     } catch {
       showNotification('Failed to create timetable entry', 'error');
     } finally {
@@ -121,14 +80,13 @@ const Timetables: React.FC = () => {
   }, {} as Record<number, TimetableEntry[]>);
 
   return (
-    <AdminLayout title="Timetables">
-      <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
         <PageHeader 
           title="Timetables"
           subtitle="Manage class schedules and periods"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Schedule", href: "/admin/timetables" },
               { label: "Timetables", active: true }
             ]
           }}
@@ -212,7 +170,7 @@ const Timetables: React.FC = () => {
             title="Select filters to view timetable"
             description="Choose a class and academic year to view the schedule"
           />
-        ) : loading ? (
+        ) : isLoading ? (
           <SkeletonTable columns={5} rows={5} />
         ) : Object.keys(groupedTimetables).length > 0 ? (
           <div className="space-y-6">
@@ -267,44 +225,43 @@ const Timetables: React.FC = () => {
           title="Add Period"
           size="md"
         >
-          <div className="p-6 space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <InputField
                 label="Day of Week"
                 type="number"
                 min={0}
                 max={6}
-                value={formData.dayOfWeek}
-                onChange={(e) => setFormData({ ...formData, dayOfWeek: parseInt(e.target.value) })}
+                error={errors.dayOfWeek?.message}
+                {...register('dayOfWeek', { valueAsNumber: true })}
               />
               <InputField
                 label="Period Number"
                 type="number"
                 min={1}
-                value={formData.periodNumber}
-                onChange={(e) => setFormData({ ...formData, periodNumber: parseInt(e.target.value) })}
+                error={errors.periodNumber?.message}
+                {...register('periodNumber', { valueAsNumber: true })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <InputField
                 label="Start Time"
                 type="time"
-                value={formData.startTime}
-                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                error={errors.startTime?.message}
+                {...register('startTime')}
               />
               <InputField
                 label="End Time"
                 type="time"
-                value={formData.endTime}
-                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                error={errors.endTime?.message}
+                {...register('endTime')}
               />
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Subject</label>
               <select
-                value={formData.subjectId || ''}
-                onChange={(e) => setFormData({ ...formData, subjectId: Number(e.target.value) })}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                {...register('subjectId', { valueAsNumber: true })}
               >
                 <option value="">Select Subject</option>
                 {subjects.map(s => (
@@ -315,17 +272,15 @@ const Timetables: React.FC = () => {
             <InputField
               label="Room (Optional)"
               placeholder="e.g., Room 101"
-              value={formData.room}
-              onChange={(e) => setFormData({ ...formData, room: e.target.value })}
+              {...register('room')}
             />
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button>
-              <Button onClick={handleSave} loading={saving} className="flex-1">Add Period</Button>
+              <Button variant="outline" type="button" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button>
+              <Button type="submit" loading={saving} className="flex-1">Add Period</Button>
             </div>
-          </div>
+          </form>
         </BaseModal>
-      </div>
-    </AdminLayout>
+    </div>
   );
 };
 

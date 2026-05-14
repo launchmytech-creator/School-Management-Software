@@ -1,6 +1,7 @@
 import { apiRequest } from './api';
 import { subjectService } from './subjectService';
 import { classService } from './classService';
+import { logger } from '../lib/logger';
 
 export interface SyllabusCompletion {
   id: number;
@@ -188,9 +189,9 @@ export const syllabusService = {
     if (classSubjectId) queryParams.append('classSubjectId', String(classSubjectId));
     
     const queryString = queryParams.toString();
-    console.log('[API] getCompletion - calling API with params:', queryString);
+    // console.log('[API] getCompletion - calling API with params:', queryString);
     const response = await apiRequest<any[]>(`/syllabus-completion${queryString ? `?${queryString}` : ''}`);
-    console.log('[API] getCompletion - response:', response);
+    // console.log('[API] getCompletion - response:', response);
     return response.map(mapCompletionFromBackend);
   },
 
@@ -198,17 +199,17 @@ export const syllabusService = {
   getChaptersWithStatusDirect: async (
     classId: number, 
     subjectId: number, 
-    academicYearId: number
+    _academicYearId: number
   ): Promise<ChapterWithStatus[]> => {
-    console.log('[API] getChaptersWithStatusDirect called:', { classId, subjectId, academicYearId });
+    // console.log('[API] getChaptersWithStatusDirect called:', { classId, subjectId, academicYearId });
     
     // 1. Get all chapters for this subject
     const chapters = await syllabusService.getChaptersBySubject(subjectId);
-    console.log('[API] getChaptersBySubject returned:', chapters.length, 'chapters');
+    // console.log('[API] getChaptersBySubject returned:', chapters.length, 'chapters');
     
     // 2. Get completions using classId + subjectId filters (no classSubjectId needed!)
     const completions = await syllabusService.getCompletion(classId, subjectId, undefined);
-    console.log('[API] getCompletion returned:', completions.length, 'completions');
+    // console.log('[API] getCompletion returned:', completions.length, 'completions');
     
     // 3. Combine - map completion status to each chapter
     const chaptersWithStatus = chapters.map(chapter => {
@@ -221,7 +222,7 @@ export const syllabusService = {
       };
     });
     
-    console.log('[API] getChaptersWithStatusDirect result:', chaptersWithStatus);
+    // console.log('[API] getChaptersWithStatusDirect result:', chaptersWithStatus);
     return chaptersWithStatus;
   },
 
@@ -233,14 +234,14 @@ export const syllabusService = {
     status: 'completed' | 'pending' | 'in-progress',
     academicYearId: number
   ): Promise<void> => {
-    console.log('[API] markCompletionDirect called:', { classId, subjectId, chapterId, status, academicYearId });
+    // console.log('[API] markCompletionDirect called:', { classId, subjectId, chapterId, status, academicYearId });
     
     // Find classSubjectId from the API
     const classSubjects = await syllabusService.getClassSubjectsByClass(classId, academicYearId);
-    console.log('[API] getClassSubjectsByClass returned:', classSubjects);
+    // console.log('[API] getClassSubjectsByClass returned:', classSubjects);
     
     const classSubject = classSubjects.find(cs => cs.subjectId === subjectId);
-    console.log('[API] Found classSubject:', classSubject);
+    // console.log('[API] Found classSubject:', classSubject);
     
     if (classSubject) {
       await syllabusService.markCompletion({
@@ -248,7 +249,7 @@ export const syllabusService = {
         chapterId,
         status,
       });
-      console.log('[API] markCompletion completed successfully');
+      // console.log('[API] markCompletion completed successfully');
     } else {
       console.error('[API] Could not find classSubject for classId:', classId, 'subjectId:', subjectId);
       throw new Error('Could not find class subject mapping');
@@ -289,21 +290,21 @@ export const syllabusService = {
   },
 
   getChaptersWithStatus: async (classSubjectId: number, subjectId: number): Promise<ChapterWithStatus[]> => {
-    console.log('[getChaptersWithStatus] INPUT:', { classSubjectId, subjectId });
+    // console.log('[getChaptersWithStatus] INPUT:', { classSubjectId, subjectId });
     
     // Get all chapters for this subject
     const chapters = await syllabusService.getChaptersBySubject(subjectId);
-    console.log('[getChaptersWithStatus] chapters from API:', chapters);
+    // console.log('[getChaptersWithStatus] chapters from API:', chapters);
     
     // Get completion records using classSubjectId filter
     const completions = await syllabusService.getCompletion(undefined, undefined, classSubjectId);
-    console.log('[getChaptersWithStatus] completions from API:', completions);
+    // console.log('[getChaptersWithStatus] completions from API:', completions);
     
     // Map completion status to chapters
     const chaptersWithStatus = chapters.map(chapter => {
       const completion = completions.find(c => c.chapterId === chapter.chapterId);
       const status: 'completed' | 'pending' | 'in-progress' = completion?.status === 'in-progress' ? 'in-progress' : (completion?.status || 'pending');
-      console.log('[getChaptersWithStatus] mapping chapter:', chapter.chapterId, 'completion:', completion, 'status:', status);
+      // console.log('[getChaptersWithStatus] mapping chapter:', chapter.chapterId, 'completion:', completion, 'status:', status);
       return {
         ...chapter,
         status,
@@ -311,12 +312,51 @@ export const syllabusService = {
       };
     });
     
-    console.log('[getChaptersWithStatus] FINAL RESULT:', chaptersWithStatus);
+    // console.log('[getChaptersWithStatus] FINAL RESULT:', chaptersWithStatus);
     return chaptersWithStatus;
   },
 
   getClassProgress: async (classId: number): Promise<SubjectProgress[]> => {
     return apiRequest<SubjectProgress[]>(`/syllabus-completion/class/${classId}/progress`);
+  },
+
+  getStudentProgress: async (studentId: number, academicYearId: number): Promise<{
+    studentId: number;
+    totalSubjects: number;
+    totalChapters: number;
+    completedChapters: number;
+    overallPercentage: number;
+    subjects: SubjectProgress[];
+  }> => {
+    const studentData = await studentService.getStudentById(studentId);
+    const classId = studentData.currentClassId;
+    
+    if (!classId) {
+      return {
+        studentId,
+        totalSubjects: 0,
+        totalChapters: 0,
+        completedChapters: 0,
+        overallPercentage: 0,
+        subjects: [],
+      };
+    }
+
+    const subjectsProgress = await syllabusService.getClassProgress(classId);
+    
+    const totalSubjects = subjectsProgress.length;
+    const totalChapters = subjectsProgress.reduce((sum, s) => sum + s.totalChapters, 0);
+    const completedChapters = subjectsProgress.reduce((sum, s) => sum + s.completedChapters, 0);
+    const overallPercentage = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
+
+    return {
+      studentId,
+      totalSubjects,
+      totalChapters,
+      completedChapters,
+      overallPercentage,
+      subjects: subjectsProgress,
+    };
   },
 
   getAllClassesProgress: async (classIds?: number[]): Promise<AllClassesProgress> => {
@@ -328,7 +368,8 @@ export const syllabusService = {
     const classProgressPromises = classesToProcess.map(async (cls) => {
       try {
         return await getClassProgressByIdInternal(Number(cls.id), cls.name, cls.section || undefined);
-      } catch {
+      } catch (error) {
+        logger.warn(`Failed to get progress for class ${cls.name}`, { classId: cls.id, error });
         return null;
       }
     });
@@ -381,7 +422,8 @@ async function getClassProgressByIdInternal(
     try {
       const progress = await getClassSubjectProgressInternal(cs.id, cs.subjectId, cs.subjectName);
       return progress;
-    } catch {
+    } catch (error) {
+      logger.warn(`Failed to get progress for subject ${cs.subjectName}`, { classSubjectId: cs.id, error });
       return null;
     }
   });

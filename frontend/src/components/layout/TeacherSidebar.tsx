@@ -8,10 +8,10 @@ const TeacherSidebar: React.FC = () => {
 
   const navItems = [
     { name: 'Dashboard', icon: 'dashboard', path: '/teacher/dashboard' },
-    { name: 'My Classes', icon: 'school', path: '/teacher/my-classes' },
-    { name: 'Mark Attendance', icon: 'how_to_reg', path: '/teacher/attendance' },
-    { name: 'My Students', icon: 'group', path: '/teacher/students' },
     { name: 'Syllabus Progress', icon: 'playlist_add_check', path: '/teacher/syllabus' },
+    { name: 'My Classes', icon: 'group', path: '/teacher/students' },
+    { name: 'Mark Attendance', icon: 'how_to_reg', path: '/teacher/attendance' },
+    { name: 'Announcements', icon: 'campaign', path: '/teacher/announcements' },
   ];
 
   const handleLogout = () => {
@@ -28,10 +28,6 @@ const TeacherSidebar: React.FC = () => {
           </span>
         </div>
         <span className="font-display font-black text-2xl text-white tracking-tight leading-none">EduManage</span>
-      </div>
-
-      <div className="px-4 py-4">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-white/30 px-4">Teacher Menu</span>
       </div>
 
       <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">

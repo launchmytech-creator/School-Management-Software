@@ -1,243 +1,415 @@
-import React, { useState, useEffect, useCallback } from "react";
-import AdminLayout from "../../layouts/AdminLayout";
-import { 
-  Plus, BookOpen, Calendar, 
-  Trash2, Edit2, ChevronRight,
-  Loader2, ChevronLeft
-} from "lucide-react";
-import { teacherService } from "../../services/teacherService";
+import React, { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Plus, Loader2, Users, Shield, ChevronDown } from "lucide-react";
 import { useNotification } from "../../context/NotificationContext";
-import type { 
-  TeacherAllocation as TeacherAllocationType
-} from "../../types/teacher";
+import { useAcademicYear } from "../../context/AcademicYearContext";
+import {
+  useClasses,
+  useTeachers,
+  useAllAllocations,
+} from "../../hooks/queries";
+import { classService } from "../../services/classService";
+import { teacherService } from "../../services/teacherService";
 import { Button } from "../../components/ui/button";
-import AllocateTeacherModal from "../../components/teacher/AllocateTeacherModal";
+import AllocateTeacherModal from "../../components/modals/AllocateTeacherModal";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
+import { AllocationTabs } from "../../components/teacher/AllocationTabs";
+import { AllocationFilterBar } from "../../components/teacher/AllocationFilterBar";
+import { AllocationTable } from "../../components/teacher/AllocationTable";
+import EmptyState from "../../components/common/EmptyState";
+import PageHeader from "../../components/common/PageHeader";
+
+type FilterOption = "all" | "assigned" | "unassigned";
+type TabValue = "incharge" | "allocations";
 
 const TeacherAllocation: React.FC = () => {
   const { showNotification } = useNotification();
-  
-  // State
-  const [allocations, setAllocations] = useState<TeacherAllocationType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { selectedYear } = useAcademicYear();
+  const queryClient = useQueryClient();
+
+  const { data: allocations = [], isLoading } = useAllAllocations();
+  const { data: classes = [] } = useClasses(selectedYear?.id);
+  const { data: teachers = [] } = useTeachers();
+
+  const [activeTab, setActiveTab] = useState<TabValue>("incharge");
+  const [updatingIncharge, setUpdatingIncharge] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
-  // Fetch Data
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const aData = await teacherService.getAllocations();
-      setAllocations(aData);
-    } catch {
-      showNotification("Failed to fetch allocations", "error");
-    } finally {
-      setLoading(false);
+  const [filterOption, setFilterOption] = useState<FilterOption>("all");
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    classId: string | null;
+    className: string | null;
+    teacherId: number | null;
+    teacherName: string | null;
+    action: "assign" | "remove" | null;
+  }>({
+    isOpen: false,
+    classId: null,
+    className: null,
+    teacherId: null,
+    teacherName: null,
+    action: null,
+  });
+
+  const [deleteDialog, setDeleteDialog] = useState({
+    isOpen: false,
+    allocationId: null as number | null,
+  });
+
+  const filteredClasses = useMemo(() => {
+    if (filterOption === "assigned") {
+      return classes.filter((c) => c.inchargeId !== null);
+    } else if (filterOption === "unassigned") {
+      return classes.filter((c) => c.inchargeId === null);
     }
-  }, [showNotification]);
+    return classes;
+  }, [classes, filterOption]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const handleAssignIncharge = async () => {
+    if (!confirmDialog.classId) return;
 
-  const handleDeleteAllocation = async (id: number) => {
-    if (!window.confirm("Are you sure you want to remove this allocation?")) return;
-    
+    setUpdatingIncharge(parseInt(confirmDialog.classId));
     try {
-      await teacherService.deleteAllocation(id);
-      showNotification("Allocation removed", "success");
-      setAllocations(prev => prev.filter(a => a.id !== id));
+      await classService.updateClass(confirmDialog.classId, {
+        inchargeId: confirmDialog.teacherId,
+      });
+      showNotification(
+        confirmDialog.action === "remove"
+          ? "Class incharge removed successfully"
+          : "Class incharge assigned successfully",
+        "success",
+      );
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
     } catch {
-      showNotification("Failed to delete allocation", "error");
+      showNotification("Failed to update class incharge", "error");
+    } finally {
+      setUpdatingIncharge(null);
+      setConfirmDialog({
+        isOpen: false,
+        classId: null,
+        className: null,
+        teacherId: null,
+        teacherName: null,
+        action: null,
+      });
     }
   };
 
+  const openConfirmDialog = (
+    classId: string,
+    className: string,
+    teacherId: number | null,
+    teacherName: string | null,
+    action: "assign" | "remove",
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      classId,
+      className,
+      teacherId,
+      teacherName,
+      action,
+    });
+  };
+
+  const handleSetIncharge = (classId: string, teacherId: number | null) => {
+    const classData = classes.find((c) => c.id === classId);
+    const className = classData?.name || "";
+    const teacherData = teachers.find((t) => t.id === teacherId);
+
+    if (teacherId === null) {
+      openConfirmDialog(classId, className, null, null, "remove");
+    } else {
+      openConfirmDialog(
+        classId,
+        className,
+        teacherId,
+        teacherData?.fullName || "",
+        "assign",
+      );
+    }
+  };
+
+  const handleDeleteAllocation = (id: number) => {
+    setDeleteDialog({ isOpen: true, allocationId: id });
+  };
+
+  const confirmDeleteAllocation = async () => {
+    if (!deleteDialog.allocationId) return;
+    try {
+      await teacherService.deleteAllocation(deleteDialog.allocationId);
+      showNotification("Allocation removed", "success");
+      queryClient.invalidateQueries({ queryKey: ["teacher-allocations"] });
+    } catch {
+      showNotification("Failed to delete allocation", "error");
+    } finally {
+      setDeleteDialog({ isOpen: false, allocationId: null });
+    }
+  };
+
+  const assignedCount = classes.filter((c) => c.inchargeId !== null).length;
+  const unassignedCount = classes.filter((c) => c.inchargeId === null).length;
+
   return (
-    <AdminLayout title="Teacher Allocation">
-      <div className="space-y-10 pb-10">
-        {/* Simple Header */}
+    <>
+      <div className="space-y-8 pb-12">
+        <PageHeader
+          title="Teacher Allocation"
+          subtitle="Assign teachers to classes and subjects"
+          breadcrumb={{
+            links: [
+              { label: "People", href: "/admin/teacher-allocation" },
+              { label: "Teacher Allocation", active: true },
+            ],
+          }}
+        />
+
         <div className="flex items-center justify-between">
-          <h1 className="text-[28px] font-display font-black text-slate-800 tracking-tight">Teacher Allocation</h1>
+          <div />
           <div className="flex items-center gap-3">
-             <Button 
-                onClick={() => setIsModalOpen(true)}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-6 rounded-xl font-bold text-sm tracking-tight transition-all active:scale-95 flex items-center gap-2 shadow-sm"
-              >
-                <Plus className="size-4" />
-                Add New Allocation
-              </Button>
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-6 rounded-xl font-bold text-sm tracking-tight transition-all active:scale-95 flex items-center gap-2 shadow-sm"
+            >
+              <Plus className="size-4" />
+              Add New Allocation
+            </Button>
           </div>
         </div>
 
-        {/* Recent Allocations Grid */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-display font-black text-slate-800 tracking-tight">Recent Allocations</h2>
-            <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-100 rounded-lg text-xs font-bold text-slate-500 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm">
-              Filter by Teacher
-              <ChevronRight className="size-3 text-slate-300 rotate-90" />
-            </div>
-          </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 ">
+          <AllocationTabs
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            classesCount={classes.length}
+            allocationsCount={allocations.length}
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {allocations.slice(0, 4).map((alloc) => (
-              <div key={alloc.id} className="bg-white p-7 rounded-2xl border border-slate-100 shadow-sm relative group hover:shadow-md transition-all flex flex-col items-center text-center">
-                {/* Delete button from image (trash icon in corner) */}
-                <button 
-                  onClick={() => handleDeleteAllocation(alloc.id)}
-                  className="absolute top-4 right-4 p-2 text-slate-300 hover:text-rose-500 transition-colors"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-                
-                {/* Avatar (circular as seen in image) */}
-                <div className="size-20 bg-emerald-50 rounded-full flex items-center justify-center mb-5 overflow-hidden border-4 border-white shadow-sm">
-                   {/* Placeholder for real avatar, using simplified SVG/Char */}
-                   <div className="text-emerald-500 font-black text-2xl uppercase">
-                     {alloc.teacherName.charAt(0)}
-                   </div>
-                </div>
+          <div className="p-6">
+            {activeTab === "incharge" && (
+              <div className="space-y-4">
+                <AllocationFilterBar
+                  filterOption={filterOption}
+                  onChange={setFilterOption}
+                  totalCount={classes.length}
+                  assignedCount={assignedCount}
+                  unassignedCount={unassignedCount}
+                />
 
-                <div className="space-y-1 mb-5">
-                   <h4 className="font-display font-black text-slate-800 text-base leading-tight tracking-tight">Dr. {alloc.teacherName}</h4>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                     SENIOR FACULTY
-                   </p>
-                </div>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-16">
+                    <Loader2 className="size-8 animate-spin text-blue-500 opacity-30" />
+                  </div>
+                ) : filteredClasses.length > 0 ? (
+                  <div className="space-y-4">
+                    {filteredClasses.map((cls) => {
+                      const getAvatarColor = (name: string) => {
+                        const colors = [
+                          "bg-emerald-100 text-emerald-600",
+                          "bg-blue-100 text-blue-600",
+                          "bg-purple-100 text-purple-600",
+                          "bg-rose-100 text-rose-600",
+                          "bg-amber-100 text-amber-600",
+                          "bg-cyan-100 text-cyan-600",
+                        ];
+                        const index = name.charCodeAt(0) % colors.length;
+                        return colors[index];
+                      };
 
-                <div className="flex flex-col gap-2 w-full">
-                   <span className="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-[10px] font-bold tracking-tight inline-block mx-auto">
-                     {alloc.subjectName}
-                   </span>
-                   <span className="bg-slate-50 text-slate-700 px-4 py-1.5 rounded-full text-[10px] font-bold tracking-tight inline-block mx-auto">
-                     Class {alloc.className}
-                   </span>
-                </div>
+                      const hasIncharge = !!cls.inchargeId;
+                      const isUpdating = updatingIncharge === parseInt(cls.id);
+                      const showDropdown = openDropdownId === cls.id;
 
-                <div className="w-full flex items-center justify-center gap-2 mt-6 pt-5 border-t border-slate-50">
-                    <div className="flex items-center gap-1.5 text-slate-400 font-bold text-[10px]">
-                      <Calendar className="size-3.5" />
-                      {alloc.yearName}
-                    </div>
-                    <span className="text-emerald-500 font-bold text-[10px]">Active</span>
-                </div>
-              </div>
-            ))}
-            {allocations.length === 0 && !loading && (
-              <div className="col-span-full py-16 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-400">
-                <BookOpen className="size-10 mb-2 opacity-20" />
-                <p className="text-sm font-bold opacity-60">No allocations found</p>
+                      return (
+                        <div
+                          key={cls.id}
+                          className="bg-white rounded-xl border border-slate-200 cursor-pointer hover:shadow-md transition-shadow"
+                        >
+                          <div className="p-5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
+                                  <span className="font-black text-sm">
+                                    
+                                  </span>
+                                </div>
+                                <div>
+                                  <h3 className="font-semibold text-slate-900">
+                                    {cls.name}
+                                    {cls.section && ` - Section ${cls.section}`}
+                                  </h3>
+                                  <p className="text-sm text-slate-500">
+                                    <span className="inline-flex items-center gap-1">
+                                      <Users className="w-3.5 h-3.5" />
+                                      {cls.studentCount} students
+                                    </span>
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="text-right">
+                                  {hasIncharge && cls.inchargeName ? (
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs ${getAvatarColor(
+                                          cls.inchargeName
+                                        )}`}
+                                      >
+                                        {cls.inchargeName.charAt(0).toUpperCase()}
+                                      </div>
+                                      <span className="text-sm font-medium text-slate-600">
+                                        {cls.inchargeName}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 text-xs font-medium">
+                                      <Shield className="size-3" />
+                                      No incharge
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="relative">
+                                  <button
+                                    onClick={() => setOpenDropdownId(showDropdown ? null : cls.id)}
+                                    disabled={isUpdating}
+                                    className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+                                  >
+                                    {isUpdating ? (
+                                      <Loader2 className="size-3 animate-spin" />
+                                    ) : (
+                                      <>
+                                        {hasIncharge ? "Change" : "Assign"}
+                                        <ChevronDown className={`size-3 transition-transform ${showDropdown ? "rotate-180" : ""}`} />
+                                      </>
+                                    )}
+                                  </button>
+                                  {showDropdown && (
+                                    <>
+                                      <div className="fixed inset-0 z-10" onClick={() => setOpenDropdownId(null)} />
+                                      <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20 min-w-[180px]">
+                                        <div className="p-1.5">
+                                          {hasIncharge && (
+                                            <button
+                                              onClick={() => {
+                                                handleSetIncharge(cls.id, null);
+                                                setOpenDropdownId(null);
+                                              }}
+                                              className="w-full px-3 py-2 text-left text-xs text-slate-500 hover:bg-slate-50 rounded-lg"
+                                            >
+                                              Remove Incharge
+                                            </button>
+                                          )}
+                                          {teachers
+                                            .filter((t) => t.isActive && (!hasIncharge || t.id !== cls.inchargeId))
+                                            .map((teacher) => (
+                                              <button
+                                                key={teacher.id}
+                                                onClick={() => {
+                                                  handleSetIncharge(cls.id, teacher.id);
+                                                  setOpenDropdownId(null);
+                                                }}
+                                                className="w-full px-3 py-2 text-left text-xs hover:bg-slate-50 rounded-lg flex items-center gap-2"
+                                              >
+                                                <div
+                                                  className={`w-5 h-5 rounded-full flex items-center justify-center font-black text-[10px] ${getAvatarColor(
+                                                    teacher.fullName
+                                                  )}`}
+                                                >
+                                                  {teacher.fullName.charAt(0)}
+                                                </div>
+                                                <span className="truncate">{teacher.fullName}</span>
+                                              </button>
+                                            ))}
+                                          {teachers.filter((t) => t.isActive).length === 0 && (
+                                            <p className="px-3 py-2 text-xs text-slate-400 text-center">
+                                              No teachers
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <EmptyState
+                    icon={Users}
+                    title="No classes found"
+                    description={
+                      filterOption !== "all"
+                        ? "No classes match your filter criteria."
+                        : "No classes have been created for this academic year."
+                    }
+                  />
+                )}
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Allocation Summary Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="px-8 py-7 flex items-center justify-between">
-            <h2 className="text-xl font-display font-black text-slate-800 tracking-tight">Allocation Summary</h2>
-            <button className="flex items-center gap-2 text-blue-500 hover:text-blue-600 transition-colors text-xs font-bold shadow-none p-0">
-              <Plus className="size-4" />
-              Export PDF
-            </button>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 border-y border-slate-100">
-                  <th className="px-8 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Teacher</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Subject</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Class</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Section</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Year</th>
-                  <th className="px-8 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {allocations.map((alloc) => (
-                  <tr key={alloc.id} className="group hover:bg-slate-50/30 transition-colors">
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className="size-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-500 font-black text-xs overflow-hidden border border-slate-100">
-                           {alloc.teacherName.charAt(0)}
-                        </div>
-                        <span className="font-bold text-slate-700 text-sm tracking-tight">Dr. {alloc.teacherName}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="text-slate-500 text-sm font-medium tracking-tight">
-                        {alloc.subjectName}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                      <span className="text-slate-500 text-sm font-medium tracking-tight">Class {alloc.className}</span>
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                      <span className="text-slate-500 text-sm font-medium tracking-tight">{alloc.classSection}</span>
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                      <span className="text-slate-500 text-sm font-medium tracking-tight">{alloc.yearName}</span>
-                    </td>
-                    <td className="px-8 py-5 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <button className="text-slate-400 hover:text-blue-500 transition-colors">
-                          <Edit2 className="size-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteAllocation(alloc.id)}
-                          className="text-slate-400 hover:text-rose-500 transition-colors"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {loading && (
-                  <tr>
-                    <td colSpan={6} className="px-8 py-16 text-center">
-                       <Loader2 className="size-10 animate-spin mx-auto text-blue-500 opacity-20" />
-                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-4 animate-pulse">Syncing assignment records...</p>
-                    </td>
-                  </tr>
-                )}
-                {allocations.length === 0 && !loading && (
-                  <tr>
-                    <td colSpan={6} className="px-8 py-20 text-center">
-                      <p className="text-slate-400 font-bold italic text-sm opacity-50">
-                        No assignments have been recorded for the current term.
-                      </p>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="px-8 py-6 border-t border-slate-50 bg-slate-50/10 flex items-center justify-between">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              Total {allocations.length} assignment entries
-            </span>
-            <div className="flex items-center gap-2">
-              <button disabled className="p-2 text-slate-200 disabled:opacity-30">
-                <ChevronLeft className="size-5" />
-              </button>
-              <button className="flex items-center justify-center size-9 bg-slate-900 text-white rounded-xl font-black text-xs shadow-lg shadow-slate-900/10 active:scale-95 transition-all">
-                1
-              </button>
-              <button className="p-2 text-slate-400 hover:text-blue-500 transition-colors">
-                <ChevronRight className="size-5" />
-              </button>
-            </div>
+            {activeTab === "allocations" && (
+              <AllocationTable
+                allocations={allocations}
+                isLoading={isLoading}
+                onDelete={handleDeleteAllocation}
+              />
+            )}
           </div>
         </div>
       </div>
 
-      <AllocateTeacherModal 
+      <AllocateTeacherModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={fetchData}
+        onSuccess={() =>
+          queryClient.invalidateQueries({ queryKey: ["teacher-allocations"] })
+        }
       />
-    </AdminLayout>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() =>
+          setConfirmDialog({
+            isOpen: false,
+            classId: null,
+            className: null,
+            teacherId: null,
+            teacherName: null,
+            action: null,
+          })
+        }
+        onConfirm={handleAssignIncharge}
+        title={
+          confirmDialog.action === "remove"
+            ? "Remove Class Incharge"
+            : "Assign Class Incharge"
+        }
+        message={
+          confirmDialog.action === "remove"
+            ? `Are you sure you want to remove the incharge from ${confirmDialog.className}? This class will no longer be able to mark attendance.`
+            : `Are you sure you want to assign ${confirmDialog.teacherName} as the incharge for ${confirmDialog.className}?`
+        }
+        confirmText={confirmDialog.action === "remove" ? "Remove" : "Assign"}
+        variant={confirmDialog.action === "remove" ? "danger" : "info"}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ isOpen: false, allocationId: null })}
+        onConfirm={confirmDeleteAllocation}
+        title="Remove Allocation"
+        message="Are you sure you want to remove this allocation? This action cannot be undone."
+        confirmText="Remove"
+        variant="danger"
+      />
+    </>
   );
 };
 

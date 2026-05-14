@@ -1,8 +1,9 @@
 export type SubscriptionTier = 'BASIC' | 'PREMIUM' | 'BUSINESS';
-export type FeeTerm = 'YEARLY' | 'HALF-YEARLY' | 'QUARTERLY' | 'MONTHLY';
+export type FeeTerm = 'yearly' | 'half-yearly' | 'quarterly' | 'monthly';
 
 export interface School {
   id: string;
+  code: string;
   name: string;
   address: string;
   phone: string;
@@ -11,32 +12,13 @@ export interface School {
   logo?: string;
   plan: SubscriptionTier;
   feeTerm: FeeTerm;
+  subscriptionStatus: string;
+  subscriptionEndDate?: string;
   status: boolean;
   createdAt: string;
-}
-
-export interface SchoolStats {
-  totalSchools: number;
-  activeSchools: number;
-  inactiveSchools: number;
-  basicPlans: number;
-  premiumPlans: number;
-  businessPlans: number;
-}
-
-export interface RecentSchoolActivity {
-  id: string;
-  name: string;
-  initials: string;
-  logoBg: string;
-  plan: SubscriptionTier;
-  createdAt: string;
-}
-
-export interface SubscriptionDistribution {
-  tier: SubscriptionTier;
-  count: number;
-  percentage: number;
+  teacherCount?: number;
+  studentCount?: number;
+  creditBalance?: number;
 }
 
 export interface SchoolCreateData {
@@ -63,14 +45,51 @@ export interface SchoolUpdateData {
   isActive?: boolean;
 }
 
-export interface AdminCreateData {
-  email: string;
-  password: string;
-  fullName: string;
-  phone: string;
-}
-
 export interface CreateSchoolRequest {
   school: SchoolCreateData;
-  admin: AdminCreateData;
+  admin: {
+    email: string;
+    password: string;
+    fullName: string;
+    phone: string;
+  };
+}
+
+export interface SchoolAdmin {
+  id: number;
+  email: string;
+  fullName: string;
+  phone: string;
+  role: string;
+  schoolId: number;
+  isActive: boolean;
+  createdAt?: string;
+}
+
+export interface UpdateSchoolAdminData {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  password?: string;
+}
+
+// [NEW] Subscription Plan interface
+export interface SubscriptionPlan {
+  id: number;
+  name: SubscriptionTier;
+  features: Record<string, boolean>;
+  created_at?: string;
+}
+
+// [NEW] Plan change request
+export interface PlanChangeRequest {
+  targetPlanId: number;
+}
+
+// [NEW] Profile update data
+export interface UpdateProfileData {
+  fullName?: string;
+  phone?: string;
+  password?: string;
+  currentPassword?: string;
 }

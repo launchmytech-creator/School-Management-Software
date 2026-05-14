@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import ParentLayout from '../../layouts/ParentLayout';
-import { useAuth } from '../../context/AuthContext';
-import { useAcademicYear } from '../../context/AcademicYearContext';
-import { parentService } from '../../services/parentService';
-import { syllabusService, type ChapterWithStatus } from '../../services/syllabusService';
-import { subjectService } from '../../services/subjectService';
-import { studentService } from '../../services/studentService';
-import type { LinkedStudent } from '../../types/parent';
-
-// ── types ─────────────────────────────────────────────────────────────────────
+import React, { useState, useMemo } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { useAcademicYear } from "../../context/AcademicYearContext";
+import { useSelectedChild } from "../../context/SelectedChildContext";
+import {
+  useParentChildren,
+  useStudentClass,
+  useParentSubjects,
+} from "../../hooks/queries";
+import type { LinkedStudent } from "../../types/parent";
+import { syllabusService, type ChapterWithStatus } from "../../services/syllabusService";
+import PageHeader from "../../components/common/PageHeader";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import { getSubjectIcon } from "../../lib/subject-utils";
 
 interface SubjectCard {
   classSubjectId: number;
@@ -19,71 +22,51 @@ interface SubjectCard {
   completedChapters: number;
   progressPercentage: number;
   chapters: ChapterWithStatus[];
-  chaptersLoaded: boolean;
 }
 
-// ── accent colours per subject index ─────────────────────────────────────────
-
 const ACCENTS = [
-  { border: 'border-l-green-400',  bar: 'bg-green-400',  pct: 'text-green-500',  badge: 'bg-green-50 text-green-600'  },
-  { border: 'border-l-blue-400',   bar: 'bg-blue-400',   pct: 'text-blue-500',   badge: 'bg-blue-50 text-blue-600'    },
-  { border: 'border-l-orange-400', bar: 'bg-orange-400', pct: 'text-orange-500', badge: 'bg-orange-50 text-orange-600' },
-  { border: 'border-l-purple-400', bar: 'bg-purple-400', pct: 'text-purple-500', badge: 'bg-purple-50 text-purple-600' },
-  { border: 'border-l-rose-400',   bar: 'bg-rose-400',   pct: 'text-rose-500',   badge: 'bg-rose-50 text-rose-600'    },
-  { border: 'border-l-teal-400',   bar: 'bg-teal-400',   pct: 'text-teal-500',   badge: 'bg-teal-50 text-teal-600'    },
+  { bg: "bg-green-50", bar: "bg-green-400", pct: "text-green-500", icon: "text-green-500" },
+  { bg: "bg-blue-50", bar: "bg-blue-400", pct: "text-blue-500", icon: "text-blue-500" },
+  { bg: "bg-orange-50", bar: "bg-orange-400", pct: "text-orange-500", icon: "text-orange-500" },
+  { bg: "bg-purple-50", bar: "bg-purple-400", pct: "text-purple-500", icon: "text-purple-500" },
+  { bg: "bg-rose-50", bar: "bg-rose-400", pct: "text-rose-500", icon: "text-rose-500" },
+  { bg: "bg-teal-50", bar: "bg-teal-400", pct: "text-teal-500", icon: "text-teal-500" },
 ];
 
 const accent = (i: number) => ACCENTS[i % ACCENTS.length];
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-const fmtDate = (d?: string) => {
-  if (!d) return '';
-  const [y, m, day] = d.split('-').map(Number);
-  return new Date(y, m - 1, day).toLocaleDateString('en-IN', {
-    day: '2-digit', month: 'short', year: 'numeric',
-  });
-};
-
-// ── chapter row ───────────────────────────────────────────────────────────────
-
-const ChapterRow: React.FC<{ ch: ChapterWithStatus; idx: number }> = ({ ch, idx }) => {
-  const isCompleted  = ch.status === 'completed';
-  const isInProgress = ch.status === 'in-progress';
+const ChapterRow: React.FC<{ ch: ChapterWithStatus; idx: number }> = ({
+  ch,
+}) => {
+  const isCompleted = ch.status === "completed";
+  const isInProgress = ch.status === "in-progress";
 
   return (
-    <div className="flex items-center justify-between py-2.5 border-b border-slate-50 last:border-0">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center justify-between py-2 last:border-0 border-b border-slate-100">
+      <div className="flex items-center gap-2">
         {isCompleted ? (
-          <span className="material-symbols-outlined text-[18px] text-green-500 flex-shrink-0"
-            style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+          <span className="text-green-500 text-sm">✓</span>
         ) : isInProgress ? (
-          <span className="material-symbols-outlined text-[18px] text-amber-400 flex-shrink-0"
-            style={{ fontVariationSettings: "'FILL' 0" }}>pending</span>
+          <span className="text-amber-500 text-sm">◐</span>
         ) : (
-          <span className="material-symbols-outlined text-[18px] text-slate-300 flex-shrink-0"
-            style={{ fontVariationSettings: "'FILL' 0" }}>radio_button_unchecked</span>
+          <span className="text-slate-300 text-sm">○</span>
         )}
-        <span className={`text-sm ${isCompleted ? 'text-slate-700' : 'text-slate-500'}`}>
-          Chapter {idx + 1}: {ch.chapterName}
+        <span className={`text-xs ${isCompleted ? "text-slate-600" : "text-slate-400"}`}>
+          {ch.chapterName}
         </span>
       </div>
-      <div className="flex-shrink-0 ml-4">
-        {isCompleted && ch.completedDate ? (
-          <span className="text-xs text-slate-400">{fmtDate(ch.completedDate)}</span>
-        ) : isInProgress ? (
-          <span className="text-[11px] font-bold bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full">IN PROGRESS</span>
-        ) : (
-          <span className="text-[11px] font-bold bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full">PENDING</span>
-        )}
-      </div>
+      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+        isCompleted ? "bg-green-50 text-green-600" : 
+        isInProgress ? "bg-amber-50 text-amber-600" : 
+        "bg-slate-100 text-slate-400"
+      }`}>
+        {isCompleted ? "Done" : isInProgress ? "In Progress" : "Pending"}
+      </span>
     </div>
   );
 };
 
-// ── subject card ──────────────────────────────────────────────────────────────
-
-const SubjectCard: React.FC<{
+const SubjectCardComponent: React.FC<{
   card: SubjectCard;
   colorIdx: number;
   onToggleChapters: () => void;
@@ -92,179 +75,185 @@ const SubjectCard: React.FC<{
   const c = accent(colorIdx);
   const pct = Math.round(card.progressPercentage);
 
-  // Determine what to show in the collapsed preview
-  const completedChapters = card.chapters.filter(ch => ch.status === 'completed');
-  const pendingChapters   = card.chapters.filter(ch => ch.status === 'pending' || ch.status === 'in-progress');
-  const nextChapter       = pendingChapters[0];
+  const completedChapters = card.chapters.filter(
+    (ch) => ch.status === "completed",
+  );
 
   return (
-    <div className={`bg-white rounded-2xl border border-slate-100 border-l-4 ${c.border} shadow-sm overflow-hidden`}>
-      <div className="p-5">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-1">
-          <div>
-            <h3 className="font-black text-slate-900 text-base">{card.subjectName}</h3>
-            {card.teacherName && (
-              <p className="text-xs text-slate-400 mt-0.5">Teacher: {card.teacherName}</p>
-            )}
-          </div>
-          <span className={`text-xs font-black px-2.5 py-1 rounded-full ${c.badge}`}>
-            {pct}% Complete
+    <div className={`${c.bg} rounded-2xl border border-slate-100 p-5`}>
+      <div className="flex items-start gap-4 mb-4">
+        <div className={`w-12 h-12 rounded-xl ${c.bg.replace('50', '100')} flex items-center justify-center`}>
+          <span
+            className={`material-symbols-outlined text-2xl ${c.icon}`}
+            style={{ fontVariationSettings: "'FILL' 1" }}
+          >
+            {getSubjectIcon(card.subjectName)}
           </span>
         </div>
-
-        {/* Progress bar */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Progress</span>
-            <span className="text-[11px] font-bold text-slate-500">
-              {card.completedChapters} of {card.totalChapters} Chapters
-            </span>
-          </div>
-          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full ${c.bar} rounded-full transition-all duration-700`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+        <div className="flex-1">
+          <h3 className="font-black text-slate-900 text-base">
+            {card.subjectName}
+          </h3>
+          {card.teacherName && (
+            <p className="text-xs text-slate-400 mt-0.5">
+              {card.teacherName}
+            </p>
+          )}
         </div>
-
-        {/* Collapsed preview */}
-        {!expanded && (
-          <div className="mt-4">
-            {completedChapters.length > 0 && (
-              <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">
-                  Chapter Breakdown
-                </p>
-                {completedChapters.slice(0, 3).map((ch) => (
-                  <ChapterRow key={ch.chapterId} ch={ch} idx={card.chapters.indexOf(ch)} />
-                ))}
-                {nextChapter && (
-                  <ChapterRow key={nextChapter.chapterId} ch={nextChapter} idx={card.chapters.indexOf(nextChapter)} />
-                )}
-              </div>
-            )}
-            {completedChapters.length === 0 && nextChapter && (
-              <p className="text-xs text-slate-400 mt-1">
-                Upcoming: Chapter {card.chapters.indexOf(nextChapter) + 1} – {nextChapter.chapterName}
-              </p>
-            )}
-            {completedChapters.length > 0 && !nextChapter && (
-              <p className="text-xs text-slate-400 mt-1">
-                Completed: {completedChapters[completedChapters.length - 1].chapterName}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Expanded chapter list */}
-        {expanded && (
-          <div className="mt-4 border-t border-slate-100 pt-3">
-            {card.chapters.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-4">No chapters found.</p>
-            ) : (
-              card.chapters.map((ch, i) => (
-                <ChapterRow key={ch.chapterId} ch={ch} idx={i} />
-              ))
-            )}
-          </div>
-        )}
+        <span className={`text-lg font-black ${c.pct}`}>
+          {pct}%
+        </span>
       </div>
 
-      {/* Footer action */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+            Progress
+          </span>
+          <span className="text-xs font-bold text-slate-500">
+            {card.completedChapters}/{card.totalChapters} Chapters
+          </span>
+        </div>
+        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+          <div
+            className={`h-full ${c.bar} rounded-full transition-all`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+
+      {!expanded && completedChapters.length > 0 && (
+        <div className="border-t border-slate-100 pt-3">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">
+            Recent
+          </p>
+          {completedChapters.slice(0, 2).map((ch) => (
+            <ChapterRow
+              key={ch.chapterId}
+              ch={ch}
+              idx={card.chapters.indexOf(ch)}
+            />
+          ))}
+        </div>
+      )}
+
+      {expanded && (
+        <div className="border-t border-slate-200 pt-3 mt-3">
+          {card.chapters.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-4">
+              No chapters found.
+            </p>
+          ) : (
+            card.chapters.map((ch, i) => (
+              <ChapterRow key={ch.chapterId} ch={ch} idx={i} />
+            ))
+          )}
+        </div>
+      )}
+
       <button
         onClick={onToggleChapters}
-        className="w-full py-3 border-t border-slate-100 text-xs font-bold text-slate-500 hover:text-[#4A9FD4] hover:bg-slate-50 transition-colors"
+        className="w-full mt-4 py-2 text-xs font-bold text-slate-500 hover:text-blue-500 hover:bg-slate-100 rounded-lg transition-colors"
       >
-        {expanded
-          ? 'Hide Chapters'
-          : completedChapters.length > 0
-            ? 'Show More Chapters'
-            : 'View Syllabus Details'}
+        {expanded ? 'Show Less' : 'View All Chapters'}
       </button>
     </div>
   );
 };
 
-// ── main page ─────────────────────────────────────────────────────────────────
+const EMPTY_CHILDREN: LinkedStudent[] = [];
 
+/** Parent Syllabus Page
+ * 
+ * Displays child's subject-wise syllabus progress.
+ * Shows chapters completed, progress percentage per subject.
+ * Uses SelectedChildContext for child selection.
+ */
 const ParentSyllabus: React.FC = () => {
   const { user } = useAuth();
   const { selectedYear } = useAcademicYear();
+  const { selectedChildId } = useSelectedChild();
 
-  const [loading, setLoading]       = useState(true);
-  const [children, setChildren]     = useState<LinkedStudent[]>([]);
-  const [selected, setSelected]     = useState<LinkedStudent | null>(null);
-  const [subjects, setSubjects]     = useState<SubjectCard[]>([]);
-  const [expanded, setExpanded]     = useState<Set<number>>(new Set());
-  const [subLoading, setSubLoading] = useState(false);
+  const { data: childrenData, isLoading: loading } = useParentChildren(
+    Number(user?.id),
+  );
+  const children = childrenData || EMPTY_CHILDREN;
 
-  // ── fetch children ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!user?.id) return;
-    parentService.getParentChildren(Number(user.id))
-      .then(data => {
-        setChildren(data);
-        if (data.length > 0) setSelected(data[0]);
-      })
-      .finally(() => setLoading(false));
-  }, [user?.id]);
+  const selected = useMemo(() => {
+    if (selectedChildId && children.length > 0) {
+      return children.find(c => c.id === selectedChildId) || children[0] || null;
+    }
+    return children[0] || null;
+  }, [children, selectedChildId]);
+  
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
-  // ── fetch subjects + progress for selected child ────────────────────────────
-  const fetchSubjects = useCallback(async () => {
-    if (!selected?.id || !selectedYear?.id) return;
+  const { data: studentData } = useStudentClass(selected?.id ?? 0);
+  const classId = studentData?.currentClassId ?? 0;
 
-    setSubLoading(true);
-    setSubjects([]);
-    setExpanded(new Set());
+  const { data: subjectsData = [] } = useParentSubjects(
+    classId,
+    selectedYear?.id ? Number(selectedYear.id) : 0,
+  );
 
-    try {
-      // Resolve classId from the student record
-      const student = await studentService.getStudentById(selected.id);
-      const classId = student.currentClassId;
-      if (!classId) { setSubLoading(false); return; }
+  const [subjectCards, setSubjectCards] = useState<SubjectCard[]>([]);
 
-      // Get all class-subjects for this class
-      const rawSubjects = await subjectService.getSubjectsByClass(classId);
-      if (rawSubjects.length === 0) { setSubLoading(false); return; }
+  React.useEffect(() => {
+    if (!classId || !selectedYear?.id || subjectsData.length === 0) {
+      setSubjectCards([]);
+      return;
+    }
 
-      // Build subject cards with chapter progress
-      const cards: SubjectCard[] = await Promise.all(
-        rawSubjects.map(async (cs) => {
+    const fetchChapters = async () => {
+      const academicYearId = Number(selectedYear.id);
+      const cards = await Promise.all(
+        subjectsData.map(async (cs) => {
           try {
             const chapters = await syllabusService.getChaptersWithStatusDirect(
               classId,
               cs.subjectId,
-              Number(selectedYear.id)
+              academicYearId
             );
-            const completed = chapters.filter(c => c.status === 'completed').length;
-            const total     = chapters.length;
-            const pct       = total > 0 ? Math.round((completed / total) * 100) : 0;
-            return { classSubjectId: cs.id, subjectId: cs.subjectId, subjectName: cs.subjectName,
-              totalChapters: total, completedChapters: completed, progressPercentage: pct,
-              chapters, chaptersLoaded: true } as SubjectCard;
+            const completedChapters = chapters.filter(
+              (ch) => ch.status === "completed"
+            ).length;
+            const progressPercentage =
+              chapters.length > 0
+                ? Math.round((completedChapters / chapters.length) * 100)
+                : 0;
+            
+            return {
+              classSubjectId: cs.id,
+              subjectId: cs.subjectId,
+              subjectName: cs.subjectName,
+              teacherName: undefined as string | undefined,
+              totalChapters: chapters.length,
+              completedChapters,
+              progressPercentage,
+              chapters,
+            };
           } catch {
-            return { classSubjectId: cs.id, subjectId: cs.subjectId, subjectName: cs.subjectName,
-              totalChapters: 0, completedChapters: 0, progressPercentage: 0,
-              chapters: [], chaptersLoaded: true } as SubjectCard;
+            return {
+              classSubjectId: cs.id,
+              subjectId: cs.subjectId,
+              subjectName: cs.subjectName,
+              teacherName: undefined as string | undefined,
+              totalChapters: 0,
+              completedChapters: 0,
+              progressPercentage: 0,
+              chapters: [] as ChapterWithStatus[],
+            };
           }
         })
       );
+      setSubjectCards(cards);
+    };
 
-      setSubjects(cards);
-    } catch {
-      setSubjects([]);
-    } finally {
-      setSubLoading(false);
-    }
-  }, [selected, selectedYear]);
+    fetchChapters();
+  }, [subjectsData, classId, selectedYear?.id]);
 
-  useEffect(() => { fetchSubjects(); }, [fetchSubjects]);
-
-  // ── toggle chapter expansion ────────────────────────────────────────────────
   const toggleExpand = (classSubjectId: number) => {
-    setExpanded(prev => {
+    setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(classSubjectId)) next.delete(classSubjectId);
       else next.add(classSubjectId);
@@ -272,103 +261,72 @@ const ParentSyllabus: React.FC = () => {
     });
   };
 
-  // ── loading state ───────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <ParentLayout title="Syllabus">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="w-10 h-10 border-4 border-[#4A9FD4] border-t-transparent rounded-full animate-spin" />
-        </div>
-      </ParentLayout>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <LoadingSpinner size="lg" message="Loading..." />
+      </div>
     );
   }
 
   if (children.length === 0) {
     return (
-      <ParentLayout title="Syllabus">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <span className="material-symbols-outlined text-6xl text-slate-200 block mb-4">menu_book</span>
-            <h3 className="text-lg font-bold text-slate-700 mb-1">No Students Linked</h3>
-            <p className="text-sm text-slate-400">Contact school administration to link your children.</p>
-          </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <span className="material-symbols-outlined text-6xl text-slate-200 block mb-4">
+            menu_book
+          </span>
+          <h3 className="text-lg font-bold text-slate-700 mb-1">
+            No Students Linked
+          </h3>
+          <p className="text-sm text-slate-400">
+            Contact school administration to link your children.
+          </p>
         </div>
-      </ParentLayout>
+      </div>
     );
   }
 
   return (
-    <ParentLayout title="Syllabus">
-      <div className="p-8 max-w-6xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 pb-10">
+      <PageHeader
+        title="Syllabus Completion"
+        subtitle={
+          selected
+            ? `${selected.fullName} • ${selected.className ? `Class ${selected.className}${selected.classSection || ""}` : ""}`
+            : undefined
+        }
+        breadcrumb={{
+          links: [
+            { label: "Dashboard", href: "/parent/dashboard" },
+            { label: "Syllabus", active: true },
+          ],
+        }}
+      />
 
-        {/* Child tabs */}
-        <div className="flex items-center gap-1 border-b border-slate-200">
-          {children.map(child => (
-            <button
-              key={child.id}
-              onClick={() => setSelected(child)}
-              className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-all -mb-px ${
-                selected?.id === child.id
-                  ? 'border-[#4A9FD4] text-[#4A9FD4]'
-                  : 'border-transparent text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              <span
-                className="material-symbols-outlined text-[16px]"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                account_circle
-              </span>
-              {child.fullName.split(' ')[0]}
-            </button>
-          ))}
-        </div>
-
-        {/* Page title */}
-        {selected && (
-          <>
-            <div>
-              <h1 className="text-2xl font-black text-slate-900">Syllabus Completion</h1>
-              <p className="text-sm text-slate-400 mt-1">
-                Tracking academic progress for {selected.fullName}
-                {selected.className ? ` • Class ${selected.className}${selected.classSection ? selected.classSection : ''}` : ''}
+      {selected && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {subjectCards.length === 0 ? (
+            <div className="text-center py-12 col-span-2">
+              <p className="text-sm text-slate-500">No syllabus data found</p>
+              <p className="text-xs text-slate-400 mt-1">
+                No subjects or chapters found for this student.
               </p>
             </div>
-
-            {/* Subject grid */}
-            {subLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 animate-pulse">
-                    <div className="h-4 bg-slate-100 rounded w-1/3 mb-3" />
-                    <div className="h-3 bg-slate-100 rounded w-1/2 mb-5" />
-                    <div className="h-2 bg-slate-100 rounded-full" />
-                  </div>
-                ))}
-              </div>
-            ) : subjects.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <span className="material-symbols-outlined text-6xl text-slate-200 block mb-4">auto_stories</span>
-                <h3 className="text-base font-bold text-slate-600 mb-1">No Syllabus Data</h3>
-                <p className="text-sm text-slate-400">No subjects or chapters found for this student.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {subjects.map((card, idx) => (
-                  <SubjectCard
-                    key={card.classSubjectId}
-                    card={card}
-                    colorIdx={idx}
-                    expanded={expanded.has(card.classSubjectId)}
-                    onToggleChapters={() => toggleExpand(card.classSubjectId)}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </ParentLayout>
+          ) : (
+            subjectCards.map((card, idx) => (
+              <SubjectCardComponent
+                key={card.classSubjectId}
+                card={card}
+                colorIdx={idx}
+                expanded={expanded.has(card.classSubjectId)}
+                onToggleChapters={() => toggleExpand(card.classSubjectId)}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 

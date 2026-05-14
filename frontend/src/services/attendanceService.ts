@@ -31,6 +31,26 @@ export interface MarkAttendanceDto {
   }[];
 }
 
+interface RawAttendanceRecord {
+  id: number;
+  student_id: number;
+  student_name: string;
+  class_id: number;
+  class_name: string;
+  attendance_date: string;
+  status: string;
+}
+
+const mapAttendanceRecord = (r: RawAttendanceRecord, className?: string): AttendanceRecord => ({
+  id: r.id,
+  studentId: r.student_id,
+  studentName: r.student_name,
+  classId: r.class_id,
+  className: className !== undefined ? className : r.class_name,
+  attendanceDate: r.attendance_date,
+  status: r.status as AttendanceRecord['status'],
+});
+
 export const attendanceService = {
   markAttendance: async (data: MarkAttendanceDto): Promise<void> => {
     await apiRequest<void>('/student-attendance', {
@@ -49,23 +69,15 @@ export const attendanceService = {
     const queryParams = new URLSearchParams();
     if (params.classId) queryParams.append('classId', String(params.classId));
     if (params.studentId) queryParams.append('studentId', String(params.studentId));
-    if (params.date) queryParams.append('date', params.date);
+    if (params.date) queryParams.append('attendanceDate', params.date);
     if (params.startDate) queryParams.append('startDate', params.startDate);
     if (params.endDate) queryParams.append('endDate', params.endDate);
     
     const queryString = queryParams.toString();
     const url = `/student-attendance${queryString ? `?${queryString}` : ''}`;
     
-    const response = await apiRequest<any[]>(url);
-    return response.map((r) => ({
-      id: r.id,
-      studentId: r.student_id,
-      studentName: r.student_name,
-      classId: r.class_id,
-      className: r.class_name,
-      attendanceDate: r.attendance_date,
-      status: r.status,
-    }));
+    const response = await apiRequest<RawAttendanceRecord[]>(url);
+    return response.map(r => mapAttendanceRecord(r));
   },
 
   getStudentAttendanceSummary: async (studentId: number): Promise<StudentAttendanceSummary> => {
@@ -84,21 +96,13 @@ export const attendanceService = {
   },
 
   getClassAttendanceByDate: async (classId: number, date: string): Promise<AttendanceRecord[]> => {
-    const response = await apiRequest<any[]>(`/student-attendance/class/${classId}?date=${date}`);
-    return response.map((r) => ({
-      id: r.id,
-      studentId: r.student_id,
-      studentName: r.student_name,
-      classId: r.class_id,
-      className: '',
-      attendanceDate: r.attendance_date,
-      status: r.status,
-    }));
+    const response = await apiRequest<RawAttendanceRecord[]>(`/student-attendance/class/${classId}?date=${date}`);
+    return response.map(r => mapAttendanceRecord(r, ''));
   },
 
-  getSchoolOpenDays: async (year: number, month: number): Promise<number> => {
+ getSchoolOpenDays: async (year: number, month: number): Promise<number> => {
     const response = await apiRequest<{ school_open_days: number }>(
-      `/student-attendance/school-open-days?year=${year}&month=${month}`
+ `/student-attendance/school-open-days?year=${year}&month=${month}`
     );
     return response.school_open_days;
   },

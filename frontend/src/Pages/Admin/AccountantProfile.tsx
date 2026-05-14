@@ -1,57 +1,58 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import AdminLayout from "../../layouts/AdminLayout";
+import { useQueryClient } from "@tanstack/react-query";
 import { 
   User, Mail, Phone, Calendar, 
   ChevronLeft, Loader2, Clock,
   MapPin
 } from "lucide-react";
-import { accountantService, type Accountant } from "../../services/accountantService";
+import { accountantService } from "../../services/accountantService";
 import { useNotification } from "../../context/NotificationContext";
+import { useAccountantById } from "../../hooks/queries";
+import { queryKeys } from "../../lib/queryKeys";
+import { formatDate } from "../../lib/utils";
 
 const AccountantProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+  const queryClient = useQueryClient();
   
-  // Data state
-  const [accountant, setAccountant] = useState<Accountant | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: accountant, isLoading } = useAccountantById(Number(id));
+  const [toggling, setToggling] = useState(false);
 
-  const fetchAccountantData = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
+  const handleToggleStatus = async () => {
+    if (!accountant || !id) return;
+    setToggling(true);
     try {
-      const data = await accountantService.getAccountantById(Number(id));
-      setAccountant(data);
+      await accountantService.updateAccountant(parseInt(id), { 
+        isActive: !accountant.isActive 
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.accountant.byId(null, Number(id)) });
+      showNotification(
+        accountant.isActive ? 'Accountant deactivated successfully!' : 'Accountant activated successfully!',
+        'success'
+      );
     } catch {
-      showNotification("Failed to fetch accountant profile", "error");
-      navigate("/admin/accountants");
+      showNotification('Failed to update status', 'error');
     } finally {
-      setLoading(false);
+      setToggling(false);
     }
-  }, [id, navigate, showNotification]);
+  };
 
-  useEffect(() => {
-    fetchAccountantData();
-  }, [fetchAccountantData]);
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <AdminLayout title="Accountant Profile">
-        <div className="h-[60vh] flex flex-col items-center justify-center gap-4 text-slate-400">
-          <Loader2 className="size-12 animate-spin text-blue-500 opacity-50" />
-          <p className="font-display font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">Loading Profile...</p>
-        </div>
-      </AdminLayout>
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-4 text-slate-400">
+        <Loader2 className="size-12 animate-spin text-blue-500 opacity-50" />
+        <p className="font-display font-black uppercase text-[10px] tracking-[0.2em] animate-pulse">Loading Profile...</p>
+      </div>
     );
   }
 
   if (!accountant) return null;
 
   return (
-    <AdminLayout title={`Profile: ${accountant.fullName}`}>
-      <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-20">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -117,7 +118,7 @@ const AccountantProfile: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">Date of Birth</p>
-                    <p className="text-sm font-bold text-slate-700">{accountant.dateOfBirth ? new Date(accountant.dateOfBirth).toLocaleDateString() : 'Not set'}</p>
+                    <p className="text-sm font-bold text-slate-700">{accountant.dateOfBirth ? formatDate(accountant.dateOfBirth) : 'Not set'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -143,11 +144,22 @@ const AccountantProfile: React.FC = () => {
               </div>
 
               <div className="mt-8 space-y-3">
-                <button className="w-full py-3.5 rounded-2xl border-2 border-slate-900 text-slate-900 font-black text-sm hover:bg-slate-900 hover:text-white transition-all active:scale-95 shadow-sm">
+                <button 
+                  onClick={() => navigate(`/admin/accountants/${id}/edit`)}
+                  className="w-full py-3.5 rounded-2xl border-2 border-slate-900 text-slate-900 font-black text-sm hover:bg-slate-900 hover:text-white transition-all active:scale-95 shadow-sm cursor-pointer"
+                >
                   Edit Profile
                 </button>
-                <button className="w-full py-3.5 rounded-2xl border-2 border-rose-100 text-rose-500 font-black text-sm hover:bg-rose-50 transition-all active:scale-95">
-                  Deactivate
+                <button 
+                  onClick={handleToggleStatus}
+                  disabled={toggling}
+                  className={`w-full py-3.5 rounded-2xl border-2 font-black text-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer ${
+                    accountant.isActive 
+                      ? 'border-rose-100 text-rose-500 hover:bg-rose-50' 
+                      : 'border-emerald-100 text-emerald-500 hover:bg-emerald-50'
+                  }`}
+                >
+                  {toggling ? 'Updating...' : accountant.isActive ? 'Deactivate' : 'Activate'}
                 </button>
               </div>
             </div>
@@ -171,10 +183,9 @@ const AccountantProfile: React.FC = () => {
                 <p className="text-xs font-medium mt-1">Staff attendance tracking coming soon</p>
               </div>
             </div>
-          </div>
         </div>
       </div>
-    </AdminLayout>
+    </div>
   );
 };
 

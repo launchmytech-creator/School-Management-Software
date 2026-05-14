@@ -7,6 +7,12 @@ export interface AuthUser {
   role: UserRole;
   schoolId: number | null;
   schoolName: string | null;
+  subscriptionPlanId: number | null;
+  subscriptionPlan: string | null;
+  subscriptionFeatures: Record<string, boolean> | null;
+  subscriptionStatus: string | null;
+  subscriptionEndDate: string | null;
+  feeTerms: number | null;
 }
 
 export interface LoginResponse {
@@ -28,4 +34,23 @@ export interface BackendProfileResponse {
   school_name: string | null;
   phone?: string;
   address?: string;
+  subscription_plan_id?: number | null;
+  subscription_plan_name?: string | null;
+  subscription_features?: Record<string, boolean> | null;
+  subscription_status?: string | null;
+  subscription_end_date?: string | null;
+  fee_terms?: number | null;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+}
+
+export interface ResetPasswordData {
+  token: string;
+  newPassword: string;
 }

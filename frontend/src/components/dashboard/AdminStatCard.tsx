@@ -1,44 +1,81 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Info } from 'lucide-react';
 
 interface AdminStatCardProps {
   label: string;
   value: string | number;
   icon: React.ElementType;
-  trend?: string;
-  trendType?: 'positive' | 'negative' | 'neutral';
-  color: string;
+  variant?: 'default' | 'emerald' | 'rose' | 'amber' | 'blue' | 'purple';
+  onClick?: () => void;
 }
+
+const variantStyles = {
+  default: {
+    card: 'bg-white border-slate-200',
+    value: 'text-slate-900',
+    label: 'text-slate-500',
+    iconBg: 'bg-blue-50',
+    iconColor: 'text-blue-500',
+  },
+  emerald: {
+    card: 'bg-emerald-50 border-emerald-200',
+    value: 'text-emerald-700',
+    label: 'text-emerald-600',
+    iconBg: 'bg-emerald-100',
+    iconColor: 'text-emerald-600',
+  },
+  rose: {
+    card: 'bg-rose-50 border-rose-200',
+    value: 'text-rose-700',
+    label: 'text-rose-600',
+    iconBg: 'bg-rose-100',
+    iconColor: 'text-rose-600',
+  },
+  amber: {
+    card: 'bg-amber-50 border-amber-200',
+    value: 'text-amber-700',
+    label: 'text-amber-600',
+    iconBg: 'bg-amber-100',
+    iconColor: 'text-amber-600',
+  },
+  blue: {
+    card: 'bg-blue-50 border-blue-200',
+    value: 'text-blue-700',
+    label: 'text-blue-600',
+    iconBg: 'bg-blue-100',
+    iconColor: 'text-blue-600',
+  },
+  purple: {
+    card: 'bg-purple-50 border-purple-200',
+    value: 'text-purple-700',
+    label: 'text-purple-600',
+    iconBg: 'bg-purple-100',
+    iconColor: 'text-purple-600',
+  },
+};
 
 const AdminStatCard: React.FC<AdminStatCardProps> = ({ 
   label, 
   value, 
   icon: Icon, 
-  trend, 
-  trendType = 'neutral',
-  color 
+  variant = 'default',
+  onClick
 }) => {
-  const trendColor = trendType === 'positive' ? 'text-emerald-500 bg-emerald-50/50' : trendType === 'negative' ? 'text-rose-500 bg-rose-50/50' : 'text-slate-400 bg-slate-50';
-  const TrendIcon = trendType === 'positive' ? TrendingUp : trendType === 'negative' ? TrendingDown : Info;
-
+  const styles = variantStyles[variant];
+  
   return (
-    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-500 group">
-      <div className="flex justify-between items-start mb-6">
+    <div 
+      onClick={onClick}
+      className={`rounded-xl border p-5 hover:shadow-md transition-all duration-300 group cursor-pointer ${styles.card}`}
+    >
+      <div className="flex items-center justify-between">
         <div>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{label}</p>
-          <p className="text-3xl font-display font-black text-slate-900 tracking-tight leading-none">{value}</p>
+          <p className={`text-2xl font-bold ${styles.value}`}>{value}</p>
+          <p className={`text-sm ${styles.label}`}>{label}</p>
         </div>
-        <div className={`p-3.5 rounded-2xl ${color} bg-opacity-10 text-opacity-100 transition-transform group-hover:scale-110 duration-500`}>
-          <Icon className="size-6" />
+        <div className={`p-3 rounded-xl ${styles.iconBg}`}>
+          <Icon className={`w-5 h-5 ${styles.iconColor}`} />
         </div>
       </div>
-      
-      {trend && (
-        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${trendColor} w-fit transition-colors`}>
-          <TrendIcon className="size-3.5" />
-          <span className="text-[10px] font-black uppercase tracking-widest">{trend}</span>
-        </div>
-      )}
     </div>
   );
 };

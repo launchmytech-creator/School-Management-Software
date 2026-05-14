@@ -1,285 +1,352 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import AccountantLayout from '../../layouts/AccountantLayout';
-import { feeService, type FeeTransaction } from '../../services/feeService';
-import { reportService } from '../../services/reportService';
-import { formatCurrency, getLocalDateString } from '../../lib/utils';
+import React, { useState, useMemo, lazy, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
+import AdminStatCard from "../../components/dashboard/AdminStatCard";
+import { useAccountantDashboard } from "../../hooks/queries";
+import { formatCurrency, formatDate } from "../../lib/utils";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import {
+  TrendingUp,
+  DollarSign,
+  Receipt,
+  AlertCircle,
+  Users,
+  FileText,
+  Printer,
+  Send,
+  Download,
+} from "lucide-react";
 
-interface FeeStats {
-  todayCollection: number;
-  monthCollection: number;
-  pendingAmount: number;
-  defaulterCount: number;
-  receiptsToday: number;
-}
+const FeeLineChart = lazy(() => 
+  import("../../components/charts/FeeLineChart").then(m => ({ default: m.default }))
+);
 
 const AccountantDashboard: React.FC = () => {
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<FeeStats>({
+  const navigate = useNavigate();
+  const [chartFilter, setChartFilter] = useState("6months");
+  const { data, isLoading } = useAccountantDashboard();
+
+  const stats = data?.stats ?? {
     todayCollection: 0,
     monthCollection: 0,
     pendingAmount: 0,
     defaulterCount: 0,
     receiptsToday: 0,
-  });
-  const [recentReceipts, setRecentReceipts] = useState<FeeTransaction[]>([]);
-  const [chartData, setChartData] = useState<{ month: string; amount: number }[]>([]);
-
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      const [transactions, defaulters, feesReport] = await Promise.all([
-        feeService.getFeeTransactions({ status: 'paid' }),
-        feeService.getFeeDefaulters(),
-        reportService.getFeesReport({}),
-      ]);
-
-      const today = getLocalDateString();
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-
-      const todayReceipts = transactions.filter(t => t.paymentDate?.startsWith(today));
-      const monthReceipts = transactions.filter(t => {
-        const date = new Date(t.paymentDate || '');
-        return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-      });
-
-      const todayTotal = todayReceipts.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
-      const monthTotal = monthReceipts.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
-      const pendingTotal = feesReport.reduce((sum, r) => sum + (r.pendingAmount || 0), 0);
-
-      setStats({
-        todayCollection: todayTotal,
-        monthCollection: monthTotal,
-        pendingAmount: pendingTotal,
-        defaulterCount: defaulters.length,
-        receiptsToday: todayReceipts.length,
-      });
-
-      setRecentReceipts(transactions.slice(0, 5));
-
-      const monthlyData = [
-        { month: 'Jan', amount: monthTotal * 0.6 },
-        { month: 'Feb', amount: monthTotal * 0.7 },
-        { month: 'Mar', amount: monthTotal * 0.5 },
-        { month: 'Apr', amount: monthTotal * 0.85 },
-        { month: 'May', amount: monthTotal * 0.75 },
-        { month: 'Jun', amount: monthTotal },
-      ];
-      const maxAmount = Math.max(...monthlyData.map(d => d.amount));
-      setChartData(monthlyData.map(d => ({
-        ...d,
-        height: maxAmount > 0 ? (d.amount / maxAmount) * 100 : 0,
-      })));
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
-
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return 'N/A';
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
   };
 
+  const recentReceipts = data?.recentReceipts ?? [];
+
+  const filteredChartData = useMemo(() => {
+    const chartData = data?.monthlyChart ?? [];
+    if (chartFilter === "6months") {
+      const currentMonth = new Date().getMonth();
+      return chartData.slice(Math.max(0, currentMonth - 5), currentMonth + 1);
+    }
+    return chartData;
+  }, [data?.monthlyChart, chartFilter]);
+
+  const handlePrintReceipt = (receipt: {
+    id: number;
+    receiptNumber?: string | null;
+    studentName?: string;
+    admissionNumber?: string;
+    className?: string;
+    amountDue?: number;
+    amountPaid?: number;
+    paymentDate?: string | null;
+    paymentMode?: string | null;
+  }) => {
+    const printWindow = window.open("", "_blank", "width=800,height=600");
+    if (!printWindow) return;
+
+    const receiptHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Receipt #${receipt.receiptNumber || receipt.id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; max-width: 600px; margin: 0 auto; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .header p { margin: 5px 0; color: #666; }
+          .details { margin-bottom: 30px; }
+          .details table { width: 100%; }
+          .details td { padding: 8px 0; }
+          .details td:first-child { font-weight: bold; width: 40%; }
+          .total { font-size: 20px; font-weight: bold; text-align: right; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #666; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Fee Receipt</h1>
+          <p>Receipt No: ${receipt.receiptNumber || receipt.id}</p>
+        </div>
+        <div class="details">
+          <table>
+            <tr><td>Student Name:</td><td>${receipt.studentName || "N/A"}</td></tr>
+            <tr><td>Admission Number:</td><td>${receipt.admissionNumber || "N/A"}</td></tr>
+            <tr><td>Class:</td><td>${receipt.className || "N/A"}</td></tr>
+            <tr><td>Amount Due:</td><td>${formatCurrency(receipt.amountDue || 0)}</td></tr>
+            <tr><td>Amount Paid:</td><td>${formatCurrency(receipt.amountPaid || 0)}</td></tr>
+            <tr><td>Payment Date:</td><td>${formatDate(receipt.paymentDate || "")}</td></tr>
+            <tr><td>Payment Mode:</td><td>${receipt.paymentMode || "N/A"}</td></tr>
+          </table>
+        </div>
+        <div class="total">Pending: ${formatCurrency((receipt.amountDue || 0) - (receipt.amountPaid || 0))}</div>
+        <div class="footer">
+          <p>Thank you for your payment!</p>
+          <p>Generated on ${new Date().toLocaleDateString()}</p>
+        </div>
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(receiptHtml);
+    printWindow.document.close();
+  };
+
+  const statCards = [
+    {
+      label: "Today's Collection",
+      value: formatCurrency(stats.todayCollection),
+      icon: DollarSign,
+      variant: "emerald" as const,
+      onClick: () => navigate("/accountant/fees"),
+    },
+    {
+      label: "This Month",
+      value: formatCurrency(stats.monthCollection),
+      icon: Receipt,
+      variant: "blue" as const,
+      onClick: () => navigate("/accountant/fees"),
+    },
+    {
+      label: "Total Pending",
+      value: formatCurrency(stats.pendingAmount),
+      icon: AlertCircle,
+      variant: "rose" as const,
+      onClick: () => navigate("/accountant/fee-defaulters"),
+    },
+    {
+      label: "Receipts Today",
+      value: stats.receiptsToday,
+      icon: FileText,
+      variant: "default" as const,
+      onClick: () => navigate("/accountant/fees"),
+    },
+  ];
+
   return (
-    <AccountantLayout title="Dashboard">
-      <div className="space-y-8 pb-12">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-pulse text-slate-400">Loading dashboard...</div>
+      <div className="space-y-10 pb-12">
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-white p-5 rounded-xl border border-slate-200 animate-pulse"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="h-8 bg-slate-200 rounded w-32 mb-2"></div>
+                    <div className="h-4 bg-slate-200 rounded w-24"></div>
+                  </div>
+                  <div className="w-11 h-11 bg-slate-200 rounded-xl"></div>
+                </div>
+                <div className="h-3 bg-slate-200 rounded w-20"></div>
+              </div>
+            ))}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white p-6 rounded-card border border-slate-200 shadow-sm">
-                <p className="text-slate-500 text-sm font-medium">Today's Collection</p>
-                <h3 className="text-2xl font-bold text-primary mt-1 font-display">
-                  {formatCurrency(stats.todayCollection)}
-                </h3>
-                <p className="text-emerald-600 text-xs mt-2 flex items-center gap-1 font-semibold">
-                  <span className="material-symbols-outlined text-sm">trending_up</span>
-                  +12% from yesterday
-                </p>
-              </div>
-
-              <div className="bg-white p-6 rounded-card border border-slate-200 shadow-sm">
-                <p className="text-slate-500 text-sm font-medium">This Month Collection</p>
-                <h3 className="text-2xl font-bold text-primary mt-1 font-display">
-                  {formatCurrency(stats.monthCollection)}
-                </h3>
-                <p className="text-emerald-600 text-xs mt-2 flex items-center gap-1 font-semibold">
-                  <span className="material-symbols-outlined text-sm">trending_up</span>
-                  +5.2% from last month
-                </p>
-              </div>
-
-              <div className="bg-white p-6 rounded-card border-l-4 border-l-accent-orange border border-slate-200 shadow-sm">
-                <p className="text-slate-500 text-sm font-medium">Total Pending Fees</p>
-                <h3 className="text-2xl font-bold text-accent-orange mt-1 font-display">
-                  {formatCurrency(stats.pendingAmount)}
-                </h3>
-                <p className="text-slate-400 text-xs mt-2 font-medium">
-                  {stats.defaulterCount} students remaining
-                </p>
-              </div>
-
-              <div className="bg-white p-6 rounded-card border border-slate-200 shadow-sm">
-                <p className="text-slate-500 text-sm font-medium">Receipts Generated Today</p>
-                <h3 className="text-2xl font-bold text-primary mt-1 font-display">
-                  {stats.receiptsToday}
-                </h3>
-                <p className="text-slate-400 text-xs mt-2 font-medium">Auto-synced to cloud</p>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {statCards.map((stat, index) => (
+                <AdminStatCard key={index} {...stat} />
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <div className="lg:col-span-8 bg-white p-6 rounded-card border border-slate-200 shadow-sm">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-lg font-bold text-primary font-display">Monthly Fee Collection Trend</h3>
-                  <select className="text-sm border-slate-200 rounded-button text-slate-500 px-3 py-1">
-                    <option>Last 6 Months</option>
-                    <option>Yearly</option>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-8 bg-white p-5 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Monthly Fee Collection
+                  </h3>
+                  <select
+                    value={chartFilter}
+                    onChange={(e) => setChartFilter(e.target.value)}
+                    className="text-sm border border-slate-200 rounded-lg text-slate-500 px-3 py-1.5 bg-white"
+                  >
+                    <option value="6months">Last 6 Months</option>
+                    <option value="yearly">Yearly</option>
                   </select>
                 </div>
-                <div className="flex items-end justify-between h-64 gap-4 px-2">
-                  {chartData.map((data, index) => (
-                    <div key={data.month} className="flex-1 flex flex-col items-center gap-2 group">
-                      <div
-                        className={`w-full rounded-t-lg transition-all ${
-                          index === chartData.length - 1
-                            ? 'bg-primary rounded-t-lg shadow-lg'
-                            : 'bg-accent-sky/30 group-hover:bg-accent-sky/50'
-                        }`}
-                        style={{ height: `${Math.max(data.amount / 1000, 10)}%` }}
-                      ></div>
-                      <span className={`text-xs font-semibold ${
-                        index === chartData.length - 1 ? 'font-bold text-primary' : 'text-slate-500'
-                      }`}>
-                        {data.month}
-                      </span>
+                <div className="h-64 w-full">
+                  <Suspense fallback={
+                    <div className="w-full h-full flex items-center justify-center">
+                      <LoadingSpinner size="md" message="Loading chart..." />
                     </div>
-                  ))}
+                  }>
+                    <FeeLineChart data={filteredChartData} />
+                  </Suspense>
                 </div>
               </div>
 
-              <div className="lg:col-span-4 bg-white p-6 rounded-card border border-slate-200 shadow-sm flex flex-col">
-                <h3 className="text-lg font-bold text-primary font-display mb-6">Quick Actions</h3>
-                <div className="space-y-4 flex-1">
-                  <button className="w-full bg-accent-sky hover:bg-accent-sky/90 text-white font-bold py-3 px-4 rounded-button flex items-center justify-center gap-2 transition-colors">
-                    <span className="material-symbols-outlined text-xl">add_card</span>
+              <div className="lg:col-span-4 bg-white p-5 rounded-xl border border-slate-200">
+                <h3 className="text-base font-semibold text-slate-900 mb-5">
+                  Quick Actions
+                </h3>
+                <div className="space-y-2.5">
+                  <button
+                    className="w-full bg-[#4A9FD4] hover:bg-[#3A8FC4] text-white font-medium py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm"
+                    onClick={() => navigate("/accountant/fees")}
+                  >
+                    <DollarSign className="w-4 h-4" />
                     Generate Receipt
                   </button>
-                  <button className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 px-4 rounded-button flex items-center justify-center gap-2 transition-colors">
-                    <span className="material-symbols-outlined text-xl">cloud_upload</span>
-                    Upload Marks
+                  <button
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm"
+                    onClick={() => navigate("/accountant/students")}
+                  >
+                    <Users className="w-4 h-4" />
+                    View Students
                   </button>
-                  <button className="w-full border-2 border-accent-orange text-accent-orange hover:bg-accent-orange/5 font-bold py-3 px-4 rounded-button flex items-center justify-center gap-2 transition-colors">
-                    <span className="material-symbols-outlined text-xl">notifications_active</span>
-                    Send Fee Reminder
+                  <button
+                    className="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors border border-rose-200 text-sm"
+                    onClick={() => navigate("/accountant/fee-defaulters")}
+                  >
+                    <Send className="w-4 h-4" />
+                    Send Reminders
                   </button>
-                  <button className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-button flex items-center justify-center gap-2 transition-colors">
-                    <span className="material-symbols-outlined text-xl">person_add</span>
-                    Add New Student
+                  <button
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm"
+                    onClick={() => navigate("/accountant/reports")}
+                  >
+                    <Download className="w-4 h-4" />
+                    View Reports
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-white p-6 rounded-card border border-slate-200 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-bold text-primary font-display">Recent Receipts</h3>
-                  <button className="text-accent-sky text-sm font-semibold hover:underline">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white p-5 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Recent Receipts
+                  </h3>
+                  <button
+                    className="text-[#4A9FD4] text-sm font-medium hover:underline"
+                    onClick={() => navigate("/accountant/fees")}
+                  >
                     View All
                   </button>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {recentReceipts.length > 0 ? (
                     recentReceipts.map((receipt) => (
-                      <div key={receipt.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                      <div
+                        key={receipt.id}
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors"
+                      >
                         <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-full bg-slate-100 overflow-hidden border border-slate-200">
-                            <div className="w-full h-full bg-accent-sky/20 flex items-center justify-center">
-                              <span className="text-accent-sky font-bold text-sm">
-                                {receipt.studentName?.charAt(0) || 'S'}
-                              </span>
-                            </div>
+                          <div className="w-9 h-9 rounded-full bg-[#4A9FD4]/10 flex items-center justify-center">
+                            <span className="text-[#4A9FD4] font-semibold text-xs">
+                              {receipt.studentName?.charAt(0) || "S"}
+                            </span>
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-slate-800">{receipt.studentName || 'Student'}</p>
+                            <p className="text-sm font-medium text-slate-800">
+                              {receipt.studentName || "Student"}
+                            </p>
                             <p className="text-xs text-slate-500">
-                              {receipt.className || 'Class'} • #{receipt.receiptNumber || receipt.id}
+                              {receipt.className || "Class"} • #
+                              {receipt.receiptNumber || receipt.id}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-3">
                           <div className="text-right">
-                            <p className="text-sm font-bold text-primary">{formatCurrency(receipt.amountPaid || 0)}</p>
-                            <p className="text-xs text-slate-400">{formatDate(receipt.paymentDate ?? undefined)}</p>
+                            <p className="text-sm font-medium text-slate-800">
+                              {formatCurrency(receipt.amountPaid || 0)}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {formatDate(receipt.paymentDate || "")}
+                            </p>
                           </div>
-                          <button className="size-8 flex items-center justify-center text-slate-400 hover:text-accent-sky transition-colors">
-                            <span className="material-symbols-outlined">download</span>
+                          <button
+                            className="size-7 flex items-center justify-center text-slate-400 hover:text-[#4A9FD4] transition-colors"
+                            onClick={() => handlePrintReceipt(receipt)}
+                            title="Print Receipt"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-slate-500 text-center py-8">No recent receipts</p>
+                    <p className="text-slate-500 text-center py-8">
+                      No recent receipts
+                    </p>
                   )}
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-card border border-slate-200 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-bold text-primary font-display">Fee Reminders Sent Today</h3>
-                  <button className="text-accent-sky text-sm font-semibold hover:underline">
-                    History
+              <div className="bg-white p-5 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Fee Reminders
+                  </h3>
+                  <button
+                    className="text-[#4A9FD4] text-sm font-medium hover:underline"
+                    onClick={() => navigate("/accountant/fee-defaulters")}
+                  >
+                    Send Reminders
                   </button>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {stats.defaulterCount > 0 ? (
                     <div className="flex items-center justify-between p-3 rounded-lg border-l-2 border-l-amber-500 bg-amber-50/30">
                       <div>
-                        <p className="text-sm font-bold text-slate-800">
+                        <p className="text-sm font-medium text-slate-800">
                           {stats.defaulterCount} students with pending fees
                         </p>
                         <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                          <span className="material-symbols-outlined text-[14px]">warning</span>
+                          <AlertCircle className="w-3 h-3" />
                           Total pending: {formatCurrency(stats.pendingAmount)}
                         </p>
                       </div>
-                      <button className="px-3 py-1.5 bg-accent-orange text-white text-xs font-bold rounded-button hover:bg-accent-orange/90">
+                      <button
+                        className="px-3 py-1.5 bg-rose-500 text-white text-xs font-medium rounded-lg hover:bg-rose-600"
+                        onClick={() => navigate("/accountant/fee-defaulters")}
+                      >
                         Send Reminders
                       </button>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between p-3 rounded-lg border-l-2 border-l-emerald-500 bg-emerald-50/30">
                       <div>
-                        <p className="text-sm font-bold text-slate-800">All fees collected!</p>
-                        <p className="text-xs text-slate-500">No pending reminders</p>
+                        <p className="text-sm font-medium text-slate-800">
+                          All fees collected!
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          No pending reminders
+                        </p>
                       </div>
-                      <span className="material-symbols-outlined text-emerald-600 bg-emerald-100 p-1.5 rounded-full text-lg">
-                        check_circle
-                      </span>
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <TrendingUp className="w-4 h-4 text-emerald-600" />
+                      </div>
                     </div>
                   )}
-                  <div className="flex items-center justify-between p-3 rounded-lg border-l-2 border-l-slate-300 bg-slate-50/30">
+                  <div className="flex items-center justify-between p-3 rounded-xl border-l-2 border-l-slate-300 bg-slate-50/30">
                     <div>
-                      <p className="text-sm font-bold text-slate-800">Monthly Summary</p>
+                      <p className="text-sm font-bold text-slate-800">
+                        Monthly Summary
+                      </p>
                       <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                         {stats.monthCollection > 0
                           ? `${Math.round((stats.monthCollection / (stats.monthCollection + stats.pendingAmount)) * 100)}% collection rate`
-                          : 'No data yet'}
+                          : "No data yet"}
                       </p>
                     </div>
                   </div>
@@ -289,7 +356,6 @@ const AccountantDashboard: React.FC = () => {
           </>
         )}
       </div>
-    </AccountantLayout>
   );
 };
 

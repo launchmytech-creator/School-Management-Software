@@ -1,65 +1,29 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
+import React, { useState, useMemo } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
-import { attendanceService, type AttendanceRecord } from '../../services/attendanceService';
-import { classService } from '../../services/classService';
-import type { Class } from '../../types/class';
+import { useClasses } from '../../hooks/queries/useClasses';
+import { useClassAttendance } from '../../hooks/queries/useAttendance';
 import { Users, CheckCircle, XCircle, Clock, CalendarCheck } from 'lucide-react';
 import { formatDate, getLocalDateString } from '../../lib/utils';
-import { BaseModal } from '../../components/common/BaseModal';
+import { BaseModal } from '../../components/modals/BaseModal';
 import { SkeletonTable } from '../../components/common/Skeleton';
 
 const Attendance: React.FC = () => {
   const { showNotification } = useNotification();
   const { selectedYear } = useAcademicYear();
-  const [loading, setLoading] = useState(true);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
+  
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
   const [showMarkModal, setShowMarkModal] = useState(false);
 
-  const fetchClasses = useCallback(async () => {
-    try {
-      const data = await classService.getClasses(selectedYear?.id);
-      setClasses(data);
-    } catch {
-      showNotification('Failed to fetch classes', 'error');
-    }
-  }, [selectedYear, showNotification]);
-
-  const fetchAttendance = useCallback(async () => {
-    if (!selectedClass || !selectedDate) {
-      setAttendance([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const data = await attendanceService.getClassAttendanceByDate(
-        parseInt(selectedClass),
-        selectedDate
-      );
-      setAttendance(data);
-    } catch {
-      showNotification('Failed to fetch attendance', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedClass, selectedDate, showNotification]);
-
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
-
-  useEffect(() => {
-    fetchAttendance();
-  }, [fetchAttendance]);
+  const { data: classes = [] } = useClasses(selectedYear?.id);
+  const { data: attendance = [], isLoading } = useClassAttendance(
+    selectedClass ? parseInt(selectedClass) : 0,
+    selectedDate
+  );
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -74,12 +38,17 @@ const Attendance: React.FC = () => {
     }
   };
 
-  const stats = {
-    total: attendance.length,
-    present: attendance.filter(a => a.status === 'present').length,
-    absent: attendance.filter(a => a.status === 'absent').length,
-    late: attendance.filter(a => a.status === 'late').length,
-  };
+  const stats = useMemo(() => {
+    let present = 0;
+    let absent = 0;
+    let late = 0;
+    attendance.forEach(a => {
+      if (a.status === 'present') present++;
+      else if (a.status === 'absent') absent++;
+      else if (a.status === 'late') late++;
+    });
+    return { total: attendance.length, present, absent, late };
+  }, [attendance]);
 
   const getPercentage = (value: number) => {
     if (stats.total === 0) return 0;
@@ -87,14 +56,13 @@ const Attendance: React.FC = () => {
   };
 
   return (
-    <AdminLayout title="Attendance">
-      <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12">
         <PageHeader 
           title="Student Attendance"
           subtitle="Track and manage daily student attendance"
           breadcrumb={{
             links: [
-              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "People", href: "/admin/students" },
               { label: "Attendance", active: true }
             ]
           }}
@@ -102,7 +70,8 @@ const Attendance: React.FC = () => {
             {
               label: "Mark Attendance",
               icon: CalendarCheck,
-              onClick: () => setShowMarkModal(true)
+              onClick: () => showNotification('Attendance marking feature coming soon', 'info'),
+              disabled: true
             }
           ]}
         />
@@ -184,7 +153,7 @@ const Attendance: React.FC = () => {
           </div>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <SkeletonTable columns={3} rows={8} />
         ) : selectedClass ? (
           attendance.length > 0 ? (
@@ -283,7 +252,7 @@ const Attendance: React.FC = () => {
           </div>
         </BaseModal>
       </div>
-    </AdminLayout>
+    
   );
 };
 

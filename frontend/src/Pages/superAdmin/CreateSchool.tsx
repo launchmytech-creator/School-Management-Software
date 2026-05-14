@@ -1,10 +1,21 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { schoolService } from '../../services/schoolService';
-import type { CreateSchoolRequest, SchoolCreateData, SubscriptionTier, School, FeeTerm, SchoolUpdateData } from '../../types/school';
-import { useState } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
+import type { CreateSchoolRequest, SchoolCreateData, SubscriptionTier, School, SchoolUpdateData, SchoolAdmin, UpdateSchoolAdminData, FeeTerm } from '../../types/school';
+import React, { useState, useEffect } from 'react';
+import MainLayout from '../../layouts/MainLayout';
 import { useNotification } from '../../context/NotificationContext';
-import { getCurrentAcademicYear, getLocalDateString } from '../../lib/utils';
+import { useCreateSchool, useUpdateSchool, usePurchaseSubscription, useAvailablePlansWithPricing } from '../../hooks/queries/useSchools';
+import { getLocalDateString, getCurrentAcademicYear } from '../../lib/utils';
+import { schoolService } from '../../services/schoolService';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { createSchoolFormSchema, type CreateSchoolFormData } from '../../schemas/school.schema';
+import SchoolInfoForm from '../../components/superAdmin/CreateSchool/SchoolInfoForm';
+import AdminInfoForm from '../../components/superAdmin/CreateSchool/AdminInfoForm';
+import SubscriptionSettingsForm from '../../components/superAdmin/CreateSchool/SubscriptionSettingsForm';
+import PlanSelection from '../../components/superAdmin/CreateSchool/PlanSelection';
+import FeeTermsSelection from '../../components/superAdmin/CreateSchool/FeeTermsSelection';
+import PlanChangeDialog from '../../components/superAdmin/SchoolDetail/PlanChangeDialog';
 
 const generateSchoolCode = (name: string): string => {
   const prefix = name.substring(0, 3).toUpperCase();
@@ -12,68 +23,16 @@ const generateSchoolCode = (name: string): string => {
   return `${prefix}${timestamp}`;
 };
 
-// Sub-components
-import SchoolInfoForm from '../../components/superAdmin/CreateSchool/SchoolInfoForm';
-import AdminInfoForm from '../../components/superAdmin/CreateSchool/AdminInfoForm';
-import SubscriptionSettingsForm from '../../components/superAdmin/CreateSchool/SubscriptionSettingsForm';
-import PlanSelection from '../../components/superAdmin/CreateSchool/PlanSelection';
-import FeeTermsSelection from '../../components/superAdmin/CreateSchool/FeeTermsSelection';
-
 const CreateSchool: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { showNotification } = useNotification();
+  const createMutation = useCreateSchool();
+  const updateMutation = useUpdateSchool();
+  const purchaseMutation = usePurchaseSubscription();
+  const { data: availablePlans } = useAvailablePlansWithPricing();
   const editSchool = location.state?.school as School | undefined;
   const isEditMode = !!editSchool;
-
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: editSchool?.name || '',
-    address: editSchool?.address || '',
-    phone: editSchool?.phone || '',
-    email: editSchool?.email || '',
-    code: editSchool?.id?.slice(-8).toUpperCase() || '',
-    academicYear: editSchool?.academicYear || getCurrentAcademicYear(),
-    logo: editSchool?.logo || '',
-    // Admin details (only used for creation)
-    adminFullName: '',
-    adminEmail: '',
-    adminPassword: '',
-    adminPhone: '',
-    // Subscription details
-    subscriptionStatus: editSchool ? (editSchool.status ? 'active' : 'expired') : 'trial',
-    subscriptionEndDate: (() => {
-      const d = new Date();
-      d.setFullYear(d.getFullYear() + 1);
-      return getLocalDateString(d);
-    })(),
-  });
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier>(editSchool?.plan || 'PREMIUM');
-  const [feeTerm, setFeeTerm] = useState<FeeTerm>(editSchool?.feeTerm || 'YEARLY');
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    const emailRegex = /\S+@\S+\.\S+/;
-
-    // School Info
-    if (!formData.name || formData.name.length < 3) newErrors.name = 'Min 3 characters';
-    if (!formData.code || formData.code.length < 2) newErrors.code = 'Min 2 characters';
-    if (!formData.address) newErrors.address = 'Required';
-    if (!formData.phone) newErrors.phone = 'Required';
-    if (!formData.email || !emailRegex.test(formData.email)) newErrors.email = 'Invalid email';
-
-    // Admin Info (only if not editing)
-    if (!isEditMode) {
-      if (!formData.adminFullName || formData.adminFullName.length < 3) newErrors.adminFullName = 'Min 3 characters';
-      if (!formData.adminEmail || !emailRegex.test(formData.adminEmail)) newErrors.adminEmail = 'Invalid email';
-      if (!formData.adminPassword || formData.adminPassword.length < 8) newErrors.adminPassword = 'Min 8 characters';
-      if (!formData.adminPhone) newErrors.adminPhone = 'Required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
   const planMapping: Record<SubscriptionTier, number> = {
     'BASIC': 1,
@@ -81,82 +40,229 @@ const CreateSchool: React.FC = () => {
     'BUSINESS': 3,
   };
 
-  const feeTermsNumeric = [
-    { id: 'YEARLY', numericId: 1 },
-    { id: 'HALF-YEARLY', numericId: 2 },
-    { id: 'QUARTERLY', numericId: 4 },
-    { id: 'MONTHLY', numericId: 12 },
-  ];
+  const feeTermMapping: Record<FeeTerm, number> = {
+    'yearly': 1,
+    'half-yearly': 2,
+    'quarterly': 4,
+    'monthly': 12,
+  };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors(prev => {
-        const next = { ...prev };
-        delete next[name];
-        return next;
-      });
+  const originalPlanId = isEditMode ? planMapping[editSchool?.plan || 'BASIC'] : undefined;
+
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionTier>(editSchool?.plan || 'PREMIUM');
+  const [feeTerm, setFeeTerm] = useState<FeeTerm>(editSchool?.feeTerm || 'yearly');
+  const [schoolAdmin, setSchoolAdmin] = useState<SchoolAdmin | null>(null);
+  const [planChangeDialog, setPlanChangeDialog] = useState<{
+    isOpen: boolean;
+    pendingAdminUpdates?: UpdateSchoolAdminData;
+  }>({ isOpen: false });
+  const [calculationResult, setCalculationResult] = useState<{
+    originalAmount: number;
+    creditApplied: number;
+    existingCreditUsed: number;
+    totalCreditApplied: number;
+    payableAmount: number;
+    remainingDays: number;
+    newPlanName: string;
+    currentPlanName: string;
+    feeTerm: string;
+    newEndDate: string;
+  } | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  const defaultValues = isEditMode ? {
+    isEditMode: true as const,
+    name: editSchool?.name || '',
+    address: editSchool?.address || '',
+    phone: editSchool?.phone || '',
+    email: editSchool?.email || '',
+    subscriptionStatus: (editSchool?.subscriptionStatus || 'active') as 'trial' | 'active' | 'suspended' | 'expired',
+    subscriptionEndDate: (() => {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 1);
+      return getLocalDateString(d);
+    })(),
+  } : {
+    isEditMode: false as const,
+    name: '',
+    code: '',
+    address: '',
+    phone: '',
+    email: '',
+    subscriptionStatus: 'active' as const,
+    subscriptionEndDate: (() => {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 1);
+      return getLocalDateString(d);
+    })(),
+    academicYear: getCurrentAcademicYear(),
+    adminFullName: '',
+    adminEmail: '',
+    adminPassword: '',
+    adminPhone: '',
+  };
+
+  const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof createSchoolFormSchema>>({
+    resolver: zodResolver(createSchoolFormSchema),
+    defaultValues,
+  });
+
+  const fetchSchoolAdmin = async (id: string) => {
+    try {
+      const admin = await schoolService.getSchoolAdmin(id);
+      setSchoolAdmin(admin);
+    } catch {
+      // Handle silently
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) {
-      showNotification('Please fix the errors in the form.', 'error');
-      return;
+  useEffect(() => {
+    if (isEditMode && editSchool?.id) {
+      fetchSchoolAdmin(editSchool.id);
     }
+  }, [isEditMode, editSchool?.id]);
+
+  const handlePlanChange = (plan: SubscriptionTier) => {
+    setSelectedPlan(plan);
+    if (plan === 'BASIC' && feeTerm !== 'yearly') {
+      setFeeTerm('yearly');
+    }
+  };
+
+  const getPlanPricing = (planId: number) => {
+    const plan = availablePlans?.find((p: Record<string, unknown>) => p.id === planId);
+    if (!plan) return { yearly: 0, halfYearly: 0, quarterly: 0, monthly: 0 };
+    return {
+      yearly: Number(plan.price_yearly) || 0,
+      halfYearly: Number(plan.price_half_yearly) || 0,
+      quarterly: Number(plan.price_quarterly) || 0,
+      monthly: Number(plan.price_monthly) || 0,
+    };
+  };
+
+  const selectedPlanPricing = getPlanPricing(planMapping[selectedPlan]);
+
+  const onSubmit = async (data: z.infer<typeof createSchoolFormSchema>) => {
     try {
-      setLoading(true);
-      
-      const currentFeeTermObj = feeTermsNumeric.find(t => t.id === feeTerm);
-      
-      if (isEditMode && editSchool) {
-        const payload: SchoolUpdateData = {
-          name: formData.name,
-          address: formData.address,
-          contactPhone: formData.phone,
-          contactEmail: formData.email,
-          subscriptionPlanId: planMapping[selectedPlan],
-          feeTerms: currentFeeTermObj?.numericId || 1,
-          subscriptionStatus: formData.subscriptionStatus,
-          subscriptionEndDate: formData.subscriptionEndDate,
+      if (data.isEditMode && editSchool) {
+        const newPlanId = planMapping[selectedPlan];
+        const planChanged = originalPlanId !== newPlanId;
+
+        const adminUpdates: UpdateSchoolAdminData = {};
+        if (schoolAdmin && data.adminFullName) {
+          if (data.adminFullName !== schoolAdmin.fullName) {
+            adminUpdates.fullName = data.adminFullName;
+          }
+          if (data.adminEmail && data.adminEmail !== schoolAdmin.email) {
+            adminUpdates.email = data.adminEmail;
+          }
+          if (data.adminPhone && data.adminPhone !== schoolAdmin.phone) {
+            adminUpdates.phone = data.adminPhone;
+          }
+          if (data.adminPassword) {
+            adminUpdates.password = data.adminPassword;
+          }
+        }
+
+        const nonPlanPayload: SchoolUpdateData = {
+          name: data.name,
+          address: data.address,
+          contactPhone: data.phone,
+          contactEmail: data.email,
+          subscriptionStatus: data.subscriptionStatus,
+          subscriptionEndDate: data.subscriptionEndDate,
         };
-        await schoolService.updateSchool(editSchool.id, payload);
+
+        if (planChanged) {
+          if (Object.keys(nonPlanPayload).length > 0) {
+            await updateMutation.mutateAsync({ id: editSchool.id, data: nonPlanPayload });
+          }
+          setPlanChangeDialog({ isOpen: true, pendingAdminUpdates: Object.keys(adminUpdates).length > 0 ? adminUpdates : undefined });
+        } else {
+          if (Object.keys(nonPlanPayload).length > 0) {
+            await updateMutation.mutateAsync({ id: editSchool.id, data: nonPlanPayload });
+          }
+          if (Object.keys(adminUpdates).length > 0 && schoolAdmin) {
+            await schoolService.updateSchoolAdmin(editSchool.id, adminUpdates);
+          }
+          showNotification('School updated successfully!', 'success');
+          navigate('/super-admin/schools');
+        }
       } else {
+        const createData = data as CreateSchoolFormData & { isEditMode: false };
         const payload: CreateSchoolRequest = {
           school: {
-            name: formData.name,
-            code: formData.code || generateSchoolCode(formData.name),
+            name: createData.name,
+            code: createData.code || generateSchoolCode(createData.name),
             subscriptionPlanId: planMapping[selectedPlan],
-            feeTerms: currentFeeTermObj?.numericId || 1,
-            contactEmail: formData.email,
-            contactPhone: formData.phone,
-            address: formData.address,
-            subscriptionStatus: formData.subscriptionStatus as SchoolCreateData['subscriptionStatus'],
-            subscriptionEndDate: formData.subscriptionEndDate,
+            feeTerms: feeTermMapping[feeTerm],
+            contactEmail: createData.email,
+            contactPhone: createData.phone,
+            address: createData.address,
+            subscriptionStatus: createData.subscriptionStatus as SchoolCreateData['subscriptionStatus'],
+            subscriptionEndDate: createData.subscriptionEndDate,
           },
           admin: {
-            email: formData.adminEmail,
-            password: formData.adminPassword,
-            fullName: formData.adminFullName,
-            phone: formData.adminPhone,
+            email: createData.adminEmail,
+            password: createData.adminPassword,
+            fullName: createData.adminFullName,
+            phone: createData.adminPhone,
           }
         };
-        await schoolService.createSchool(payload);
+        await createMutation.mutateAsync(payload);
+        showNotification('School registered successfully!', 'success');
+        navigate('/super-admin/schools');
       }
-      showNotification(`School ${isEditMode ? 'updated' : 'registered'} successfully!`, 'success');
-      navigate('/super-admin/schools');
     } catch (error) {
       const message = error instanceof Error ? error.message : `Failed to ${isEditMode ? 'update' : 'register'} school.`;
       showNotification(message, 'error');
+    }
+  };
+
+  const handleCalculatePlanChange = async (planId: number, selectedFeeTerm: string) => {
+    if (!editSchool) return;
+    setIsCalculating(true);
+    try {
+      const result = await schoolService.calculateUpgrade(editSchool.id, {
+        planId,
+        feeTerm: selectedFeeTerm,
+      });
+      setCalculationResult(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to calculate pricing';
+      showNotification(message, 'error');
     } finally {
-      setLoading(false);
+      setIsCalculating(false);
+    }
+  };
+
+  const handleConfirmPlanChange = async (data: { planId: number; feeTerm: string; feeTermNumeric: number; paymentMode: string }) => {
+    if (!editSchool) return;
+    try {
+      await purchaseMutation.mutateAsync({
+        schoolId: editSchool.id,
+        data: {
+          planId: data.planId,
+          feeTerm: data.feeTerm,
+          feeTermNumeric: data.feeTermNumeric,
+          paymentMode: data.paymentMode,
+        },
+      });
+
+      if (planChangeDialog.pendingAdminUpdates) {
+        await schoolService.updateSchoolAdmin(editSchool.id, planChangeDialog.pendingAdminUpdates);
+      }
+
+      showNotification('School updated and subscription changed successfully!', 'success');
+      navigate('/super-admin/schools');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to change subscription plan';
+      showNotification(message, 'error');
     }
   };
 
   return (
-    <AdminLayout title="Register New School">
+    <MainLayout title="Register New School">
       <div className="max-w-4xl mx-auto space-y-12 pb-20">
         <div className="text-center space-y-2 mb-12">
           <h2 className="text-4xl font-display font-black text-[#1E3A5F] tracking-tight">
@@ -169,26 +275,28 @@ const CreateSchool: React.FC = () => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-100 shadow-premium p-12 space-y-16">
-          <SchoolInfoForm formData={formData} handleChange={handleChange} errors={errors} />
-
-          {!isEditMode && (
-            <>
-              <hr className="border-slate-50" />
-              <AdminInfoForm formData={formData} handleChange={handleChange} errors={errors} />
-            </>
-          )}
+        <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-2xl border border-slate-100 shadow-premium p-12 space-y-16">
+          <SchoolInfoForm register={register} errors={errors} />
 
           <hr className="border-slate-50" />
-          <SubscriptionSettingsForm formData={formData} handleChange={handleChange} errors={errors} />
+          <AdminInfoForm 
+            register={register} 
+            errors={errors}
+            isEditMode={isEditMode}
+          />
 
           <hr className="border-slate-50" />
-          <PlanSelection selectedPlan={selectedPlan} setSelectedPlan={setSelectedPlan} />
+          <SubscriptionSettingsForm 
+            register={register} 
+            errors={errors}
+          />
 
           <hr className="border-slate-50" />
-          <FeeTermsSelection feeTerm={feeTerm} setFeeTerm={setFeeTerm} />
+          <PlanSelection selectedPlan={selectedPlan} setSelectedPlan={handlePlanChange} />
 
-          {/* Footer Actions */}
+          <hr className="border-slate-50" />
+          <FeeTermsSelection feeTerm={feeTerm} setFeeTerm={setFeeTerm} selectedPlan={selectedPlan} />
+
           <div className="flex justify-center items-center gap-6 pt-8">
                <button 
                  type="button"
@@ -197,22 +305,39 @@ const CreateSchool: React.FC = () => {
                >
                  Cancel
                </button>
-               <button 
-                 type="submit"
-                 disabled={loading}
-                 className="h-14 px-12 rounded-xl bg-[#4A9FD4] text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200/50 hover:bg-[#4A9FD4]/95 transition-all flex items-center gap-3 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-               >
-                 <span className="material-symbols-outlined">{loading ? 'sync' : isEditMode ? 'save' : 'add_business'}</span>
-                 {loading ? (isEditMode ? 'Updating...' : 'Creating...') : isEditMode ? 'Update School' : 'Create School'}
-               </button>
+                <button 
+                  type="submit"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="h-14 px-12 rounded-xl bg-[#4A9FD4] text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200/50 hover:bg-[#4A9FD4]/95 transition-all flex items-center gap-3 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                >
+                  <span className="material-symbols-outlined">{createMutation.isPending || updateMutation.isPending ? 'sync' : isEditMode ? 'save' : 'add_business'}</span>
+                  {createMutation.isPending || updateMutation.isPending ? (isEditMode ? 'Updating...' : 'Creating...') : isEditMode ? 'Update School' : 'Create School'}
+                </button>
           </div>
         </form>
+
+          <PlanChangeDialog
+            key={`plan-change-${planChangeDialog.isOpen ? Date.now() : 0}`}
+            isOpen={planChangeDialog.isOpen}
+            onClose={() => setPlanChangeDialog({ isOpen: false })}
+            schoolId={editSchool?.id || ''}
+            currentPlanId={originalPlanId || 1}
+            currentPlanName={editSchool?.plan || 'BASIC'}
+            selectedPlanId={planMapping[selectedPlan]}
+            selectedPlanName={selectedPlan}
+            selectedPlanPricing={selectedPlanPricing}
+            subscriptionEndDate={editSchool?.subscriptionEndDate}
+            onConfirm={handleConfirmPlanChange}
+            isCalculating={isCalculating}
+            calculationResult={calculationResult}
+            onCalculate={handleCalculatePlanChange}
+          />
 
         <p className="text-center text-[11px] font-bold text-slate-300 uppercase tracking-widest">
            © 2024 EduManage System. All rights reserved.
         </p>
       </div>
-    </AdminLayout>
+    </MainLayout>
   );
 };
 

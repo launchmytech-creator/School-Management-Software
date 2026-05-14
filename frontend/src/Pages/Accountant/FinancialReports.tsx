@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import AccountantLayout from '../../layouts/AccountantLayout';
+import React, { useState, useMemo } from 'react';
 import FilterBar from '../../components/common/FilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { useNotification } from '../../context/NotificationContext';
-import { feeService, type FeeTransaction } from '../../services/feeService';
-import { classService } from '../../services/classService';
-import type { Class } from '../../types/class';
+import { useAcademicYear } from '../../context/AcademicYearContext';
+import { useClasses, useFeeTransactions } from '../../hooks/queries';
+import { feeStructureService } from '../../services/feeStructureService';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -29,70 +28,50 @@ interface FeeSummary {
 
 const FinancialReports: React.FC = () => {
   const { showNotification } = useNotification();
-  const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<FeeSummary | null>(null);
-  const [transactions, setTransactions] = useState<FeeTransaction[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
+  const { selectedYear } = useAcademicYear();
+  const { data: classes = [] } = useClasses();
+  const [feeTypes, setFeeTypes] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
+  const [feeTypeFilter, setFeeTypeFilter] = useState<string>('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchDropdowns = useCallback(async () => {
-    try {
-      const cls = await classService.getClasses();
-      setClasses(cls);
-    } catch {
-      showNotification('Failed to fetch classes', 'error');
-    }
-  }, [showNotification]);
+  React.useEffect(() => {
+    const fetchFeeTypes = async () => {
+      try {
+        const types = await feeStructureService.getUniqueFeeTypes();
+        setFeeTypes(types);
+      } catch (error) {
+        console.error('Failed to fetch fee types:', error);
+      }
+    };
+    fetchFeeTypes();
+  }, []);
 
-  const fetchReportData = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      const transactionsData = await feeService.getFeeTransactions({
-        classId: selectedClass ? parseInt(selectedClass) : undefined,
-      });
+  const { data: transactions = [], isLoading } = useFeeTransactions({
+    classId: selectedClass ? parseInt(selectedClass) : undefined,
+    academicYearId: selectedYear?.id ? parseInt(selectedYear.id) : undefined,
+  });
 
-      const filtered = transactionsData.filter(t => {
-        if (dateFrom && t.paymentDate && t.paymentDate < dateFrom) return false;
-        if (dateTo && t.paymentDate && t.paymentDate > dateTo) return false;
-        return true;
-      });
-
-      const collectedAmount = filtered.filter(t => t.status === 'paid' || t.status === 'partial').reduce((s, t) => s + t.amountPaid, 0);
-      const pendingAmount = filtered.filter(t => t.status !== 'paid').reduce((s, t) => s + t.amountPending, 0);
-      const totalAmount = collectedAmount + pendingAmount;
-      const byStatus = ['paid', 'pending', 'partial', 'waived'].map(status => ({
-        status,
-        count: filtered.filter(t => t.status === status).length,
-        amount: filtered.filter(t => t.status === status).reduce((s, t) => s + t.amountDue, 0),
-      }));
-
-      setSummary({
-        totalStudents: new Set(filtered.map(t => t.studentId)).size,
-        totalAmount,
-        collectedAmount,
-        pendingAmount,
-        collectionPercentage: totalAmount > 0 ? Math.round((collectedAmount / totalAmount) * 100) : 0,
-        byStatus,
-      });
-      setTransactions(filtered);
-    } catch {
-      showNotification('Failed to fetch report data', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedClass, dateFrom, dateTo, showNotification]);
-
-  useEffect(() => {
-    fetchDropdowns();
-  }, [fetchDropdowns]);
-
-  useEffect(() => {
-    fetchReportData();
-  }, [fetchReportData]);
+  const summary = useMemo((): FeeSummary | null => {
+    if (transactions.length === 0) return null;
+    
+    const uniqueStudents = new Set(transactions.map(t => t.studentId));
+    const totalAmount = transactions.reduce((sum, t) => sum + t.amountDue, 0);
+    const collectedAmount = transactions.reduce((sum, t) => sum + t.amountPaid, 0);
+    const pendingAmount = transactions.reduce((sum, t) => sum + (t.amountDue - t.amountPaid), 0);
+    const collectionPercentage = totalAmount > 0 ? Math.round((collectedAmount / totalAmount) * 100) : 0;
+    
+    return {
+      totalStudents: uniqueStudents.size,
+      totalAmount,
+      collectedAmount,
+      pendingAmount,
+      collectionPercentage,
+      byStatus: [],
+    };
+  }, [transactions]);
 
   const filteredTransactions = transactions.filter(t =>
     t.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -104,7 +83,6 @@ const FinancialReports: React.FC = () => {
   };
 
   return (
-    <AccountantLayout title="Financial Reports">
       <div className="space-y-6 pb-12">
         {summary && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -172,7 +150,7 @@ const FinancialReports: React.FC = () => {
               Export
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Class</label>
               <select
@@ -183,6 +161,19 @@ const FinancialReports: React.FC = () => {
                 <option value="">All Classes</option>
                 {classes.map(cls => (
                   <option key={cls.id} value={cls.id}>{cls.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Fee Type</label>
+              <select
+                value={feeTypeFilter}
+                onChange={(e) => setFeeTypeFilter(e.target.value)}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Fee Types</option>
+                {feeTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
                 ))}
               </select>
             </div>
@@ -212,7 +203,7 @@ const FinancialReports: React.FC = () => {
             </div>
             <div className="flex items-end">
               <button
-                onClick={() => { setSelectedClass(''); setDateFrom(''); setDateTo(''); }}
+                onClick={() => { setSelectedClass(''); setDateFrom(''); setDateTo(''); setFeeTypeFilter(''); }}
                 className="w-full px-4 py-2.5 bg-slate-100 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-200 transition-colors"
               >
                 Clear Filters
@@ -228,7 +219,7 @@ const FinancialReports: React.FC = () => {
           searchPlaceholder="Search by student name or admission number..."
         />
 
-        {loading ? (
+        {isLoading ? (
           <SkeletonTable columns={6} rows={8} />
         ) : filteredTransactions.length > 0 ? (
           <div className="bg-white rounded-card border border-slate-200 shadow-sm overflow-hidden">
@@ -291,7 +282,6 @@ const FinancialReports: React.FC = () => {
           />
         )}
       </div>
-    </AccountantLayout>
   );
 };
 

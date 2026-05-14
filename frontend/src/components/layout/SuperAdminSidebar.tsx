@@ -10,7 +10,7 @@ const SuperAdminSidebar: React.FC = () => {
     { name: 'Dashboard', icon: 'grid_view', path: '/super-admin/dashboard' },
     { name: 'Schools', icon: 'school', path: '/super-admin/schools' },
     { name: 'Create School', icon: 'add_business', path: '/super-admin/create-school' },
-    { name: 'Settings', icon: 'settings', path: '/super-admin/settings' },
+    { name: 'Pricing', icon: 'currency_rupee', path: '/super-admin/pricing' },
   ];
 
   const handleLogout = () => {

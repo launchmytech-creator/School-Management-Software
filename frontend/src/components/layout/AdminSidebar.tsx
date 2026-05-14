@@ -20,7 +20,6 @@ const navGroups: NavGroup[] = [
     icon: 'grid_view',
     items: [
       { name: 'Dashboard', icon: 'dashboard', path: '/admin/dashboard' },
-      { name: 'Reports', icon: 'analytics', path: '/admin/reports' },
     ],
   },
   {
@@ -41,9 +40,6 @@ const navGroups: NavGroup[] = [
     icon: 'menu_book',
     items: [
       { name: 'Classes', icon: 'school', path: '/admin/classes' },
-      { name: 'Subjects', icon: 'menu_book', path: '/admin/subjects' },
-      { name: 'Class Subjects', icon: 'link', path: '/admin/class-subjects' },
-      { name: 'Chapters', icon: 'format_list_numbered', path: '/admin/subjects/1/chapters' },
       { name: 'Syllabus Tracking', icon: 'playlist_add_check', path: '/admin/syllabus-tracking' },
     ],
   },
@@ -52,8 +48,7 @@ const navGroups: NavGroup[] = [
     icon: 'assignment',
     items: [
       { name: 'Examinations', icon: 'assignment', path: '/admin/exams' },
-      { name: 'Marks Entry', icon: 'edit_note', path: '/admin/marks-entry' },
-      { name: 'Exam Results', icon: 'grade', path: '/admin/exam-results' },
+      { name: 'Class Comparison', icon: 'compare_arrows', path: '/admin/class-comparison' },
     ],
   },
   {
@@ -69,16 +64,17 @@ const navGroups: NavGroup[] = [
     label: 'Schedule & Comms',
     icon: 'schedule',
     items: [
-      { name: 'Timetables', icon: 'schedule', path: '/admin/timetables' },
       { name: 'Holidays', icon: 'event', path: '/admin/holidays' },
       { name: 'Academic Years', icon: 'calendar_month', path: '/admin/academic-years' },
       { name: 'Announcements', icon: 'campaign', path: '/admin/announcements' },
+      { name: 'Student Records', icon: 'history', path: '/admin/student-history' },
     ],
   },
   {
     label: 'Settings',
     icon: 'settings',
     items: [
+      { name: 'Plans', icon: 'credit_card', path: '/admin/profile' },
       { name: 'School Settings', icon: 'settings', path: '/admin/school-settings' },
     ],
   },

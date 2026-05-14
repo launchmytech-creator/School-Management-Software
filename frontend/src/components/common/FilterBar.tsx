@@ -51,11 +51,11 @@ const FilterBar: React.FC<FilterBarProps> = ({
 
       {actions && actions.length > 0 && (
         <div className="flex items-center gap-2 w-full lg:w-auto">
-          {actions.map((action, index) => {
+          {actions.map((action) => {
             const Icon = action.icon;
             return (
               <Button
-                key={index}
+                key={action.label}
                 variant={action.variant || 'default'}
                 size="sm"
                 onClick={action.onClick}

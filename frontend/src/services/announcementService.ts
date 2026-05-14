@@ -2,80 +2,54 @@ import { apiRequest } from './api';
 
 export interface Announcement {
   id: number;
-  schoolId: number;
   title: string;
-  content: string;
-  priority: 'low' | 'medium' | 'high';
-  targetRoles: string[] | null;
-  academicYearId: number | null;
-  academicYearName: string | null;
-  isActive: boolean;
+  message: string;
+  targetRole: string | null;
   createdBy: number;
   createdByName: string | null;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface CreateAnnouncementDto {
   title: string;
-  content: string;
-  priority?: 'low' | 'medium' | 'high';
-  targetRoles?: string[];
-  academicYearId?: number;
-  isActive?: boolean;
+  message: string;
+  targetRole?: string;
 }
 
 export interface UpdateAnnouncementDto {
   title?: string;
-  content?: string;
-  priority?: 'low' | 'medium' | 'high';
-  targetRoles?: string[];
-  isActive?: boolean;
+  message?: string;
+  targetRole?: string;
 }
 
 interface BackendAnnouncement {
   id: number;
   school_id: number;
   title: string;
-  content: string;
-  priority: string;
-  target_roles: string[] | null;
-  academic_year_id: number | null;
-  academic_year_name: string | null;
-  is_active: boolean;
+  message: string;
+  target_role: string | null;
   created_by: number;
   created_by_name: string | null;
   created_at: string;
-  updated_at: string;
 }
 
 const mapAnnouncement = (data: BackendAnnouncement): Announcement => ({
   id: data.id,
-  schoolId: data.school_id,
   title: data.title,
-  content: data.content,
-  priority: data.priority as 'low' | 'medium' | 'high',
-  targetRoles: data.target_roles,
-  academicYearId: data.academic_year_id,
-  academicYearName: data.academic_year_name,
-  isActive: data.is_active,
+  message: data.message,
+  targetRole: data.target_role,
   createdBy: data.created_by,
-  createdByName: data.created_by_name,
+  createdByName: data.created_by_name ?? null,
   createdAt: data.created_at,
-  updatedAt: data.updated_at,
 });
 
 export const announcementService = {
   getAnnouncements: async (filters?: {
-    academicYearId?: number;
-    priority?: string;
-    isActive?: boolean;
+    targetRole?: string;
     limit?: number;
   }): Promise<Announcement[]> => {
     const params = new URLSearchParams();
-    if (filters?.academicYearId) params.append('academicYearId', String(filters.academicYearId));
-    if (filters?.priority) params.append('priority', filters.priority);
-    if (filters?.isActive !== undefined) params.append('isActive', String(filters.isActive));
+    if (filters?.targetRole) params.append('targetRole', filters.targetRole);
     if (filters?.limit) params.append('limit', String(filters.limit));
     
     const queryString = params.toString();

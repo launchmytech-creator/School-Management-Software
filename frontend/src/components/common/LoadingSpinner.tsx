@@ -29,7 +29,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         className={`${sizeClasses[size]} rounded-full border-blue-500/20 border-t-blue-500 animate-spin`}
       />
       {message && (
-        <p className={`${messageSizeClasses[size]} font-black text-slate-400 uppercase tracking-widest animate-pulse`}>
+        <p className={`${messageSizeClasses[size]} font-extrabold text-slate-400 uppercase tracking-widest animate-pulse`}>
           {message}
         </p>
       )}

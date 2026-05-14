@@ -4,9 +4,12 @@ export interface Exam {
   id: number;
   classId: number;
   className: string;
+  classSection?: string;
   name: string;
+  examType?: string;
   startDate: string;
   endDate: string;
+  weightage?: number;
   description?: string;
   subjects?: ExamSubject[];
 }
@@ -45,16 +48,79 @@ export interface ClassPerformance {
 
 export interface CreateExamDto {
   classId: number;
+  academicYearId: number;
   name: string;
+  examType?: string;
   startDate: string;
   endDate: string;
+  weightage?: number;
   description?: string;
+  subjects?: ExamSubjectInput[];
+}
+
+export interface ExamSubjectInput {
+  subjectId: number;
+  maxMarks: number;
+  examDate?: string;
 }
 
 export interface AddExamSubjectDto {
   subjectId: number;
   maxMarks: number;
+  examDate?: string;
 }
+
+interface BackendExamSubject {
+  id: number;
+  exam_id: number;
+  subject_id: number;
+  max_marks: number;
+  exam_date: string | null;
+  subject_name: string;
+  subject_code: string;
+}
+
+interface BackendExam {
+  id: number;
+  school_id: number;
+  class_id: number;
+  academic_year_id: number;
+  name: string;
+  exam_type: string | null;
+  start_date: string;
+  end_date: string;
+  weightage: number | null;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  class_name: string | null;
+  class_section: string | null;
+  academic_year_name: string | null;
+  subject_count: string | number;
+  subjects?: BackendExamSubject[];
+}
+
+const mapExamSubjectFromBackend = (data: BackendExamSubject): ExamSubject => ({
+  id: data.id,
+  examId: data.exam_id,
+  subjectId: data.subject_id,
+  maxMarks: data.max_marks,
+  subjectName: data.subject_name,
+});
+
+const mapExamFromBackend = (data: BackendExam): Exam => ({
+  id: data.id,
+  classId: data.class_id,
+  className: data.class_name || '',
+  classSection: data.class_section || undefined,
+  name: data.name,
+  examType: data.exam_type || undefined,
+  startDate: data.start_date,
+  endDate: data.end_date,
+  weightage: data.weightage || undefined,
+  description: data.description || undefined,
+  subjects: data.subjects?.map(mapExamSubjectFromBackend) || [],
+});
 
 export interface EnterMarksDto {
   examSubjectId: number;
@@ -67,26 +133,33 @@ export interface EnterMarksDto {
 export const examService = {
   // Exams
   createExam: async (data: CreateExamDto): Promise<Exam> => {
-    return apiRequest<Exam>('/exams', {
+    const response = await apiRequest<BackendExam>('/exams', {
       method: 'POST',
       data,
     });
+    return mapExamFromBackend(response);
   },
 
-  getExams: async (classId?: number): Promise<Exam[]> => {
-    const queryString = classId ? `?classId=${classId}` : '';
-    return apiRequest<Exam[]>(`/exams${queryString}`);
+  getExams: async (classId?: number, academicYearId?: number): Promise<Exam[]> => {
+    const params = new URLSearchParams();
+    if (classId) params.append('classId', String(classId));
+    if (academicYearId) params.append('academicYearId', String(academicYearId));
+    const queryString = params.toString();
+    const data = await apiRequest<BackendExam[]>(`/exams${queryString ? `?${queryString}` : ''}`);
+    return data.map(mapExamFromBackend);
   },
 
   getExamById: async (id: number): Promise<Exam> => {
-    return apiRequest<Exam>(`/exams/${id}`);
+    const data = await apiRequest<BackendExam>(`/exams/${id}`);
+    return mapExamFromBackend(data);
   },
 
   updateExam: async (id: number, data: Partial<CreateExamDto>): Promise<Exam> => {
-    return apiRequest<Exam>(`/exams/${id}`, {
+    const response = await apiRequest<BackendExam>(`/exams/${id}`, {
       method: 'PATCH',
       data,
     });
+    return mapExamFromBackend(response);
   },
 
   deleteExam: async (id: number): Promise<void> => {
@@ -96,17 +169,19 @@ export const examService = {
   },
 
   addExamSubject: async (examId: number, data: AddExamSubjectDto): Promise<ExamSubject> => {
-    return apiRequest<ExamSubject>(`/exams/${examId}/subjects`, {
+    const response = await apiRequest<BackendExamSubject>(`/exams/${examId}/subjects`, {
       method: 'POST',
       data,
     });
+    return mapExamSubjectFromBackend(response);
   },
 
   updateExamSubject: async (id: number, data: Partial<AddExamSubjectDto>): Promise<ExamSubject> => {
-    return apiRequest<ExamSubject>(`/exams/subjects/${id}`, {
+    const response = await apiRequest<BackendExamSubject>(`/exams/subjects/${id}`, {
       method: 'PATCH',
       data,
     });
+    return mapExamSubjectFromBackend(response);
   },
 
   deleteExamSubject: async (id: number): Promise<void> => {
@@ -127,11 +202,13 @@ export const examService = {
     examId?: number;
     classId?: number;
     studentId?: number;
+    academicYearId?: number;
   } = {}): Promise<ExamResult[]> => {
     const queryParams = new URLSearchParams();
     if (params.examId) queryParams.append('examId', String(params.examId));
     if (params.classId) queryParams.append('classId', String(params.classId));
     if (params.studentId) queryParams.append('studentId', String(params.studentId));
+    if (params.academicYearId) queryParams.append('academicYearId', String(params.academicYearId));
     
     const queryString = queryParams.toString();
     return apiRequest<ExamResult[]>(`/exam-results${queryString ? `?${queryString}` : ''}`);
@@ -145,8 +222,11 @@ export const examService = {
     return apiRequest<ExamResult[]>(`/exam-results/exam-subject/${examSubjectId}`);
   },
 
-  getClassPerformance: async (examId: number): Promise<ClassPerformance> => {
-    return apiRequest<ClassPerformance>(`/exam-results/exam/${examId}/performance`);
+  getClassPerformance: async (examId: number, academicYearId?: number): Promise<ClassPerformance> => {
+    const params = new URLSearchParams();
+    if (academicYearId) params.append('academicYearId', String(academicYearId));
+    const queryString = params.toString();
+    return apiRequest<ClassPerformance>(`/exam-results/exam/${examId}/performance${queryString ? `?${queryString}` : ''}`);
   },
 
   deleteResult: async (id: number): Promise<void> => {

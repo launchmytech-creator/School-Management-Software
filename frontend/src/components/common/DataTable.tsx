@@ -1,5 +1,5 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { memo, useMemo, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
 import { Button } from '../ui/button';
 
 interface Column<T> {
@@ -25,6 +25,90 @@ interface DataTableProps<T> {
   className?: string;
 }
 
+interface TableRowProps<T> {
+  item: T;
+  columns: Column<T>[];
+  keyExtractor: (item: T) => string | number;
+  onRowClick?: (item: T) => void;
+}
+
+const TableRow = memo(<T,>({ item, columns, keyExtractor: _keyExtractor, onRowClick }: TableRowProps<T>) => (
+  <tr
+    onClick={() => onRowClick?.(item)}
+    className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors ${
+      onRowClick ? 'cursor-pointer' : ''
+    }`}
+  >
+    {columns.map((col) => (
+      <td
+        key={col.key}
+        className={`px-6 py-4 text-sm text-slate-700 ${col.className || ''}`}
+      >
+        {col.render
+          ? col.render(item)
+          : (item as Record<string, unknown>)[col.key] as React.ReactNode}
+      </td>
+    ))}
+  </tr>
+));
+TableRow.displayName = "TableRow";
+
+const SkeletonRow = memo(({ columns }: { columns: Column<unknown>[] }) => (
+  <tr className="border-b border-slate-100">
+    {columns.map((col) => (
+      <td key={col.key as string} className="px-6 py-4">
+        <div className="h-4 bg-slate-100 rounded animate-pulse" />
+      </td>
+    ))}
+  </tr>
+));
+SkeletonRow.displayName = "SkeletonRow";
+
+const EmptyState = memo(({
+  emptyMessage,
+  emptyDescription,
+  colCount,
+}: {
+  emptyMessage: string;
+  emptyDescription?: string;
+  colCount: number;
+}) => (
+  <tr>
+    <td colSpan={colCount} className="px-6 py-16 text-center">
+      <div className="flex flex-col items-center">
+        <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mb-3">
+          <Inbox className="w-6 h-6 text-slate-400" />
+        </div>
+        <p className="text-sm font-medium text-slate-700">{emptyMessage}</p>
+        {emptyDescription && (
+          <p className="text-xs text-slate-400 mt-1">{emptyDescription}</p>
+        )}
+      </div>
+    </td>
+  </tr>
+));
+EmptyState.displayName = "EmptyState";
+
+const PaginationButton = memo(({
+  page,
+  isActive,
+  onClick,
+}: {
+  page: number;
+  isActive: boolean;
+  onClick: () => void;
+}) => (
+  <Button
+    variant={isActive ? 'default' : 'outline'}
+    size="icon"
+    className="size-8 text-xs"
+    onClick={onClick}
+  >
+    {page}
+  </Button>
+));
+PaginationButton.displayName = "PaginationButton";
+
 export function DataTable<T>({
   columns,
   data,
@@ -40,20 +124,30 @@ export function DataTable<T>({
   onRowClick,
   className = ''
 }: DataTableProps<T>) {
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+  const startItem = useMemo(() => (currentPage - 1) * itemsPerPage + 1, [currentPage, itemsPerPage]);
+  const endItem = useMemo(() => Math.min(currentPage * itemsPerPage, totalItems), [currentPage, itemsPerPage, totalItems]);
 
-  const renderSkeletonRows = () => {
-    return Array.from({ length: 5 }).map((_, i) => (
-      <tr key={i} className="border-b border-slate-100">
-        {columns.map((col) => (
-          <td key={col.key} className="px-6 py-4">
-            <div className="h-4 bg-slate-100 rounded animate-pulse" />
-          </td>
-        ))}
-      </tr>
-    ));
-  };
+  const handlePreviousPage = useCallback(() => {
+    onPageChange?.(currentPage - 1);
+  }, [onPageChange, currentPage]);
+
+  const handleNextPage = useCallback(() => {
+    onPageChange?.(currentPage + 1);
+  }, [onPageChange, currentPage]);
+
+  const pageNumbers = useMemo(() => {
+    const pages: number[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else if (currentPage <= 3) {
+      for (let i = 1; i <= 5; i++) pages.push(i);
+    } else if (currentPage >= totalPages - 2) {
+      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+    } else {
+      for (let i = currentPage - 2; i <= currentPage + 2; i++) pages.push(i);
+    }
+    return pages;
+  }, [currentPage, totalPages]);
 
   return (
     <div className={`bg-white rounded-xl border border-slate-200 overflow-hidden ${className}`}>
@@ -73,43 +167,24 @@ export function DataTable<T>({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
-              renderSkeletonRows()
+              Array.from({ length: 5 }).map((_, i) => (
+                <SkeletonRow key={i} columns={columns as Column<unknown>[]} />
+              ))
             ) : data.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="px-6 py-16 text-center">
-                  <div className="flex flex-col items-center">
-                    <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mb-3">
-                      <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                      </svg>
-                    </div>
-                    <p className="text-sm font-medium text-slate-700">{emptyMessage}</p>
-                    {emptyDescription && (
-                      <p className="text-xs text-slate-400 mt-1">{emptyDescription}</p>
-                    )}
-                  </div>
-                </td>
-              </tr>
+              <EmptyState
+                emptyMessage={emptyMessage}
+                emptyDescription={emptyDescription}
+                colCount={columns.length}
+              />
             ) : (
               data.map((item) => (
-                <tr
+                <TableRow
                   key={keyExtractor(item)}
-                  onClick={() => onRowClick?.(item)}
-                  className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors ${
-                    onRowClick ? 'cursor-pointer' : ''
-                  }`}
-                >
-                  {columns.map((col) => (
-                    <td
-                      key={col.key}
-                      className={`px-6 py-4 text-sm text-slate-700 ${col.className || ''}`}
-                    >
-                      {col.render
-                        ? col.render(item)
-                        : (item as Record<string, unknown>)[col.key] as React.ReactNode}
-                    </td>
-                  ))}
-                </tr>
+                  item={item}
+                  columns={columns as unknown as Column<unknown>[]}
+                  keyExtractor={keyExtractor as unknown as (item: unknown) => string | number}
+                  onRowClick={onRowClick as unknown as (item: unknown) => void}
+                />
               ))
             )}
           </tbody>
@@ -126,39 +201,24 @@ export function DataTable<T>({
               variant="outline"
               size="icon"
               className="size-8"
-              onClick={() => onPageChange?.(currentPage - 1)}
+              onClick={handlePreviousPage}
               disabled={currentPage === 1}
             >
               <ChevronLeft className="size-4" />
             </Button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum: number;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
-              }
-              return (
-                <Button
-                  key={pageNum}
-                  variant={currentPage === pageNum ? 'default' : 'outline'}
-                  size="icon"
-                  className="size-8 text-xs"
-                  onClick={() => onPageChange?.(pageNum)}
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
+            {pageNumbers.map((pageNum) => (
+              <PaginationButton
+                key={pageNum}
+                page={pageNum}
+                isActive={currentPage === pageNum}
+                onClick={() => onPageChange?.(pageNum)}
+              />
+            ))}
             <Button
               variant="outline"
               size="icon"
               className="size-8"
-              onClick={() => onPageChange?.(currentPage + 1)}
+              onClick={handleNextPage}
               disabled={currentPage === totalPages}
             >
               <ChevronRight className="size-4" />

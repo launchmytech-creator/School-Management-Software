@@ -7,14 +7,14 @@
 
 @theme {
   /* Central Brand Color Palette */
-  --color-primary: #1e3a5f;
-  --color-accent: #4a9fd4;
+  --color-primary: #133257;
+  --color-accent: #133257;
   --color-accent-soft: #e0f2fe;
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
 
-  --color-navy-dark: #1e3a5f; /* Synced with primary */
+  --color-navy-dark: #133257; /* Synced with primary */
   --color-slate-soft: #F8FAFC;
 
   /* Typography */
@@ -49,6 +49,14 @@
 
   .fade-in-up {
     animation: fadeInUp 0.6s ease-out forwards;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 
