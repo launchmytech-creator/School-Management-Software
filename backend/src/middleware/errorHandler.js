@@ -20,8 +20,8 @@ const errorHandler = (err, req, res, next) => {
   if (err.code === "23505") {
     return ApiResponse.conflict(
       res,
-      ERROR_CODES.USER_ALREADY_EXISTS,
-      "Resource already exists",
+      ERROR_CODES.DUPLICATE_RESOURCE,
+      "A resource with this value already exists",
     );
   }
 

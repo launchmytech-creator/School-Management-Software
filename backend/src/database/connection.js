@@ -20,7 +20,7 @@ const poolConfig = {
 // Add SSL configuration if enabled
 if (config.database.ssl) {
   poolConfig.ssl = {
-    rejectUnauthorized: false,
+    rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false",
   };
 }
 

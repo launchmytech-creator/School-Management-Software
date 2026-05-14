@@ -4,7 +4,47 @@ const AppError = require("../../utils/AppError");
 const { buildPaginationQuery, formatPaginationResult } = require("../../utils/pagination");
 
 class StudentsService {
+  async checkRollNumberDuplicate(schoolId, rollNumber, classId, excludeStudentId = null) {
+    if (!rollNumber || !classId) {
+      return null;
+    }
+
+    const checkQuery = `
+      SELECT s.id, s.roll_number, c.name as class_name, c.section as class_section
+      FROM students s
+      JOIN classes c ON s.current_class_id = c.id
+      WHERE s.school_id = $1 
+        AND s.roll_number = $2
+        AND s.current_class_id = $3
+        AND s.status != 'inactive'
+        ${excludeStudentId ? 'AND s.id != $4' : ''}
+    `;
+
+    const params = excludeStudentId 
+      ? [schoolId, rollNumber, classId, excludeStudentId]
+      : [schoolId, rollNumber, classId];
+
+    const result = await pool.query(checkQuery, params);
+    return result.rows.length > 0 ? result.rows[0] : null;
+  }
+
   async createStudent(studentData, schoolId) {
+    if (studentData.rollNumber && studentData.currentClassId) {
+      const duplicate = await this.checkRollNumberDuplicate(
+        schoolId,
+        studentData.rollNumber,
+        studentData.currentClassId
+      );
+
+      if (duplicate) {
+        throw new AppError(
+          ERROR_CODES.DUPLICATE_RESOURCE,
+          `A student with roll number "${studentData.rollNumber}" already exists in class "${duplicate.class_name}${duplicate.class_section ? ' - ' + duplicate.class_section : ''}"`,
+          400
+        );
+      }
+    }
+
     const query = `
       INSERT INTO students (
         school_id, admission_number, full_name, date_of_birth, 
@@ -101,6 +141,32 @@ class StudentsService {
   }
 
   async updateStudent(studentId, updateData, schoolId) {
+    const rollNumberChanged = updateData.rollNumber !== undefined;
+    const classChanged = updateData.currentClassId !== undefined;
+
+    if (rollNumberChanged || classChanged) {
+      const currentStudent = await this.getStudentById(studentId, schoolId);
+      const newRollNumber = rollNumberChanged ? updateData.rollNumber : currentStudent.roll_number;
+      const newClassId = classChanged ? updateData.currentClassId : currentStudent.current_class_id;
+
+      if (newRollNumber && newClassId) {
+        const duplicate = await this.checkRollNumberDuplicate(
+          schoolId,
+          newRollNumber,
+          newClassId,
+          studentId
+        );
+
+        if (duplicate) {
+          throw new AppError(
+            ERROR_CODES.DUPLICATE_RESOURCE,
+            `A student with roll number "${newRollNumber}" already exists in class "${duplicate.class_name}${duplicate.class_section ? ' - ' + duplicate.class_section : ''}"`,
+            400
+          );
+        }
+      }
+    }
+
     const fields = [];
     const values = [];
     let paramCount = 1;

@@ -100,8 +100,17 @@ class FeeTransactionsService {
   }
 
   calculateDueDate(startDate, termNumber, totalTerms) {
-    // Parse date parts directly to avoid UTC vs local timezone shift
-    const [year, month] = startDate.toString().split("T")[0].split("-").map(Number);
+    // Handle both string dates and JS Date objects
+    let year, month;
+    if (startDate instanceof Date) {
+      year = startDate.getFullYear();
+      month = startDate.getMonth() + 1;
+    } else {
+      // Handle ISO string format "YYYY-MM-DD"
+      const dateStr = typeof startDate === 'string' ? startDate.split('T')[0] : String(startDate);
+      [year, month] = dateStr.split('-').map(Number);
+    }
+
     const monthsPerTerm = 12 / totalTerms;
     // Due date = last day of the term (start of next term - 1 day)
     const termEndMonth = month - 1 + termNumber * monthsPerTerm; // 0-indexed month after term ends
@@ -144,7 +153,7 @@ class FeeTransactionsService {
 
     query += " ORDER BY ft.due_date ASC, s.full_name";
 
-    if (pagination.page || pagination.limit) {
+    if (pagination.page !== undefined || pagination.limit !== undefined) {
       const { query: paginatedQuery, params: paginatedParams, countQuery, countParams, page, limit } =
         buildPaginationQuery(query, params, pagination);
 
@@ -190,7 +199,7 @@ class FeeTransactionsService {
 
     query += " ORDER BY ft.due_date ASC, s.full_name";
 
-    if (pagination.page || pagination.limit) {
+    if (pagination.page !== undefined || pagination.limit !== undefined) {
       const { query: paginatedQuery, params: paginatedParams, countQuery, countParams, page, limit } =
         buildPaginationQuery(query, params, pagination);
 

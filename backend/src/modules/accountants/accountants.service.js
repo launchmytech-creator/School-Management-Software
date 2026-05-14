@@ -5,30 +5,56 @@ const AppError = require("../../utils/AppError");
 
 class AccountantsService {
   async createAccountant(accountantData, schoolId) {
-    const hashedPassword = await bcrypt.hash(accountantData.password, 10);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
 
-    const query = `
-      INSERT INTO users (
-        school_id, role, email, password_hash, full_name, 
-        phone, date_of_birth, gender, address
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING id, email, full_name, role, phone, school_id, created_at
-    `;
+      // Check if email already exists for this school
+      const emailCheck = await client.query(
+        "SELECT id FROM users WHERE school_id = $1 AND email = $2",
+        [schoolId, accountantData.email],
+      );
 
-    const result = await pool.query(query, [
-      schoolId,
-      ROLES.ACCOUNTANT,
-      accountantData.email,
-      hashedPassword,
-      accountantData.fullName,
-      accountantData.phone || null,
-      accountantData.dateOfBirth || null,
-      accountantData.gender || null,
-      accountantData.address || null,
-    ]);
+      if (emailCheck.rows.length > 0) {
+        throw new AppError(
+          ERROR_CODES.USER_ALREADY_EXISTS,
+          "Accountant with this email already exists in this school",
+          409,
+        );
+      }
 
-    return result.rows[0];
+      // Hash password
+      const hashedPassword = await bcrypt.hash(accountantData.password, 10);
+
+      const query = `
+        INSERT INTO users (
+          school_id, role, email, password_hash, full_name, 
+          phone, date_of_birth, gender, address, is_active
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+        RETURNING id, email, full_name, role, phone, school_id, is_active, created_at
+      `;
+
+      const result = await client.query(query, [
+        schoolId,
+        ROLES.ACCOUNTANT,
+        accountantData.email,
+        hashedPassword,
+        accountantData.fullName,
+        accountantData.phone || null,
+        accountantData.dateOfBirth || null,
+        accountantData.gender || null,
+        accountantData.address || null,
+      ]);
+
+      await client.query("COMMIT");
+      return result.rows[0];
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async getAccountantsBySchool(schoolId) {

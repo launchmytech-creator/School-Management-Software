@@ -15,13 +15,13 @@ class ReportsService {
 
     let yearFilter = "";
     if (filters.academicYearId) {
-      yearFilter = ` AND ay.id = $${paramCount++}`;
+      yearFilter = ` AND c.academic_year_id = $${paramCount++}`;
       params.push(filters.academicYearId);
     }
 
     let dateFilter = "";
     if (filters.startDate && filters.endDate) {
-      dateFilter = ` AND sa.date BETWEEN $${paramCount++} AND $${paramCount++}`;
+      dateFilter = ` AND sa.attendance_date BETWEEN $${paramCount++} AND $${paramCount++}`;
       params.push(filters.startDate, filters.endDate);
     }
 
@@ -38,8 +38,7 @@ class ReportsService {
           NULLIF(COUNT(*), 0) * 100), 2
         ) as attendance_percentage
       FROM student_attendance sa
-      LEFT JOIN classes c ON sa.class_id = c.id
-      LEFT JOIN academic_years ay ON sa.academic_year_id = ay.id
+      JOIN classes c ON sa.class_id = c.id
       WHERE sa.school_id = $1 ${classFilter} ${yearFilter} ${dateFilter}
       GROUP BY c.id, c.name, c.section
       ORDER BY c.name, c.section
@@ -55,13 +54,13 @@ class ReportsService {
 
     let classFilter = "";
     if (filters.classId) {
-      classFilter = ` AND ft.class_id = $${paramCount++}`;
+      classFilter = ` AND st.current_class_id = $${paramCount++}`;
       params.push(filters.classId);
     }
 
     let yearFilter = "";
     if (filters.academicYearId) {
-      yearFilter = ` AND ft.academic_year_id = $${paramCount++}`;
+      yearFilter = ` AND c.academic_year_id = $${paramCount++}`;
       params.push(filters.academicYearId);
     }
 
@@ -70,17 +69,18 @@ class ReportsService {
         c.name as class_name,
         c.section as class_section,
         COUNT(DISTINCT ft.student_id) as total_students,
-        SUM(ft.total_amount) as total_amount,
-        SUM(ft.paid_amount) as paid_amount,
-        SUM(ft.total_amount - ft.paid_amount) as pending_amount,
+        SUM(ft.amount_due) as total_amount,
+        SUM(ft.amount_paid) as paid_amount,
+        SUM(ft.amount_due - ft.amount_paid) as pending_amount,
         COUNT(CASE WHEN ft.status = 'paid' THEN 1 END) as paid_count,
         COUNT(CASE WHEN ft.status = 'partial' THEN 1 END) as partial_count,
         COUNT(CASE WHEN ft.status = 'pending' THEN 1 END) as pending_count,
         ROUND(
-          (SUM(ft.paid_amount)::decimal / NULLIF(SUM(ft.total_amount), 0) * 100), 2
+          (SUM(ft.amount_paid)::decimal / NULLIF(SUM(ft.amount_due), 0) * 100), 2
         ) as collection_percentage
       FROM fee_transactions ft
-      LEFT JOIN classes c ON ft.class_id = c.id
+      JOIN students st ON ft.student_id = st.id
+      JOIN classes c ON st.current_class_id = c.id
       WHERE ft.school_id = $1 ${classFilter} ${yearFilter}
       GROUP BY c.id, c.name, c.section
       ORDER BY c.name, c.section
@@ -96,13 +96,13 @@ class ReportsService {
 
     let classFilter = "";
     if (filters.classId) {
-      classFilter = ` AND er.class_id = $${paramCount++}`;
+      classFilter = ` AND c.id = $${paramCount++}`;
       params.push(filters.classId);
     }
 
     let yearFilter = "";
     if (filters.academicYearId) {
-      yearFilter = ` AND er.academic_year_id = $${paramCount++}`;
+      yearFilter = ` AND e.academic_year_id = $${paramCount++}`;
       params.push(filters.academicYearId);
     }
 
@@ -110,7 +110,7 @@ class ReportsService {
       SELECT 
         c.name as class_name,
         c.section as class_section,
-        s.name as subject_name,
+        sub.name as subject_name,
         e.name as exam_name,
         COUNT(DISTINCT er.student_id) as students_appeared,
         AVG(er.marks_obtained) as average_marks,
@@ -121,12 +121,13 @@ class ReportsService {
         COUNT(CASE WHEN er.marks_obtained >= (es.max_marks * 0.35) AND er.marks_obtained < (es.max_marks * 0.6) THEN 1 END) as pass_count,
         COUNT(CASE WHEN er.marks_obtained < (es.max_marks * 0.35) THEN 1 END) as fail_count
       FROM exam_results er
-      LEFT JOIN classes c ON er.class_id = c.id
-      LEFT JOIN exams e ON er.exam_id = e.id
-      LEFT JOIN exam_subjects es ON er.exam_subject_id = es.id
+      JOIN exam_subjects es ON er.exam_subject_id = es.id
+      JOIN exams e ON es.exam_id = e.id
+      JOIN subjects sub ON es.subject_id = sub.id
+      JOIN classes c ON e.class_id = c.id
       WHERE er.school_id = $1 ${classFilter} ${yearFilter}
-      GROUP BY c.id, c.name, c.section, s.id, s.name, e.id, e.name
-      ORDER BY c.name, c.section, s.name, e.name
+      GROUP BY c.id, c.name, c.section, sub.id, sub.name, e.id, e.name
+      ORDER BY c.name, c.section, sub.name, e.name
     `;
 
     const result = await pool.query(query, params);

@@ -13,18 +13,18 @@ class ExamResultsService {
       const results = [];
 
       for (const record of marksData.results) {
-        // Check if result already exists
+        // Check if result already exists - with schoolId for security
         const existingQuery = await client.query(
-          "SELECT id FROM exam_results WHERE exam_subject_id = $1 AND student_id = $2",
-          [marksData.examSubjectId, record.studentId],
+          "SELECT id FROM exam_results WHERE exam_subject_id = $1 AND student_id = $2 AND school_id = $3",
+          [marksData.examSubjectId, record.studentId, schoolId],
         );
 
         if (existingQuery.rows.length > 0) {
-          // Update existing result
+          // Update existing result - with schoolId for security
           const updateQuery = `
             UPDATE exam_results 
             SET marks_obtained = $1, grade = $2, is_absent = $3, entered_by = $4, entered_at = CURRENT_TIMESTAMP
-            WHERE exam_subject_id = $5 AND student_id = $6
+            WHERE exam_subject_id = $5 AND student_id = $6 AND school_id = $7
             RETURNING *
           `;
           const result = await client.query(updateQuery, [
@@ -34,6 +34,7 @@ class ExamResultsService {
             userId,
             marksData.examSubjectId,
             record.studentId,
+            schoolId,
           ]);
           results.push(result.rows[0]);
         } else {
@@ -487,33 +488,23 @@ class ExamResultsService {
   }
 
   async getClassesForComparison(className, schoolId, academicYearId) {
-    console.log("=== getClassesForComparison DEBUG ===");
-    console.log("className:", className);
-    console.log("schoolId:", schoolId);
-    console.log("academicYearId:", academicYearId);
-    
     let query = `
       SELECT c.id, c.name, c.section
       FROM classes c
       WHERE c.school_id = $1
         AND LOWER(c.name) = LOWER($2)
     `;
-    
+
     const params = [schoolId, className];
-    
+
     if (academicYearId) {
       query += ` AND c.academic_year_id = $3`;
       params.push(academicYearId);
     }
-    
+
     query += ` ORDER BY c.section NULLS LAST`;
-    
-    console.log("Query:", query);
-    console.log("Params:", params);
 
     const result = await pool.query(query, params);
-    console.log("Result rows:", result.rows.length);
-    console.log("Result:", JSON.stringify(result.rows));
     return result.rows;
   }
 
@@ -557,66 +548,17 @@ class ExamResultsService {
       ORDER BY sub.name, c.name, c.section, s.roll_number
     `;
 
-    const result = await pool.query(query, params);
+const result = await pool.query(query, params);
     const rows = result.rows;
 
-    console.log("=== getClassSubjectComparison DEBUG ===");
-    console.log("classIds received:", classIds);
-    console.log("schoolId:", schoolId);
-    console.log("academicYearId:", academicYearId);
-    console.log("Total rows returned:", rows.length);
-    
-    if (rows.length > 0) {
-      const uniqueClasses = [...new Set(rows.map(r => ({ id: r.class_id, name: r.class_name, section: r.class_section })))];
-      console.log("Unique classes in result:", JSON.stringify(uniqueClasses));
-      
-      const uniqueSubjects = [...new Set(rows.map(r => r.subject_name))];
-      console.log("Unique subjects:", uniqueSubjects);
-      
-      // Check marks_obtained values
-      const marksStats = rows.reduce((acc, r) => {
-        if (r.marks_obtained !== null) {
-          acc.hasMarks++;
-        } else {
-          acc.nullMarks++;
-        }
-        return acc;
-      }, { hasMarks: 0, nullMarks: 0 });
-      console.log("Rows with marks:", marksStats.hasMarks, "Rows without marks:", marksStats.nullMarks);
-      
-      // Group by class to see individual class data
-      const classData = {};
-      for (const row of rows) {
-        if (!classData[row.class_id]) {
-          classData[row.class_id] = { name: row.class_name, section: row.class_section, count: 0, marks: [] };
-        }
-        classData[row.class_id].count++;
-        if (row.marks_obtained !== null) {
-          classData[row.class_id].marks.push(row.marks_obtained);
-        }
-      }
-      console.log("Class data summary:", JSON.stringify(classData));
-      
-      console.log("Sample rows (first 3):", rows.slice(0, 3).map(r => ({
-        class_id: r.class_id,
-        class_name: r.class_name,
-        section: r.class_section,
-        subject: r.subject_name,
-        student_id: r.student_id,
-        marks_obtained: r.marks_obtained,
-        is_absent: r.is_absent
-      })));
-    }
-
     if (rows.length === 0) {
-      console.log("NO ROWS RETURNED - checking if this is the issue");
       return { subjects: [] };
     }
 
     // Group data by subject NAME (case-insensitive), then by class
     const subjectMap = new Map();
     const allClassesInfo = new Map(); // Track ALL classes info (name, section)
-    
+
     // First pass: collect all classes first
     for (const row of rows) {
       const { class_id, class_name, class_section } = row;
@@ -629,7 +571,6 @@ class ExamResultsService {
         });
       }
     }
-    console.log("All classes found:", Array.from(allClassesInfo.keys()));
     
     // Second pass: organize data by subject
     for (const row of rows) {
@@ -690,20 +631,13 @@ class ExamResultsService {
     for (const [subjectId, subject] of subjectMap) {
       const classResults = [];
 
-      console.log(`\n=== Processing subject: ${subject.subjectName} ===`);
-      console.log(`Classes in this subject: ${Array.from(subject.classes.keys())}`);
-
       for (const [classId, classEntry] of subject.classes) {
-        console.log(`\n  Class ${classId} (${classEntry.className}):`);
-        console.log(`    totalStudents=${classEntry.totalStudents}, studentMarks.size=${classEntry.studentMarks.size}`);
-        
         // Calculate per-student average marks, then class average
         const studentAverages = [];
         let studentsWhoPassedAll = true;
 
         for (const [studentId, marksList] of classEntry.studentMarks) {
           const avgMarks = marksList.reduce((sum, m) => sum + m.marks, 0) / marksList.length;
-          console.log(`    Student ${studentId}: marks=${marksList.map(m => m.marks).join(',')}, avg=${avgMarks}`);
           studentAverages.push(avgMarks);
 
           const passedThisSubject = marksList.some(m => m.passed);
@@ -712,13 +646,11 @@ class ExamResultsService {
           }
         }
 
-        console.log(`    studentAverages array: [${studentAverages.join(', ')}]`);
-        
         // For pass rate: % of students who passed this subject
         const passedThisSubject = [...classEntry.studentMarks.values()].filter(
           marksList => marksList.some(m => m.passed)
         ).length;
-        
+
         const passRate = classEntry.totalStudents > 0 
           ? (passedThisSubject / classEntry.totalStudents) * 100 
           : 0;
@@ -727,8 +659,6 @@ class ExamResultsService {
         const averageMarks = studentAverages.length > 0
           ? studentAverages.reduce((a, b) => a + b, 0) / studentAverages.length
           : 0;
-        
-        console.log(`    Calculated: averageMarks=${averageMarks}, passRate=${passRate}`);
 
         classResults.push({
           classId,
@@ -750,13 +680,25 @@ class ExamResultsService {
     return { subjects };
   }
 
-  async getClassSubjectsWithStats(classId, academicYearId, examType = null) {
-    const params = [classId, academicYearId];
+  async getClassSubjectsWithStats(classId, academicYearId, examType = null, schoolId) {
+    const params = [];
+    let paramCount = 1;
     let examTypeClause = '';
+    let schoolIdClause = '';
+
+    const classIdPlaceholder = `$${paramCount++}`;
+    const academicYearPlaceholder = `$${paramCount++}`;
+    params.push(classId);
+    params.push(academicYearId);
 
     if (examType) {
-      examTypeClause = ' AND e.exam_type = $3';
+      examTypeClause = ` AND e.exam_type = $${paramCount++}`;
       params.push(examType);
+    }
+
+    if (schoolId) {
+      schoolIdClause = ` AND cs.school_id = $${paramCount++}`;
+      params.push(schoolId);
     }
 
     const query = `
@@ -774,9 +716,9 @@ class ExamResultsService {
       JOIN subjects sub ON cs.subject_id = sub.id
       LEFT JOIN students s ON cs.class_id = s.current_class_id AND s.status = 'active'
       LEFT JOIN exam_subjects es ON sub.id = es.subject_id
-      LEFT JOIN exams e ON es.exam_id = e.id AND e.academic_year_id = $2 AND e.class_id = cs.class_id
+      LEFT JOIN exams e ON es.exam_id = e.id AND e.academic_year_id = ${academicYearPlaceholder} AND e.class_id = cs.class_id
       LEFT JOIN exam_results er ON es.id = er.exam_subject_id
-      WHERE cs.class_id = $1 AND cs.academic_year_id = $2${examTypeClause}
+      WHERE cs.class_id = ${classIdPlaceholder} AND cs.academic_year_id = ${academicYearPlaceholder}${examTypeClause}${schoolIdClause}
       GROUP BY sub.id, sub.name, sub.code
       ORDER BY sub.name
     `;
@@ -795,83 +737,305 @@ class ExamResultsService {
     }));
   }
 
-  async getClassResults(classId, filters = {}) {
-    const { academicYearId, subjectId, examType, search, page = 1, limit = 20 } = filters;
+  async getClassResults(classId, filters = {}, schoolId = null) {
+    const { academicYearId, subjectId, examType, search } = filters;
 
-    let baseQuery = `
+    const params = [];
+    let paramCount = 1;
+
+    const classIdPlaceholder = `$${paramCount++}`;
+    params.push(classId);
+
+    const academicYearPlaceholder = `$${paramCount++}`;
+    params.push(academicYearId);
+
+    let schoolIdClause = '';
+    let schoolIdPlaceholder = '';
+    if (schoolId) {
+      schoolIdPlaceholder = `$${paramCount++}`;
+      schoolIdClause = ` AND c.school_id = ${schoolIdPlaceholder}`;
+      params.push(schoolId);
+    }
+
+    let subjectIdClause = '';
+    let subjectIdPlaceholder = '';
+    if (subjectId) {
+      subjectIdPlaceholder = `$${paramCount++}`;
+      subjectIdClause = ` AND sub.id = ${subjectIdPlaceholder}`;
+      params.push(subjectId);
+    }
+
+    let examTypeClause = '';
+    let examTypePlaceholder = '';
+    if (examType) {
+      examTypePlaceholder = `$${paramCount++}`;
+      examTypeClause = ` AND e.exam_type = ${examTypePlaceholder}`;
+      params.push(examType);
+    }
+
+    let searchClause = '';
+    let searchPlaceholder = '';
+    if (search) {
+      searchPlaceholder = `$${paramCount++}`;
+      searchClause = ` AND (s.full_name ILIKE ${searchPlaceholder} OR s.admission_number ILIKE ${searchPlaceholder})`;
+      params.push(`%${search}%`);
+    }
+
+    const baseWhere = `WHERE c.id = ${classIdPlaceholder} AND e.academic_year_id = ${academicYearPlaceholder}${schoolIdClause}${subjectIdClause}${examTypeClause}`;
+
+    const countQuery = `
+      SELECT COUNT(DISTINCT e.id) as total
+      FROM exams e
+      JOIN exam_subjects es ON e.id = es.exam_id
+      JOIN subjects sub ON es.subject_id = sub.id
+      JOIN classes c ON e.class_id = c.id
+      ${baseWhere}
+    `;
+    const countResult = await pool.query(countQuery, params);
+    const totalExams = parseInt(countResult.rows[0].total || 0);
+
+    const dataQuery = `
+      SELECT 
+        e.id as exam_id,
+        e.name as exam_name,
+        e.exam_type,
+        e.start_date as exam_date,
+        es.max_marks,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'resultId', er.id,
+              'studentId', s.id,
+              'studentName', s.full_name,
+              'admissionNumber', s.admission_number,
+              'rollNumber', s.roll_number,
+              'marksObtained', er.marks_obtained,
+              'grade', er.grade,
+              'isAbsent', er.is_absent
+            ) ORDER BY s.roll_number, s.full_name
+          ) FILTER (WHERE er.id IS NOT NULL),
+          '[]'
+        ) as students
+      FROM exams e
+      JOIN exam_subjects es ON e.id = es.exam_id
+      JOIN subjects sub ON es.subject_id = sub.id
+      JOIN classes c ON e.class_id = c.id
+      LEFT JOIN exam_results er ON es.id = er.exam_subject_id
+      LEFT JOIN students s ON er.student_id = s.id ${searchClause ? `AND (s.full_name ILIKE ${searchPlaceholder} OR s.admission_number ILIKE ${searchPlaceholder})` : ''}
+      ${baseWhere}${searchClause}
+      GROUP BY e.id, e.name, e.exam_type, e.start_date, es.max_marks
+      ORDER BY e.start_date DESC, e.name
+    `;
+
+    const dataResult = await pool.query(dataQuery, params);
+
+    const groupedData = dataResult.rows.map(row => ({
+      examId: row.exam_id,
+      examName: row.exam_name,
+      examType: row.exam_type,
+      examDate: row.exam_date,
+      maxMarks: row.max_marks,
+      students: row.students || [],
+    }));
+
+    return {
+      data: groupedData,
+      totalExams,
+    };
+  }
+
+  async getExamsForSubject(classId, subjectId, academicYearId, examType, schoolId) {
+    const params = [];
+    let paramCount = 1;
+
+    const classIdPlaceholder = `$${paramCount++}`;
+    params.push(classId);
+
+    const academicYearPlaceholder = `$${paramCount++}`;
+    params.push(academicYearId);
+
+    const subjectIdPlaceholder = `$${paramCount++}`;
+    params.push(subjectId);
+
+    let schoolIdClause = '';
+    if (schoolId) {
+      schoolIdClause = ` AND c.school_id = $${paramCount++}`;
+      params.push(schoolId);
+    }
+
+    let examTypeClause = '';
+    if (examType) {
+      examTypeClause = ` AND e.exam_type = $${paramCount++}`;
+      params.push(examType);
+    }
+
+    const baseWhere = `WHERE c.id = ${classIdPlaceholder} AND e.academic_year_id = ${academicYearPlaceholder} AND sub.id = ${subjectIdPlaceholder}${schoolIdClause}${examTypeClause}`;
+
+    const query = `
+      SELECT 
+        e.id as exam_id,
+        e.name as exam_name,
+        e.exam_type,
+        e.start_date as exam_date,
+        es.max_marks,
+        COUNT(DISTINCT s.id) as total_students,
+        COUNT(DISTINCT CASE WHEN er.id IS NOT NULL AND er.is_absent = false THEN er.id END) as evaluated,
+        COUNT(DISTINCT CASE WHEN er.id IS NOT NULL AND er.is_absent = true THEN er.id END) as absent,
+        COUNT(DISTINCT CASE WHEN er.id IS NOT NULL AND er.is_absent = false AND er.marks_obtained >= es.max_marks * 0.4 THEN er.id END) as passed,
+        COUNT(DISTINCT CASE WHEN er.id IS NOT NULL AND er.is_absent = false AND er.marks_obtained < es.max_marks * 0.4 THEN er.id END) as failed
+      FROM exams e
+      JOIN exam_subjects es ON e.id = es.exam_id
+      JOIN subjects sub ON es.subject_id = sub.id
+      JOIN classes c ON e.class_id = c.id
+      LEFT JOIN class_subjects cs ON cs.class_id = c.id AND cs.subject_id = sub.id AND cs.academic_year_id = e.academic_year_id
+      LEFT JOIN students s ON s.current_class_id = c.id AND s.status = 'active'
+      LEFT JOIN exam_results er ON er.exam_subject_id = es.id
+      ${baseWhere}
+      GROUP BY e.id, e.name, e.exam_type, e.start_date, es.max_marks
+      ORDER BY e.start_date DESC, e.name
+    `;
+
+    const result = await pool.query(query, params);
+
+    return {
+      exams: result.rows.map(row => ({
+        examId: row.exam_id,
+        examName: row.exam_name,
+        examType: row.exam_type,
+        examDate: row.exam_date,
+        maxMarks: row.max_marks,
+        totalStudents: parseInt(row.total_students || 0),
+        evaluated: parseInt(row.evaluated || 0),
+        passed: parseInt(row.passed || 0),
+        failed: parseInt(row.failed || 0),
+        absent: parseInt(row.absent || 0),
+      })),
+    };
+  }
+
+  async getExamResults(classId, subjectId, examId, academicYearId, search, schoolId) {
+    const params = [];
+    let paramCount = 1;
+
+    const classIdPlaceholder = `$${paramCount++}`;
+    params.push(classId);
+
+    const academicYearPlaceholder = `$${paramCount++}`;
+    params.push(academicYearId);
+
+    const subjectIdPlaceholder = `$${paramCount++}`;
+    params.push(subjectId);
+
+    const examIdPlaceholder = `$${paramCount++}`;
+    params.push(examId);
+
+    let schoolIdClause = '';
+    let schoolIdPlaceholder = '';
+    if (schoolId) {
+      schoolIdPlaceholder = `$${paramCount++}`;
+      schoolIdClause = ` AND c.school_id = ${schoolIdPlaceholder}`;
+      params.push(schoolId);
+    }
+
+    let searchClause = '';
+    let searchPlaceholder = '';
+    if (search) {
+      searchPlaceholder = `$${paramCount++}`;
+      searchClause = ` AND (s.full_name ILIKE ${searchPlaceholder} OR s.admission_number ILIKE ${searchPlaceholder})`;
+      params.push(`%${search}%`);
+    }
+
+    const baseWhere = `WHERE c.id = ${classIdPlaceholder} AND e.academic_year_id = ${academicYearPlaceholder} AND sub.id = ${subjectIdPlaceholder} AND e.id = ${examIdPlaceholder}${schoolIdClause}${searchClause}`;
+
+    const examQuery = `
+      SELECT 
+        e.id as exam_id,
+        e.name as exam_name,
+        e.exam_type,
+        e.start_date as exam_date,
+        es.max_marks,
+        sub.name as subject_name,
+        sub.code as subject_code
+      FROM exams e
+      JOIN exam_subjects es ON e.id = es.exam_id
+      JOIN subjects sub ON es.subject_id = sub.id
+      JOIN classes c ON e.class_id = c.id
+      WHERE e.id = ${examIdPlaceholder} AND sub.id = ${subjectIdPlaceholder} AND c.id = ${classIdPlaceholder} AND e.academic_year_id = ${academicYearPlaceholder}${schoolIdClause}
+    `;
+    const examResult = await pool.query(examQuery, params);
+    
+    if (examResult.rows.length === 0) {
+      return {
+        examId: null,
+        examName: null,
+        examType: null,
+        examDate: null,
+        maxMarks: 0,
+        subjectName: null,
+        subjectCode: null,
+        totalStudents: 0,
+        evaluated: 0,
+        passed: 0,
+        failed: 0,
+        absent: 0,
+        students: [],
+      };
+    }
+
+    const exam = examResult.rows[0];
+
+    const studentsQuery = `
+      SELECT 
+        er.id as result_id,
+        s.id as student_id,
+        s.full_name as student_name,
+        s.admission_number,
+        s.roll_number,
+        er.marks_obtained,
+        er.grade,
+        er.is_absent
       FROM exam_results er
       JOIN students s ON er.student_id = s.id
       JOIN exam_subjects es ON er.exam_subject_id = es.id
       JOIN exams e ON es.exam_id = e.id
       JOIN subjects sub ON es.subject_id = sub.id
       JOIN classes c ON s.current_class_id = c.id
-      LEFT JOIN users u ON er.entered_by = u.id
-      WHERE c.id = $1 AND e.academic_year_id = $2 AND c.school_id = (SELECT school_id FROM classes WHERE id = $1)
+      ${baseWhere}
+      ORDER BY s.roll_number, s.full_name
     `;
+    const studentsResult = await pool.query(studentsQuery, params);
 
-    const params = [classId, academicYearId];
-    let paramCount = 3;
+    const students = studentsResult.rows.map(row => ({
+      resultId: row.result_id,
+      studentId: row.student_id,
+      studentName: row.student_name,
+      admissionNumber: row.admission_number,
+      rollNumber: row.roll_number,
+      marksObtained: row.marks_obtained,
+      grade: row.grade,
+      isAbsent: row.is_absent,
+    }));
 
-    if (subjectId) {
-      baseQuery += ` AND sub.id = $${paramCount++}`;
-      params.push(subjectId);
-    }
-
-    if (examType) {
-      baseQuery += ` AND e.exam_type = $${paramCount++}`;
-      params.push(examType);
-    }
-
-    if (search) {
-      baseQuery += ` AND (s.full_name ILIKE $${paramCount} OR s.admission_number ILIKE $${paramCount})`;
-      params.push(`%${search}%`);
-      paramCount++;
-    }
-
-    const countQuery = `SELECT COUNT(DISTINCT er.id) as total ${baseQuery}`;
-    const countResult = await pool.query(countQuery, params);
-    const total = parseInt(countResult.rows[0].total);
-    const totalPages = Math.ceil(total / limit);
-
-    const dataQuery = `
-      SELECT 
-        er.id,
-        er.marks_obtained,
-        er.grade,
-        er.is_absent,
-        er.entered_at,
-        s.id as student_id,
-        s.full_name as student_name,
-        s.admission_number,
-        s.roll_number,
-        sub.id as subject_id,
-        sub.name as subject_name,
-        sub.code as subject_code,
-        e.id as exam_id,
-        e.name as exam_name,
-        e.exam_type,
-        e.start_date as exam_date,
-        es.max_marks,
-        c.name as class_name,
-        c.section as class_section,
-        u.full_name as entered_by_name
-      ${baseQuery}
-      ORDER BY s.roll_number, s.full_name, e.start_date DESC
-      LIMIT $${paramCount++} OFFSET $${paramCount++}
-    `;
-
-    params.push(limit, (page - 1) * limit);
-
-    const dataResult = await pool.query(dataQuery, params);
+    const totalStudents = students.length;
+    const evaluated = students.filter(s => !s.isAbsent && s.marksObtained !== null).length;
+    const passed = students.filter(s => !s.isAbsent && s.marksObtained !== null && s.marksObtained >= exam.max_marks * 0.4).length;
+    const failed = students.filter(s => !s.isAbsent && s.marksObtained !== null && s.marksObtained < exam.max_marks * 0.4).length;
+    const absent = students.filter(s => s.isAbsent).length;
 
     return {
-      data: dataResult.rows,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-      },
+      examId: exam.exam_id,
+      examName: exam.exam_name,
+      examType: exam.exam_type,
+      examDate: exam.exam_date,
+      maxMarks: exam.max_marks,
+      subjectName: exam.subject_name,
+      subjectCode: exam.subject_code,
+      totalStudents,
+      evaluated,
+      passed,
+      failed,
+      absent,
+      students,
     };
   }
 }

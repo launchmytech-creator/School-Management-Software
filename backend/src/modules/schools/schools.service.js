@@ -2,6 +2,8 @@ const bcrypt = require("bcryptjs");
 const pool = require("../../database/connection");
 const { ERROR_CODES, ERROR_MESSAGES, ROLES } = require("../../constants");
 const AppError = require("../../utils/AppError");
+const logger = require("../../utils/logger");
+const { isUpgrade, isDowngrade, calculateUpgradePayable, calculateEndDate } = require("../../utils/proration");
 
 class SchoolsService {
   async createSchool(schoolData, adminData) {
@@ -365,7 +367,6 @@ class SchoolsService {
       );
       const currentPlan = currentPlanResult.rows[0];
 
-      const { isUpgrade, isDowngrade, calculateUpgradePayable, calculateEndDate } = require("../../utils/proration");
       const planChangeType = isUpgrade(currentPlan.name, newPlan.name) ? 'upgrade'
         : isDowngrade(currentPlan.name, newPlan.name) ? 'downgrade'
         : 'same_plan';
@@ -439,7 +440,7 @@ class SchoolsService {
             (school_id, plan_id, fee_term, amount, original_amount, credit_applied,
              payment_date, payment_mode, transaction_reference,
              subscription_start_date, subscription_end_date, payment_type)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_DATE, $8, $9, $10, 'upgrade')`,
+          VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, $7, $8, $9, $10, 'upgrade')`,
           [
             schoolId, data.planId, data.feeTerm, prorationResult.payableAmount,
             prorationResult.originalAmount, prorationResult.totalCreditApplied,
@@ -635,8 +636,6 @@ class SchoolsService {
     );
     const currentPlan = currentPlanResult.rows[0];
 
-    const { isUpgrade, calculateUpgradePayable, calculateEndDate } = require("../../utils/proration");
-
     if (!isUpgrade(currentPlan.name, newPlan.name)) {
       throw new AppError(ERROR_CODES.VALIDATION_ERROR, "Pricing calculation is only for upgrades", 400);
     }
@@ -701,8 +700,7 @@ class SchoolsService {
       );
 
       if (result.rows.length > 0) {
-        console.log(`[${new Date().toISOString()}] Applied ${result.rows.length} pending downgrade(s):`,
-          result.rows.map(r => r.name).join(", "));
+        logger.info(`Applied ${result.rows.length} pending downgrade(s): ${result.rows.map(r => r.name).join(", ")}`);
 
         for (const school of result.rows) {
           await pool.query(
@@ -726,7 +724,7 @@ class SchoolsService {
 
       return result.rows;
     } catch (error) {
-      console.error("[applyPendingDowngrades] Failed:", error.message);
+      logger.error("[applyPendingDowngrades] Failed:", { error: error.message });
       throw error;
     }
   }

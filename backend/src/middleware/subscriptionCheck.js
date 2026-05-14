@@ -1,12 +1,17 @@
 const { ERROR_CODES, ERROR_MESSAGES, ROLES } = require("../constants");
 const ApiResponse = require("../utils/response");
+const pool = require("../database/connection");
 
 const checkSubscription = async (req, res, next) => {
   try {
+    // Guard against missing req.user
+    if (!req.user) {
+      return next();
+    }
+
     if (req.user.role === ROLES.SUPER_ADMIN) return next();
     if (!req.user.schoolId) return next();
 
-    const pool = require("../database/connection");
     const result = await pool.query(
       "SELECT subscription_status, subscription_end_date FROM schools WHERE id = $1",
       [req.user.schoolId]

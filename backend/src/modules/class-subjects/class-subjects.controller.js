@@ -134,7 +134,7 @@ class ClassSubjectsController {
       const parsedId = parseInt(id, 10);
 
       if (isNaN(parsedId)) {
-        return ApiResponse.error(res, 400, "Invalid class subject ID");
+        return ApiResponse.error(res, "VAL_003", "Invalid class subject ID", 400);
       }
 
       await classSubjectsService.removeSubjectFromClass(parsedId, schoolId);
@@ -161,17 +161,18 @@ class ClassSubjectsController {
       if (!classIds || !Array.isArray(classIds) || classIds.length === 0) {
         return ApiResponse.error(
           res,
+          "VAL_003",
           "At least one class must be selected",
           400,
         );
       }
 
       if (!subjectId) {
-        return ApiResponse.error(res, "Subject ID is required", 400);
+        return ApiResponse.error(res, "VAL_003", "Subject ID is required", 400);
       }
 
       if (!academicYearId) {
-        return ApiResponse.error(res, "Academic year is required", 400);
+        return ApiResponse.error(res, "VAL_003", "Academic year is required", 400);
       }
 
       const result = await classSubjectsService.assignSubjectToMultipleClasses(
@@ -201,16 +202,16 @@ class ClassSubjectsController {
       const { classIds, academicYearId } = req.query;
 
       if (!classIds) {
-        return ApiResponse.error(res, "Class IDs are required", 400);
+        return ApiResponse.error(res, "VAL_003", "Class IDs are required", 400);
       }
 
       const classIdArray = classIds
         .split(",")
-        .map((id) => parseInt(id))
+        .map((id) => parseInt(id, 10))
         .filter((id) => !isNaN(id));
 
       if (classIdArray.length === 0) {
-        return ApiResponse.error(res, "Invalid class IDs", 400);
+        return ApiResponse.error(res, "VAL_003", "Invalid class IDs", 400);
       }
 
       const result = await classSubjectsService.checkExistingAssignments(

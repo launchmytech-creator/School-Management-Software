@@ -54,11 +54,12 @@ function getDaysInBillingCycle(feeTerm, startDate) {
 }
 
 function calculateRemainingDays(startDate, endDate) {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
+  // Use startDate parameter to be consistent with calculateTotalDays
+  const start = startDate ? new Date(startDate) : new Date();
+  start.setHours(0, 0, 0, 0);
   const end = new Date(endDate);
   end.setHours(0, 0, 0, 0);
-  const diffMs = end.getTime() - now.getTime();
+  const diffMs = end.getTime() - start.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   return Math.max(0, diffDays);
 }

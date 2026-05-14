@@ -1,5 +1,7 @@
 const reportsService = require("./reports.service");
 const ApiResponse = require("../../utils/response");
+const { ERROR_CODES } = require("../../constants");
+const AppError = require("../../utils/AppError");
 
 class ReportsController {
   async getReport(req, res, next) {
@@ -21,7 +23,7 @@ class ReportsController {
           report = await reportsService.getSummaryReport(req.user.schoolId, req.query);
           break;
         default:
-          throw new Error("Invalid report type");
+          throw new AppError(ERROR_CODES.INVALID_INPUT, "Invalid report type", 400);
       }
 
       return ApiResponse.success(res, report);

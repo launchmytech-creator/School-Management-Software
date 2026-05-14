@@ -60,6 +60,7 @@ const ERROR_CODES = {
   VALIDATION_ERROR: "VAL_001",
   REQUIRED_FIELD_MISSING: "VAL_002",
   INVALID_INPUT: "VAL_003",
+  DUPLICATE_RESOURCE: "VAL_004",
 
   // General Errors
   INTERNAL_ERROR: "SYS_001",
@@ -99,6 +100,7 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.VALIDATION_ERROR]: "Validation error",
   [ERROR_CODES.REQUIRED_FIELD_MISSING]: "Required field is missing",
   [ERROR_CODES.INVALID_INPUT]: "Invalid input provided",
+  [ERROR_CODES.DUPLICATE_RESOURCE]: "A resource with this value already exists",
 
   [ERROR_CODES.INTERNAL_ERROR]: "Internal server error",
   [ERROR_CODES.DATABASE_ERROR]: "Database operation failed",

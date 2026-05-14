@@ -133,7 +133,7 @@ class StudentAttendanceService {
   }
 
   async getAttendanceBySchool(schoolId, filters = {}, caller = {}) {
-    const isTeacher = caller.callerRole === "teacher";
+    const isTeacher = caller.callerRole === ROLES.TEACHER;
 
     let query = `
       SELECT sa.*, 
@@ -160,7 +160,7 @@ class StudentAttendanceService {
     }
 
     // Parents can only see attendance for their own children
-    if (caller.callerRole === "parent") {
+    if (caller.callerRole === ROLES.PARENT) {
       query += ` AND sa.student_id IN (
         SELECT id FROM students WHERE parent_id = $${paramCount++} AND school_id = $${paramCount++}
       )`;

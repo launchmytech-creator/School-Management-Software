@@ -6,12 +6,12 @@ class ParentDashboardController {
     try {
       const parentId = req.user.id;
       const schoolId = req.user.schoolId;
-
+      console.log(parentId);
       const overview = await parentDashboardService.getDashboardOverview(
         parentId,
         schoolId,
       );
-
+      console.log(overview);
       return ApiResponse.success(
         res,
         overview,
@@ -26,12 +26,12 @@ class ParentDashboardController {
     try {
       const parentId = req.user.id;
       const schoolId = req.user.schoolId;
-
+      console.log(parentId);
       const children = await parentDashboardService.getMyChildren(
         parentId,
         schoolId,
       );
-
+      console.log(children);
       return ApiResponse.success(
         res,
         children,

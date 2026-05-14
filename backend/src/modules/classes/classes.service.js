@@ -44,7 +44,7 @@ class ClassesService {
       normalizedSection,
       classData.academicYearId,
       classData.inchargeId || null,
-      classData.defaultFeeAmount || null,
+      classData.defaultFeeAmount !== undefined ? classData.defaultFeeAmount : null,
     ]);
 
     return result.rows[0];
@@ -108,11 +108,11 @@ class ClassesService {
 
     if (updateData.name !== undefined) {
       fields.push(`name = $${paramCount++}`);
-      values.push(updateData.name);
+      values.push(updateData.name.trim().replace(/\s+/g, ' '));
     }
     if (updateData.section !== undefined) {
       fields.push(`section = $${paramCount++}`);
-      values.push(updateData.section);
+      values.push(updateData.section.trim().replace(/\s+/g, ' '));
     }
     // [UPDATED] Handle incharge_id update (can be set to null to remove incharge)
     if (updateData.inchargeId !== undefined) {
@@ -177,7 +177,7 @@ class ClassesService {
       WHERE c.incharge_id = $1 AND c.school_id = $2
     `;
 
-    const params = [parseInt(teacherId), schoolId];
+    const params = [parseInt(teacherId, 10), schoolId];
 
     if (academicYearId) {
       query += ` AND c.academic_year_id = $3`;

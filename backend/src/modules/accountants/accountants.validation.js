@@ -2,13 +2,21 @@ const { body } = require("express-validator");
 
 const createAccountantValidation = [
   body("email")
+    .notEmpty()
+    .withMessage("Email is required")
     .isEmail()
-    .withMessage("Valid email is required")
+    .withMessage("Invalid email format")
     .normalizeEmail(),
 
   body("password")
+    .notEmpty()
+    .withMessage("Password is required")
     .isLength({ min: 8 })
-    .withMessage("Password must be at least 8 characters"),
+    .withMessage("Password must be at least 8 characters")
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/)
+    .withMessage(
+      "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character",
+    ),
 
   body("fullName")
     .notEmpty()
@@ -16,7 +24,10 @@ const createAccountantValidation = [
     .isLength({ min: 3, max: 150 })
     .withMessage("Full name must be between 3 and 150 characters"),
 
-  body("phone").optional().isMobilePhone().withMessage("Invalid phone number"),
+  body("phone")
+    .optional()
+    .isLength({ min: 10, max: 20 })
+    .withMessage("Phone number must be between 10 and 20 characters"),
 
   body("dateOfBirth").optional().isDate().withMessage("Invalid date of birth"),
 
@@ -24,6 +35,11 @@ const createAccountantValidation = [
     .optional()
     .isIn(["Male", "Female", "Other"])
     .withMessage("Gender must be Male, Female, or Other"),
+
+  body("address")
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage("Address must be at most 500 characters"),
 ];
 
 const updateAccountantValidation = [

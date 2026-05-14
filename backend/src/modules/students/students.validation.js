@@ -36,6 +36,11 @@ const createStudentValidation = [
     .isInt()
     .withMessage("Parent ID must be an integer"),
 
+  body("rollNumber")
+    .optional()
+    .isLength({ max: 20 })
+    .withMessage("Roll number must be at most 20 characters"),
+
   body("status")
     .optional()
     .isIn(["active", "inactive", "transferred", "graduated"])

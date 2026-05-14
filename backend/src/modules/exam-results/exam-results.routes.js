@@ -71,6 +71,18 @@ router.get(
 );
 
 router.get(
+  "/class/:classId/subject/:subjectId/exams",
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  examResultsController.getExamsForSubject,
+);
+
+router.get(
+  "/class/:classId/subject/:subjectId/exam/:examId",
+  authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
+  examResultsController.getExamResults,
+);
+
+router.get(
   "/class/:classId/results",
   authorize(ROLES.SCHOOL_ADMIN, ROLES.ACCOUNTANT, ROLES.TEACHER),
   examResultsController.getClassResults,

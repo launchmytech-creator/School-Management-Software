@@ -163,8 +163,9 @@ class ClassSubjectsService {
   }
 
   /**
-   * Removes subject from class. [UPDATED]
-   * Also deletes the subject record if no other classes are assigned to it (orphan cleanup).
+   * Removes subject from class.
+   * Note: Does NOT delete the subject record - it remains in the master list
+   * and can be reassigned to other classes.
    */
   async removeSubjectFromClass(classSubjectId, schoolId) {
     const existing = await pool.query(
@@ -180,21 +181,10 @@ class ClassSubjectsService {
       );
     }
 
-    const subjectIdToCheck = existing.rows[0].subject_id;
-
     await pool.query(
       'DELETE FROM class_subjects WHERE id = $1 AND school_id = $2',
       [classSubjectId, schoolId]
     );
-
-    const remaining = await pool.query(
-      'SELECT COUNT(*) FROM class_subjects WHERE subject_id = $1 AND school_id = $2',
-      [subjectIdToCheck, schoolId]
-    );
-
-    if (parseInt(remaining.rows[0].count) === 0) {
-      await pool.query('DELETE FROM subjects WHERE id = $1', [subjectIdToCheck]);
-    }
 
     return existing.rows[0];
   }
