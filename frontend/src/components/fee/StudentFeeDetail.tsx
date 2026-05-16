@@ -63,7 +63,7 @@ const StudentFeeDetail: React.FC<StudentFeeDetailProps> = ({
     tx: null as unknown as FeeTransaction,
   });
 
-  const feeSummary = useMemo(() => computeFeeSummary(feeData), [feeData]);
+  const feeSummary = useMemo(() => computeFeeSummary(feeData, "amountDue"), [feeData]);
 
   const sortedFees = useMemo(
     () => [...feeData].sort((a, b) => (a.termNumber ?? 999) - (b.termNumber ?? 999)),

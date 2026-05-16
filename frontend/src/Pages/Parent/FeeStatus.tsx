@@ -96,7 +96,7 @@ return (
         <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
           <span className="material-symbols-outlined text-[20px] flex-shrink-0 text-amber-600" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
           <p className="text-sm font-semibold text-amber-700">
-            {urgentTx.termNumber ? `Term ${urgentTx.termNumber}` : 'Fee'} of {urgentTx.amountPending} is due.{' '}
+            {urgentTx.termNumber ? `Term ${urgentTx.termNumber}` : 'Fee'} of {formatINR(urgentTx.amountPending)} is due.{' '}
             Please contact school for payment.
           </p>
         </div>

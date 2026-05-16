@@ -107,7 +107,11 @@ class FeeStructuresService {
       feeTerms,
       totalAnnualFee: totalAnnual,
       perTermAmount: Math.round(perTermAmount * 100) / 100,
-      components
+      components: components.map(c => ({
+        id: c.id,
+        fee_type: c.fee_type,
+        annual_amount: parseFloat(c.amount),
+      }))
     };
   }
 

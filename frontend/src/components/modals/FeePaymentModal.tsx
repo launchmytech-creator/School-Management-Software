@@ -61,6 +61,7 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
   onSubmit,
 }) => {
   const [processing, setProcessing] = React.useState(false);
+  const [paymentError, setPaymentError] = React.useState<string | null>(null);
   const [receiptNumber] = React.useState(generateReceiptNumber());
 
   const {
@@ -85,6 +86,7 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
 
     try {
       setProcessing(true);
+      setPaymentError(null);
       const payload: RecordPaymentDto = {
         amountPaid: parseFloat(data.amountPaid),
         paymentMode: data.paymentMode,
@@ -94,7 +96,9 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
 
       await onSubmit(payload);
       reset();
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Payment failed. Please try again.';
+      setPaymentError(msg);
     } finally {
       setProcessing(false);
     }
@@ -175,6 +179,12 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
             </div>
           </div>
         </div>
+
+        {paymentError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 font-medium">
+            {paymentError}
+          </div>
+        )}
 
         <div className="flex gap-3 pt-2">
           <Button

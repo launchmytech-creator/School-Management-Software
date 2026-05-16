@@ -22,6 +22,7 @@ export const FeeWaiverModal: React.FC<FeeWaiverModalProps> = ({
   onSubmit,
 }) => {
   const [processing, setProcessing] = useState(false);
+  const [waiverError, setWaiverError] = useState<string | null>(null);
 
   const {
     register,
@@ -41,9 +42,12 @@ export const FeeWaiverModal: React.FC<FeeWaiverModalProps> = ({
 
     try {
       setProcessing(true);
+      setWaiverError(null);
       await onSubmit(parseFloat(data.waiverAmount), data.waiverReason);
       reset();
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to apply waiver. Please try again.';
+      setWaiverError(msg);
     } finally {
       setProcessing(false);
     }
@@ -105,6 +109,12 @@ export const FeeWaiverModal: React.FC<FeeWaiverModalProps> = ({
             {...register('waiverReason')}
           />
         </div>
+
+        {waiverError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 font-medium">
+            {waiverError}
+          </div>
+        )}
 
         <div className="flex gap-3 pt-2">
           <Button

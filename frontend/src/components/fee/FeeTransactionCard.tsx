@@ -52,7 +52,7 @@ const FeeTransactionCard: React.FC<FeeTransactionCardProps> = ({
       <div className="flex items-center justify-between mb-3">
         <div>
           <h4 className="text-base font-black text-slate-900">
-            Term {termNumber || 1}
+            {termNumber ? `Term ${termNumber}` : 'Annual'}
           </h4>
           <p className="text-xs text-slate-500">
             {academicYearName}

@@ -94,6 +94,28 @@ export const useFeeTransactions = (
   };
 };
 
+/** Fetch ALL fee transactions for a class without pagination — used for per-student summary computation. */
+export const useAllFeeTransactions = (
+  params: { classId?: number; academicYearId?: number } = {},
+) => {
+  const { user } = useAuth();
+
+  return useQuery<FeeTransaction[]>({
+    queryKey: queryKeys.feeTransactions.byFilters(user?.schoolId ?? null, { ...params, all: true }),
+    queryFn: async () => {
+      try {
+        const result = await feeService.getFeeTransactions(params);
+        return result.data;
+      } catch (error) {
+        handleServiceError(error, 'FEE_TRANSACTIONS', 'FETCH');
+        throw error;
+      }
+    },
+    staleTime: QUERY_STALE_TIME.OPERATIONAL,
+    ...retryConfig,
+  });
+};
+
 export const useStudentFees = (studentId: number) => {
   const { user } = useAuth();
   

@@ -74,7 +74,6 @@ class ParentDashboardService {
     query += ` ORDER BY sa.attendance_date DESC`;
 
     const result = await pool.query(query, params);
-    console.log(result);
     return result.rows;
   }
 
@@ -211,13 +210,13 @@ class ParentDashboardService {
         children.map(async (child) => {
           // Get fee summary
           const feeSummary = await pool.query(
-            `SELECT 
-              COALESCE(SUM(original_amount), 0) as total_fee,
+            `SELECT
+              COALESCE(SUM(amount_due), 0) as total_fees,
               COALESCE(AVG(original_amount), 0) as per_term_fee,
-              COALESCE(SUM(CASE WHEN status = 'paid' THEN amount_paid ELSE 0 END), 0) as total_paid,
-              COALESCE(SUM(CASE WHEN status = 'pending' THEN amount_due ELSE 0 END), 0) as total_due,
+              COALESCE(SUM(amount_paid), 0) as paid_fees,
+              COALESCE(SUM(amount_due - amount_paid), 0) as pending_fees,
               COALESCE(COUNT(CASE WHEN status = 'paid' THEN 1 END), 0) as terms_paid,
-              COALESCE(COUNT(CASE WHEN status = 'pending' THEN 1 END), 0) as terms_left
+              COALESCE(COUNT(CASE WHEN status IN ('pending', 'partial') THEN 1 END), 0) as terms_left
             FROM fee_transactions
             WHERE student_id = $1 AND school_id = $2`,
             [child.id, schoolId],
@@ -304,7 +303,6 @@ class ParentDashboardService {
                   overallPercentage,
                 }
               : null;
-          console.log(examResult);
           return {
             student: child,
             fee_summary: feeSummary.rows[0] || {},
