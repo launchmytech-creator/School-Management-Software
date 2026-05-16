@@ -58,17 +58,17 @@ class FeeStructuresController {
     }
   }
 
-  // Delete all components for a class+year group
+  // Delete all components for a class+year+billing-cycle group
   async deleteFeeStructureGroup(req, res, next) {
     try {
-      const { classId, academicYearId } = req.query;
+      const { classId, academicYearId, feeTerms } = req.query;
       if (!classId || !academicYearId) {
         return ApiResponse.error(res, "classId and academicYearId are required", 400);
       }
       const result = await feeStructuresService.deleteFeeStructureGroup(
-        req.user.schoolId, classId, academicYearId
+        req.user.schoolId, classId, academicYearId, feeTerms ? parseInt(feeTerms) : null
       );
-      return ApiResponse.success(res, result, "All fee components deleted for this class and year");
+      return ApiResponse.success(res, result, "Fee components deleted successfully");
     } catch (error) {
       next(error);
     }

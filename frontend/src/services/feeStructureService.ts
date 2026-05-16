@@ -176,9 +176,11 @@ export const feeStructureService = {
     return response.map(mapGroupFromBackend);
   },
 
-  deleteFeeStructureGroup: async (classId: number, academicYearId: number): Promise<{ deleted: number }> => {
+  deleteFeeStructureGroup: async (classId: number, academicYearId: number, feeTerms?: number): Promise<{ deleted: number }> => {
+    const params = new URLSearchParams({ classId: String(classId), academicYearId: String(academicYearId) });
+    if (feeTerms !== undefined) params.append('feeTerms', String(feeTerms));
     const response = await apiRequest<{ deleted: number }>(
-      `/fee-structures/group?classId=${classId}&academicYearId=${academicYearId}`,
+      `/fee-structures/group?${params.toString()}`,
       { method: 'DELETE' }
     );
     return response;

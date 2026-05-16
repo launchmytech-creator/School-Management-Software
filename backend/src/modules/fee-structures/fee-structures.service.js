@@ -31,24 +31,7 @@ class FeeStructuresService {
         throw new AppError(ERROR_CODES.NOT_FOUND, "Academic year not found", 404);
       }
 
-      // Check if this class+year group already has components — enforce consistent feeTerms
-      const existingGroup = await client.query(
-        "SELECT fee_terms FROM fee_structures WHERE school_id = $1 AND class_id = $2 AND academic_year_id = $3 LIMIT 1",
-        [schoolId, feeData.classId, feeData.academicYearId]
-      );
-      if (existingGroup.rows.length > 0) {
-        const existingFeeTerms = existingGroup.rows[0].fee_terms;
-        if (existingFeeTerms !== feeData.feeTerms) {
-          throw new AppError(
-            ERROR_CODES.INVALID_INPUT,
-            "All fee components for the same class and academic year must use the same feeTerms. " +
-            "Existing feeTerms for this group: " + existingFeeTerms,
-            400
-          );
-        }
-      }
-
-      // Check duplicate fee type in this group
+      // Check duplicate fee type in this class+year
       const duplicate = await client.query(
         "SELECT id FROM fee_structures WHERE school_id = $1 AND class_id = $2 AND academic_year_id = $3 AND fee_type = $4 LIMIT 1",
         [schoolId, feeData.classId, feeData.academicYearId, feeData.feeType]
@@ -69,10 +52,11 @@ class FeeStructuresService {
       const created = result.rows[0];
 
       // Return the full group summary
-      const groupSummary = await this._getGroupSummary(client, schoolId, feeData.classId, feeData.academicYearId);
+      const groupSummaries = await this._getGroupSummary(client, schoolId, feeData.classId, feeData.academicYearId);
+      const matchingGroup = groupSummaries.find(g => g.feeTerms === feeData.feeTerms) || groupSummaries[0];
 
       await client.query("COMMIT");
-      return { component: created, group: groupSummary };
+      return { component: created, group: matchingGroup };
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -82,6 +66,7 @@ class FeeStructuresService {
   }
 
   async _getGroupSummary(client, schoolId, classId, academicYearId) {
+    // Returns all billing-cycle groups for this class+year (one group per unique feeTerms)
     const result = await client.query(
       `SELECT fs.*,
               c.name as class_name, c.section as class_section,
@@ -90,29 +75,41 @@ class FeeStructuresService {
        LEFT JOIN classes c ON fs.class_id = c.id
        LEFT JOIN academic_years ay ON fs.academic_year_id = ay.id
        WHERE fs.school_id = $1 AND fs.class_id = $2 AND fs.academic_year_id = $3
-       ORDER BY fs.fee_type`,
+       ORDER BY fs.fee_terms, fs.fee_type`,
       [schoolId, classId, academicYearId]
     );
-    const components = result.rows;
-    const totalAnnual = components.reduce((sum, c) => sum + parseFloat(c.amount), 0);
-    const feeTerms = components.length > 0 ? components[0].fee_terms : null;
-    const perTermAmount = feeTerms ? totalAnnual / feeTerms : totalAnnual;
+    const allComponents = result.rows;
+    if (!allComponents.length) return [];
 
-    return {
-      classId,
-      academicYearId,
-      className: components[0]?.class_name,
-      classSection: components[0]?.class_section,
-      academicYearName: components[0]?.academic_year_name,
-      feeTerms,
-      totalAnnualFee: totalAnnual,
-      perTermAmount: Math.round(perTermAmount * 100) / 100,
-      components: components.map(c => ({
-        id: c.id,
-        fee_type: c.fee_type,
-        annual_amount: parseFloat(c.amount),
-      }))
-    };
+    // Group by fee_terms so each billing cycle is its own group
+    const byTerms = {};
+    for (const c of allComponents) {
+      const key = c.fee_terms;
+      if (!byTerms[key]) byTerms[key] = [];
+      byTerms[key].push(c);
+    }
+
+    return Object.entries(byTerms).map(([feeTermsStr, components]) => {
+      const feeTerms = parseInt(feeTermsStr);
+      const totalAnnual = components.reduce((sum, c) => sum + parseFloat(c.amount), 0);
+      const perTermAmount = totalAnnual / feeTerms;
+      const first = components[0];
+      return {
+        classId,
+        academicYearId,
+        className: first.class_name,
+        classSection: first.class_section,
+        academicYearName: first.academic_year_name,
+        feeTerms,
+        totalAnnualFee: totalAnnual,
+        perTermAmount: Math.round(perTermAmount * 100) / 100,
+        components: components.map(c => ({
+          id: c.id,
+          fee_type: c.fee_type,
+          annual_amount: parseFloat(c.amount),
+        }))
+      };
+    });
   }
 
   async getFeeStructuresBySchool(schoolId, filters = {}) {
@@ -220,15 +217,20 @@ class FeeStructuresService {
   }
 
   /**
-   * Delete all fee components for a class+year group
+   * Delete all fee components for a class+year+feeTerms group.
+   * If feeTerms is provided, only deletes that billing cycle; otherwise deletes all cycles.
    */
-  async deleteFeeStructureGroup(schoolId, classId, academicYearId) {
-    const result = await pool.query(
-      "DELETE FROM fee_structures WHERE school_id = $1 AND class_id = $2 AND academic_year_id = $3 RETURNING *",
-      [schoolId, classId, academicYearId]
-    );
+  async deleteFeeStructureGroup(schoolId, classId, academicYearId, feeTerms = null) {
+    let query = "DELETE FROM fee_structures WHERE school_id = $1 AND class_id = $2 AND academic_year_id = $3";
+    const params = [schoolId, classId, academicYearId];
+    if (feeTerms !== null) {
+      query += " AND fee_terms = $4";
+      params.push(feeTerms);
+    }
+    query += " RETURNING *";
+    const result = await pool.query(query, params);
     if (result.rows.length === 0) {
-      throw new AppError(ERROR_CODES.NOT_FOUND, "No fee structures found for this class and academic year", 404);
+      throw new AppError(ERROR_CODES.NOT_FOUND, "No fee structures found for this group", 404);
     }
     return { deleted: result.rows.length, records: result.rows };
   }

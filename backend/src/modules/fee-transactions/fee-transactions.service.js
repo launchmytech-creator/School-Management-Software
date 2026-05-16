@@ -9,13 +9,13 @@ class FeeTransactionsService {
     try {
       await client.query("BEGIN");
 
-      // Load all fee components for this class+year group
+      // Load all fee components for this class+year, ordered by fee_terms so we can group them
       const componentsResult = await client.query(
         `SELECT fs.*, ay.start_date as ay_start_date
          FROM fee_structures fs
          JOIN academic_years ay ON fs.academic_year_id = ay.id
          WHERE fs.school_id = $1 AND fs.class_id = $2 AND fs.academic_year_id = $3
-         ORDER BY fs.fee_type`,
+         ORDER BY fs.fee_terms, fs.fee_type`,
         [schoolId, data.classId, data.academicYearId]
       );
 
@@ -23,19 +23,12 @@ class FeeTransactionsService {
         throw new AppError(ERROR_CODES.NOT_FOUND, "No fee structures found for this class and academic year", 404);
       }
 
-      const components = componentsResult.rows;
-      const feeTerms = components[0].fee_terms;
-      const ayStartDate = components[0].ay_start_date;
-
-      // Total annual fee = sum of all components
-      const totalAnnualFee = components.reduce((sum, c) => sum + parseFloat(c.amount), 0);
-      // Per term = total / feeTerms
-      const perTermAmount = Math.round((totalAnnualFee / feeTerms) * 100) / 100;
-
-      // Breakdown per term: each component's share = annual / feeTerms
-      const termBreakdown = {};
-      for (const comp of components) {
-        termBreakdown[comp.fee_type] = Math.round((parseFloat(comp.amount) / feeTerms) * 100) / 100;
+      // Group fee components by their feeTerms — each unique feeTerms is a billing cycle
+      const byTerms = {};
+      for (const c of componentsResult.rows) {
+        const key = c.fee_terms;
+        if (!byTerms[key]) byTerms[key] = [];
+        byTerms[key].push(c);
       }
 
       // Get active students
@@ -49,47 +42,66 @@ class FeeTransactionsService {
         throw new AppError(ERROR_CODES.INVALID_INPUT, "No active students found in this class", 400);
       }
 
-      const generated = [];
-      const skipped = [];
+      const allGenerated = [];
+      const skippedStudents = [];
+      const groupSummaries = [];
 
-      for (const student of students) {
-        const existing = await client.query(
-          "SELECT id FROM fee_transactions WHERE student_id = $1 AND academic_year_id = $2 AND school_id = $3 LIMIT 1",
-          [student.id, data.academicYearId, schoolId]
-        );
-        if (existing.rows.length > 0) {
-          skipped.push(student.id);
-          continue;
+      for (const [feeTermsStr, components] of Object.entries(byTerms)) {
+        const feeTerms = parseInt(feeTermsStr);
+        const ayStartDate = components[0].ay_start_date;
+        const totalAnnualFee = components.reduce((sum, c) => sum + parseFloat(c.amount), 0);
+        const perTermAmount = Math.round((totalAnnualFee / feeTerms) * 100) / 100;
+
+        // Breakdown: each component's share per term
+        const termBreakdown = {};
+        for (const comp of components) {
+          termBreakdown[comp.fee_type] = Math.round((parseFloat(comp.amount) / feeTerms) * 100) / 100;
         }
 
-        // One transaction per term — combined bill
-        for (let term = 1; term <= feeTerms; term++) {
-          const dueDate = this.calculateDueDate(ayStartDate, term, feeTerms);
-          const termNumber = feeTerms === 1 ? null : term;
+        groupSummaries.push({ feeTerms, totalAnnualFee, perTermAmount, termBreakdown });
 
-          const result = await client.query(
-            `INSERT INTO fee_transactions
-               (school_id, student_id, fee_structure_id, academic_year_id,
-                term_number, original_amount, amount_due, due_date, status, fee_breakdown)
-             VALUES ($1, $2, $3, $4, $5, $6, $6, $7, 'pending', $8) RETURNING *`,
-            [
-              schoolId, student.id, components[0].id, data.academicYearId,
-              termNumber, perTermAmount, dueDate, JSON.stringify(termBreakdown)
-            ]
+        for (const student of students) {
+          // Skip if this billing-cycle group already has transactions for this student
+          const existing = await client.query(
+            `SELECT id FROM fee_transactions
+             WHERE student_id = $1 AND academic_year_id = $2 AND school_id = $3 AND fee_structure_id = $4
+             LIMIT 1`,
+            [student.id, data.academicYearId, schoolId, components[0].id]
           );
-          generated.push(result.rows[0]);
+          if (existing.rows.length > 0) {
+            if (!skippedStudents.includes(student.id)) skippedStudents.push(student.id);
+            continue;
+          }
+
+          for (let term = 1; term <= feeTerms; term++) {
+            const dueDate = this.calculateDueDate(ayStartDate, term, feeTerms);
+            const termNumber = feeTerms === 1 ? null : term;
+
+            const result = await client.query(
+              `INSERT INTO fee_transactions
+                 (school_id, student_id, fee_structure_id, academic_year_id,
+                  term_number, original_amount, amount_due, due_date, status, fee_breakdown)
+               VALUES ($1, $2, $3, $4, $5, $6, $6, $7, 'pending', $8) RETURNING *`,
+              [
+                schoolId, student.id, components[0].id, data.academicYearId,
+                termNumber, perTermAmount, dueDate, JSON.stringify(termBreakdown)
+              ]
+            );
+            allGenerated.push(result.rows[0]);
+          }
         }
       }
 
       await client.query("COMMIT");
       return {
-        feeTerms,
-        totalAnnualFee,
-        perTermAmount,
-        termBreakdown,
-        generated: generated.length,
-        skippedStudents: skipped.length,
-        transactions: generated
+        billingGroups: groupSummaries,
+        generated: allGenerated.length,
+        skippedStudents: skippedStudents.length,
+        transactions: allGenerated,
+        // Legacy fields for backwards compat
+        feeTerms: groupSummaries[0]?.feeTerms,
+        totalAnnualFee: groupSummaries.reduce((s, g) => s + g.totalAnnualFee, 0),
+        perTermAmount: groupSummaries[0]?.perTermAmount,
       };
     } catch (error) {
       await client.query("ROLLBACK");
@@ -128,12 +140,14 @@ class FeeTransactionsService {
              s.full_name as student_name, s.admission_number,
              c.name as class_name, c.section as class_section,
              ay.year_name as academic_year_name,
-             u.full_name as parent_name, u.phone as parent_phone
+             u.full_name as parent_name, u.phone as parent_phone,
+             fs.fee_terms as fee_terms, fs.fee_type as primary_fee_type
       FROM fee_transactions ft
       LEFT JOIN students s ON ft.student_id = s.id
       LEFT JOIN classes c ON s.current_class_id = c.id
       LEFT JOIN academic_years ay ON ft.academic_year_id = ay.id
       LEFT JOIN users u ON s.parent_id = u.id
+      LEFT JOIN fee_structures fs ON ft.fee_structure_id = fs.id
       WHERE ft.school_id = $1
     `;
     const params = [schoolId];
@@ -218,11 +232,13 @@ class FeeTransactionsService {
   async getStudentFeeTransactions(studentId, schoolId) {
     const result = await pool.query(
       `SELECT ft.*, ay.year_name as academic_year_name,
-              (ft.amount_due - ft.amount_paid) as pending_amount
+              (ft.amount_due - ft.amount_paid) as pending_amount,
+              fs.fee_terms as fee_terms, fs.fee_type as primary_fee_type
        FROM fee_transactions ft
        LEFT JOIN academic_years ay ON ft.academic_year_id = ay.id
+       LEFT JOIN fee_structures fs ON ft.fee_structure_id = fs.id
        WHERE ft.student_id = $1 AND ft.school_id = $2
-       ORDER BY ft.due_date ASC`,
+       ORDER BY fs.fee_terms ASC, ft.due_date ASC`,
       [studentId, schoolId]
     );
     return result.rows;

@@ -26,6 +26,8 @@ interface BackendFeeTransaction {
   collected_by: number | null;
   fee_breakdown: FeeBreakdown | null;
   fee_type?: string;
+  fee_terms?: number | null;
+  primary_fee_type?: string | null;
   // joined fields
   student_name: string;
   admission_number: string;
@@ -52,6 +54,8 @@ export interface FeeTransaction {
   academicYearId: number;
   academicYearName: string;
   termNumber: number | null;
+  feeTerms: number | null;
+  billingCycle: string;
   originalAmount: number;
   amountDue: number;
   amountPaid: number;
@@ -125,6 +129,17 @@ export interface GenerateFeeTransactionsResponse {
   transactions: FeeTransaction[];
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────
+const feeTermsToCycle = (feeTerms: number | null): string => {
+  switch (feeTerms) {
+    case 1:  return 'Annual';
+    case 2:  return 'Half-Yearly';
+    case 4:  return 'Quarterly';
+    case 12: return 'Monthly';
+    default: return feeTerms ? `${feeTerms}-Term` : 'Annual';
+  }
+};
+
 // ── Mappers ─────────────────────────────────────────────────────────
 const mapTransaction = (row: BackendFeeTransaction): FeeTransaction => ({
   id: row.id,
@@ -138,6 +153,8 @@ const mapTransaction = (row: BackendFeeTransaction): FeeTransaction => ({
   academicYearName: row.academic_year_name,
   feeType: row.fee_type,
   termNumber: row.term_number,
+  feeTerms: row.fee_terms ?? null,
+  billingCycle: feeTermsToCycle(row.fee_terms ?? null),
   originalAmount: parseFloat(String(row.original_amount)) || 0,
   amountDue: parseFloat(String(row.amount_due)) || 0,
   amountPaid: parseFloat(String(row.amount_paid)) || 0,
