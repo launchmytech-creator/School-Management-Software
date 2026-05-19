@@ -68,7 +68,7 @@ export const parentService = {
         fullName: data.fullName,
         phone: data.phone,
         dateOfBirth: data.dateOfBirth,
-        gender: data.gender,
+        gender: data.gender ? (data.gender.charAt(0).toUpperCase() + data.gender.slice(1)) : undefined,
         address: data.address,
       },
     });
