@@ -43,8 +43,7 @@ const CreateParentModal: React.FC<CreateParentModalProps> = ({ isOpen, onClose, 
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } }; message?: string };
-      const message = error.response?.data?.message || error.message || 'Failed to create parent';
+      const message = err instanceof Error ? err.message : 'Failed to create parent';
       showNotification(message, 'error');
     }
   };
