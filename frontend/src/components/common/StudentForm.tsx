@@ -13,7 +13,7 @@ import { ParentSection } from '../students/ParentSection';
 import { studentService, type CreateStudentDto } from '../../services/studentService';
 import { useNotification } from '../../context/NotificationContext';
 import { useAcademicYear } from '../../context/AcademicYearContext';
-import { getLocalDateString } from '../../lib/utils';
+import { getLocalDateString, sortByGrade } from '../../lib/utils';
 import type { Parent, Gender, CreateParentDto } from '../../types/parent';
 import { parentService } from '../../services/parentService';
 import { feeService } from '../../services/feeService';
@@ -382,7 +382,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
                 {...registerStudent('currentClassId')}
               >
                 <option value="">Select a Class</option>
-                {classes.map(c => (
+                {sortByGrade(classes).map(c => (
                   <option key={c.id} value={c.id}>
                     {c.name} {c.section ? `- ${c.section}` : ''}
                   </option>

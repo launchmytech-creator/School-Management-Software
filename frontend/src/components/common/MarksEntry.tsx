@@ -10,6 +10,7 @@ import { useExamSubjectResults, useEnterMarks } from "../../hooks/queries/useExa
 import type { ExamSubject } from "../../services/examService";
 import type { ExamSubjectResult } from "../../services/examResultService";
 import { Save, GraduationCap } from "lucide-react";
+import { sortByGrade } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { MarksConfirmModal } from "../../components/modals/MarksConfirmModal";
 import { MarksRow } from "./MarksRow";
@@ -272,7 +273,7 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ layout }) => {
             className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Select Class</option>
-            {classesData.map((cls) => (
+            {sortByGrade(classesData).map((cls) => (
               <option key={cls.id} value={cls.id}>
                 {cls.name} - Section {cls.section || "A"}
               </option>

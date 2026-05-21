@@ -8,7 +8,7 @@ import PageHeader from '../common/PageHeader';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import EmptyState from '../common/EmptyState';
 import FilterBar from '../common/FilterBar';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency, sortByGrade } from '../../lib/utils';
 
 interface FeeClassSelectorProps {
   mode: 'collection' | 'defaulters';
@@ -64,12 +64,14 @@ const FeeClassSelector: React.FC<FeeClassSelectorProps> = ({ mode, layout }) => 
   }, [allClasses, transactions, defaulters]);
 
   const filteredClasses = useMemo(() => {
-    if (!searchTerm.trim()) return allClasses;
+    if (!searchTerm.trim()) return sortByGrade(allClasses);
     const search = searchTerm.toLowerCase();
-    return allClasses.filter(
-      (c) =>
-        c.name.toLowerCase().includes(search) ||
-        (c.section && c.section.toLowerCase().includes(search))
+    return sortByGrade(
+      allClasses.filter(
+        (c) =>
+          c.name.toLowerCase().includes(search) ||
+          (c.section && c.section.toLowerCase().includes(search))
+      )
     );
   }, [allClasses, searchTerm]);
 

@@ -86,9 +86,7 @@ const SubjectChapters: React.FC = () => {
   };
 
   const handleBack = () => {
-    if (classId) {
-      navigate(`/admin/classes/${classId}/subjects`);
-    }
+    navigate(-1);
   };
 
   const isLoading = loadingClass || loadingChapters;
@@ -117,7 +115,7 @@ const SubjectChapters: React.FC = () => {
         }}
         actions={[
           {
-            label: "Back to Subjects",
+            label: "Back",
             icon: ArrowLeft,
             onClick: handleBack,
             variant: "outline",

@@ -46,7 +46,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
         {breadcrumb && (
           <nav className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
             {breadcrumb.links.map((link, i) => (
-              <React.Fragment key={link.label}>
+              <React.Fragment key={`${link.label}-${i}`}>
                 {i > 0 && <ChevronRight className="size-3" />}
                 {link.href && !link.active ? (
                   <Link 

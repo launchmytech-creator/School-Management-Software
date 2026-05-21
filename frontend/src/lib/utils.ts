@@ -5,6 +5,49 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export const gradeRank = (name: string): number => {
+  const lower = name.toLowerCase().trim();
+
+  const exact: Record<string, number> = {
+    'pre-nursery': 0.5,
+    'pre nursery': 0.5,
+    'playgroup': 0.6,
+    'play group': 0.6,
+    'nursery': 1,
+    'lkg': 2,
+    'ukg': 3,
+  };
+
+  if (exact[lower] !== undefined) return exact[lower];
+
+  const matchNum = lower.match(/^(?:class|grade|standard|std|cl)\s*[-\s]*(?:(\d+))$/i);
+  if (matchNum) return 10 + parseInt(matchNum[1], 10);
+
+  const romanMap: Record<string, number> = {
+    i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6,
+    vii: 7, viii: 8, ix: 9, x: 10, xi: 11, xii: 12,
+  };
+  const matchRoman = lower.match(/^(?:class|grade|standard|std|cl)\s*[-\s]*([ivxlcdm]+)$/i);
+  if (matchRoman) {
+    const r = romanMap[matchRoman[1].toLowerCase()];
+    if (r) return 10 + r;
+  }
+
+  const matchStandalone = lower.match(/^(\d+)$/);
+  if (matchStandalone) return 10 + parseInt(matchStandalone[1], 10);
+
+  return 999;
+};
+
+export const sortByGrade = <T extends { name: string; section?: string | null }>(items: T[]): T[] => {
+  return [...items].sort((a, b) => {
+    const rankA = gradeRank(a.name);
+    const rankB = gradeRank(b.name);
+    if (rankA !== rankB) return rankA - rankB;
+    return (a.section || '').localeCompare(b.section || '');
+  });
+};
+
 export const getCurrentAcademicYear = (): string => {
   const now = new Date();
   const year = now.getFullYear();

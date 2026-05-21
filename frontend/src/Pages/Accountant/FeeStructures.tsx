@@ -4,6 +4,7 @@ import { FeeStructureStats } from "../../components/fee/FeeStructureStats";
 import { FeeStructureGroupsTable } from "../../components/fee/FeeStructureGroupsTable";
 import type { FeeStructureGroup } from "../../services/feeStructureService";
 import { useClasses, useFeeStructuresGrouped } from "../../hooks/queries";
+import { sortByGrade } from "../../lib/utils";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 
 const EMPTY_STRUCTURES: FeeStructureGroup[] = [];
@@ -81,7 +82,7 @@ const AccountantFeeStructures: React.FC = () => {
             className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 min-w-40"
           >
             <option value="">All Classes</option>
-            {classes.map((cls) => (
+            {sortByGrade(classes).map((cls) => (
               <option key={cls.id} value={cls.id}>
                 {cls.name} {cls.section ? `- ${cls.section}` : ""}
               </option>

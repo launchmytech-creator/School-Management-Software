@@ -10,6 +10,7 @@ import { useClasses, useFeeStructuresGrouped } from './queries';
 import { useAcademicYear } from '../context/AcademicYearContext';
 import type { Class } from '../types/class';
 import type { AcademicYear } from '../types/academicYear';
+import { sortByGrade } from '../lib/utils';
 
 interface GenerationResult {
   feeTerms: number;
@@ -113,7 +114,7 @@ export const useFeeStructuresPage = (): UseFeeStructuresPageReturn => {
 
   // Data state
   const { data: classesData, isLoading: classesLoading } = useClasses();
-  const classes = classesData || [];
+  const classes = sortByGrade(classesData || []);
   const { allYears: academicYears } = useAcademicYear();
 
   // Filter state

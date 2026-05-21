@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, ChevronRight, Loader, Trash2 } from "lucide-react";
+import { Plus, ChevronRight, Loader, Trash2, Pencil } from "lucide-react";
 import { subjectIcon } from "../../lib/subject-utils";
 import type { ClassSubject, Chapter } from "../../services/subjectService";
 
@@ -10,6 +10,7 @@ interface SubjectCardProps {
   isLoadingChapters: boolean;
   onToggle: () => void;
   onAddChapter: () => void;
+  onEditSubject: () => void;
   onDeleteSubject: () => void;
   onDeleteChapter: (chapterId: number) => void;
 }
@@ -21,6 +22,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   isLoadingChapters,
   onToggle,
   onAddChapter,
+  onEditSubject,
   onDeleteSubject,
   onDeleteChapter,
 }) => {
@@ -54,6 +56,16 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
             title="Add Chapter"
           >
             <Plus className="size-4 text-slate-400" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditSubject();
+            }}
+            className="p-1.5 hover:bg-blue-50 rounded-lg"
+            title="Edit Subject"
+          >
+            <Pencil className="size-4 text-blue-400" />
           </button>
           <button
             onClick={(e) => {

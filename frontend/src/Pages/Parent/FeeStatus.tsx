@@ -37,8 +37,15 @@ const ParentFeeStatus: React.FC = () => {
 
   const { data: settings } = useQuery<SchoolSettings>({
     queryKey: ['school-settings'],
-    queryFn: () => schoolSettingsService.getSettings(),
+    queryFn: async () => {
+      try {
+        return await schoolSettingsService.getSettings();
+      } catch {
+        return null as unknown as SchoolSettings;
+      }
+    },
     staleTime: 30 * 60 * 1000,
+    retry: false,
   });
 
   const { data: transactions = [] } = useStudentFees(selected?.id ?? 0);
@@ -68,7 +75,7 @@ const ParentFeeStatus: React.FC = () => {
       paymentMode: tx.paymentMode ?? undefined,
       dueDate: tx.dueDate ?? undefined,
       academicYearName: tx.academicYearName ?? undefined,
-    }, settings?.schoolName ?? 'School');
+    }, settings && 'schoolName' in settings ? (settings as SchoolSettings).schoolName : 'School');
   };
 
   if (childrenLoading) {

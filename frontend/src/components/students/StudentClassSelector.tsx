@@ -8,6 +8,7 @@ import PageHeader from '../common/PageHeader';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import EmptyState from '../common/EmptyState';
 import FilterBar from '../common/FilterBar';
+import { sortByGrade } from '../../lib/utils';
 
 interface StudentClassSelectorProps {
   layout: 'admin' | 'accountant' | 'teacher';
@@ -30,12 +31,14 @@ const StudentClassSelector: React.FC<StudentClassSelectorProps> = ({ layout, tea
   }, [allClasses, layout, teacherClassIds]);
 
   const filteredClasses = React.useMemo(() => {
-    if (!searchTerm.trim()) return classes;
+    if (!searchTerm.trim()) return sortByGrade(classes);
     const search = searchTerm.toLowerCase();
-    return classes.filter(
-      (c) =>
-        c.name.toLowerCase().includes(search) ||
-        (c.section && c.section.toLowerCase().includes(search))
+    return sortByGrade(
+      classes.filter(
+        (c) =>
+          c.name.toLowerCase().includes(search) ||
+          (c.section && c.section.toLowerCase().includes(search))
+      )
     );
   }, [classes, searchTerm]);
 

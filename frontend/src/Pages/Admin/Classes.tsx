@@ -4,6 +4,7 @@ import { Plus, BookOpen, Eye, Trash2, Users, ChevronRight } from "lucide-react";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useClasses } from "../../hooks/queries/useClasses";
 import { useDeleteClass } from "../../hooks/mutations/useClassMutations";
+import { sortByGrade } from "../../lib/utils";
 import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import EmptyState from "../../components/common/EmptyState";
@@ -16,7 +17,11 @@ const Classes: React.FC = () => {
   const navigate = useNavigate();
   const { allYears, selectedYear, setSelectedYear } = useAcademicYear();
 
-  const { data: classes = [], isLoading, refetch } = useClasses(selectedYear?.id);
+  const {
+    data: classes = [],
+    isLoading,
+    refetch,
+  } = useClasses(selectedYear?.id);
   const deleteClass = useDeleteClass();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,12 +34,14 @@ const Classes: React.FC = () => {
 
   const filteredClasses = useMemo(() => {
     const searchLow = searchTerm.toLowerCase();
-    return classes.filter((cls) => {
-      return (
-        cls.name.toLowerCase().includes(searchLow) ||
-        (cls.section && cls.section.toLowerCase().includes(searchLow))
-      );
-    });
+    return sortByGrade(
+      classes.filter((cls) => {
+        return (
+          cls.name.toLowerCase().includes(searchLow) ||
+          (cls.section && cls.section.toLowerCase().includes(searchLow))
+        );
+      }),
+    );
   }, [classes, searchTerm]);
 
   const handleResetFilters = () => {
@@ -56,8 +63,17 @@ const Classes: React.FC = () => {
   };
 
   const getActionMenuItems = (id: string) => [
-    { label: "View Detail", icon: <Eye className="size-4" />, onClick: () => navigate(`/admin/classes/${id}`) },
-    { label: "Delete", icon: <Trash2 className="size-4" />, onClick: () => handleDeleteClass(id), variant: "danger" as const },
+    {
+      label: "View Detail",
+      icon: <Eye className="size-4" />,
+      onClick: () => navigate(`/admin/classes/${id}`),
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 className="size-4" />,
+      onClick: () => handleDeleteClass(id),
+      variant: "danger" as const,
+    },
   ];
 
   return (
@@ -91,7 +107,9 @@ const Classes: React.FC = () => {
               className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer"
               value={selectedYear?.id || ""}
               onChange={(e) => {
-                const year = allYears.find((y) => String(y.id) === e.target.value);
+                const year = allYears.find(
+                  (y) => String(y.id) === e.target.value,
+                );
                 setSelectedYear(year || null);
               }}
             >
@@ -106,7 +124,9 @@ const Classes: React.FC = () => {
 
         {isLoading ? (
           <div className="bg-white rounded-xl border border-slate-200 p-12 flex items-center justify-center">
-            <div className="animate-pulse text-slate-400">Loading classes...</div>
+            <div className="animate-pulse text-slate-400">
+              Loading classes...
+            </div>
           </div>
         ) : filteredClasses.length === 0 ? (
           <EmptyState
@@ -120,7 +140,7 @@ const Classes: React.FC = () => {
             {filteredClasses.map((cls) => (
               <div
                 key={cls.id}
-                className="bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                className="bg-white rounded-xl border border-slate-200  cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => navigate(`/admin/classes/${cls.id}`)}
               >
                 <div className="p-5">
@@ -140,10 +160,14 @@ const Classes: React.FC = () => {
                             {cls.studentCount} students
                           </span>
                           {cls.defaultFeeAmount && (
-                            <span className="ml-2">• Fee: ₹{cls.defaultFeeAmount}</span>
+                            <span className="ml-2">
+                              • Fee: ₹{cls.defaultFeeAmount}
+                            </span>
                           )}
                           {cls.inchargeName && (
-                            <span className="ml-2">• Teacher: {cls.inchargeName}</span>
+                            <span className="ml-2">
+                              • Teacher: {cls.inchargeName}
+                            </span>
                           )}
                         </p>
                       </div>
@@ -173,7 +197,9 @@ const Classes: React.FC = () => {
 
       <ConfirmDialog
         isOpen={deleteDialog.isOpen}
-        onClose={() => setDeleteDialog({ isOpen: false, itemId: null, loading: false })}
+        onClose={() =>
+          setDeleteDialog({ isOpen: false, itemId: null, loading: false })
+        }
         onConfirm={confirmDeleteClass}
         title="Delete Class"
         message="Are you sure you want to delete this class? This action cannot be undone."

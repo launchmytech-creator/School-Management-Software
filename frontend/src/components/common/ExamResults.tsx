@@ -7,6 +7,7 @@ import { ExamResultsStats } from "./ExamResultsStats";
 import { SubjectResultCard } from "./SubjectResultCard";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
+import { sortByGrade } from "../../lib/utils";
 import { useClasses } from "../../hooks/queries/useClasses";
 import { useExamResults, useExamResultsPerformance } from "../../hooks/queries/useExamResults";
 import type { ExamResult } from "../../services/examResultService";
@@ -198,7 +199,7 @@ const ExamResults: React.FC<ExamResultsProps> = ({ layout = "admin" }) => {
           disabled={!selectedAcademicYear}
         >
           <option value="">All Classes</option>
-          {allClasses.map((cls) => (
+          {sortByGrade(allClasses).map((cls) => (
             <option key={cls.id} value={cls.id}>
               {cls.name} - Section {cls.section || "A"}
             </option>

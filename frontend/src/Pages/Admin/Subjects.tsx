@@ -5,6 +5,7 @@ import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
 import { SubjectCard } from "../../components/academic/SubjectCard";
 import { AddSubjectModal } from "../../components/modals/AddSubjectModal";
 import { AddChapterModal } from "../../components/modals/AddChapterModal";
+import EditSubjectModal from "../../components/modals/EditSubjectModal";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useClasses } from "../../hooks/queries/useClasses";
@@ -22,7 +23,7 @@ import {
 } from "../../hooks/mutations/useSubjectMutations";
 import { type CreateChapterFormData } from "../../schemas/subject.schema";
 import type { Class } from "../../types/class";
-import type { ClassSubject, Chapter } from "../../services/subjectService";
+import type { ClassSubject, Chapter, Subject } from "../../services/subjectService";
 import { Button } from "../../components/ui/button";
 import { Plus, BookOpen, ChevronDown } from "lucide-react";
 
@@ -64,6 +65,13 @@ const Subjects: React.FC = () => {
     classSubjectId: number | null;
     subjectName: string;
   }>({ isOpen: false, classSubjectId: null, subjectName: "" });
+
+  const [editModal, setEditModal] = useState<{
+    isOpen: boolean;
+    subjectId: number;
+    name: string;
+    code: string;
+  }>({ isOpen: false, subjectId: 0, name: "", code: "" });
 
   const allClassIds = useMemo(
     () => classes.map((c) => parseInt(c.id)).filter((id) => !isNaN(id)),
@@ -239,6 +247,22 @@ const Subjects: React.FC = () => {
     } catch (err) {
       console.error("Failed to create chapter:", err);
       showNotification("Failed to create chapter", "error");
+    }
+  };
+
+  const handleEditSubject = async (classSubject: ClassSubject) => {
+    try {
+      const subject = await import("../../services/subjectService").then((m) =>
+        m.subjectService.getSubjectById(classSubject.subjectId),
+      );
+      setEditModal({
+        isOpen: true,
+        subjectId: classSubject.subjectId,
+        name: subject.name,
+        code: subject.code || "",
+      });
+    } catch {
+      showNotification("Failed to load subject details", "error");
     }
   };
 
@@ -436,6 +460,9 @@ const Subjects: React.FC = () => {
                                           onAddChapter={() =>
                                             openAddChapter(cs.id)
                                           }
+                                          onEditSubject={() =>
+                                            handleEditSubject(cs)
+                                          }
                                           onDeleteSubject={() =>
                                             handleDeleteSubject(
                                               cs.id,
@@ -487,6 +514,18 @@ const Subjects: React.FC = () => {
         onClose={() => setShowAddChapterModal(false)}
         onSubmit={onSubmitChapter}
         loading={isChapterSaving}
+      />
+
+      <EditSubjectModal
+        isOpen={editModal.isOpen}
+        onClose={() => setEditModal({ ...editModal, isOpen: false })}
+        subjectId={editModal.subjectId}
+        currentName={editModal.name}
+        currentCode={editModal.code}
+        onSuccess={() => {
+          refetchClassSubjects();
+          showNotification("Subject updated successfully", "success");
+        }}
       />
 
       <ConfirmDialog

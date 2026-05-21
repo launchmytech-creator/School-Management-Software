@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +17,7 @@ interface CreateTeacherModalProps {
 
 const CreateTeacherModal: React.FC<CreateTeacherModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { showNotification } = useNotification();
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -86,10 +87,11 @@ const CreateTeacherModal: React.FC<CreateTeacherModalProps> = ({ isOpen, onClose
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               label="Password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="Minimum 8 characters"
               registration={register('password')}
               error={errors.password}
+              onToggleEye={() => setShowPassword(!showPassword)}
             />
             <FormField
               label="Phone Number"

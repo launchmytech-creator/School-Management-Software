@@ -7,6 +7,7 @@ import PageHeader from '../common/PageHeader';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import EmptyState from '../common/EmptyState';
 import FilterBar from '../common/FilterBar';
+import { sortByGrade } from '../../lib/utils';
 
 interface ExamClassSelectorProps {
   layout: 'admin' | 'accountant';
@@ -20,12 +21,14 @@ const ExamClassSelector: React.FC<ExamClassSelectorProps> = ({ layout }) => {
   const { data: allClasses = [], isLoading: loadingClasses } = useClasses(selectedYear?.id);
 
   const filteredClasses = useMemo(() => {
-    if (!searchTerm.trim()) return allClasses;
+    if (!searchTerm.trim()) return sortByGrade(allClasses);
     const search = searchTerm.toLowerCase();
-    return allClasses.filter(
-      (c) =>
-        c.name.toLowerCase().includes(search) ||
-        (c.section && c.section.toLowerCase().includes(search))
+    return sortByGrade(
+      allClasses.filter(
+        (c) =>
+          c.name.toLowerCase().includes(search) ||
+          (c.section && c.section.toLowerCase().includes(search))
+      )
     );
   }, [allClasses, searchTerm]);
 

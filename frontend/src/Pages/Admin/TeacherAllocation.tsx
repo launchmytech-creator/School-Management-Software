@@ -17,6 +17,7 @@ import { AllocationTabs } from "../../components/teacher/AllocationTabs";
 import { AllocationFilterBar } from "../../components/teacher/AllocationFilterBar";
 import { AllocationTable } from "../../components/teacher/AllocationTable";
 import EmptyState from "../../components/common/EmptyState";
+import { sortByGrade } from "../../lib/utils";
 import PageHeader from "../../components/common/PageHeader";
 
 type FilterOption = "all" | "assigned" | "unassigned";
@@ -60,12 +61,15 @@ const TeacherAllocation: React.FC = () => {
   });
 
   const filteredClasses = useMemo(() => {
+    let result: typeof classes;
     if (filterOption === "assigned") {
-      return classes.filter((c) => c.inchargeId !== null);
+      result = classes.filter((c) => c.inchargeId !== null);
     } else if (filterOption === "unassigned") {
-      return classes.filter((c) => c.inchargeId === null);
+      result = classes.filter((c) => c.inchargeId === null);
+    } else {
+      result = classes;
     }
-    return classes;
+    return sortByGrade(result);
   }, [classes, filterOption]);
 
   const handleAssignIncharge = async () => {

@@ -4,6 +4,7 @@ import PageHeader from "../../components/common/PageHeader";
 import FilterBar from "../../components/common/FilterBar";
 import { AddSubjectModal } from "../../components/modals/AddSubjectModal";
 import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
+import EditSubjectModal from "../../components/modals/EditSubjectModal";
 import { useNotification } from "../../context/NotificationContext";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import { useClassById } from "../../hooks/queries/useClasses";
@@ -15,7 +16,7 @@ import {
 } from "../../hooks/mutations/useSubjectMutations";
 import { Button } from "../../components/ui/button";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
-import { Plus, BookOpen, Trash2, ListChecks } from "lucide-react";
+import { Plus, BookOpen, Trash2, Pencil, ListChecks } from "lucide-react";
 import { subjectIcon } from "../../lib/subject-utils";
 
 const ClassSubjects: React.FC = () => {
@@ -31,6 +32,13 @@ const ClassSubjects: React.FC = () => {
     classSubjectId: null as number | null,
     subjectName: "",
   });
+
+  const [editModal, setEditModal] = useState<{
+    isOpen: boolean;
+    subjectId: number;
+    name: string;
+    code: string;
+  }>({ isOpen: false, subjectId: 0, name: "", code: "" });
 
   const { data: classData, isLoading: loadingClass } = useClassById(id || "");
   const { data: subjectsData, isLoading: loadingSubjects, refetch: refetchSubjects } = useSubjectsByClass(
@@ -113,6 +121,22 @@ const ClassSubjects: React.FC = () => {
     }
   };
 
+  const handleEditSubject = async (classSubject: typeof subjects[0]) => {
+    try {
+      const subject = await import("../../services/subjectService").then((m) =>
+        m.subjectService.getSubjectById(classSubject.subjectId),
+      );
+      setEditModal({
+        isOpen: true,
+        subjectId: classSubject.subjectId,
+        name: subject.name,
+        code: subject.code || "",
+      });
+    } catch {
+      showNotification("Failed to load subject details", "error");
+    }
+  };
+
   const handleDeleteSubject = (classSubjectId: number, subjectName: string) => {
     setDeleteDialog({ isOpen: true, classSubjectId, subjectName });
   };
@@ -188,6 +212,7 @@ const ClassSubjects: React.FC = () => {
               key={subject.id}
               subject={subject}
               onManageChapters={() => handleManageChapters(subject.subjectId)}
+              onEdit={() => handleEditSubject(subject)}
               onDelete={() => handleDeleteSubject(subject.id, subject.subjectName)}
             />
           ))}
@@ -220,6 +245,18 @@ const ClassSubjects: React.FC = () => {
         loading={createSubjectMutation.isPending || assignSubjectMutation.isPending}
       />
 
+      <EditSubjectModal
+        isOpen={editModal.isOpen}
+        onClose={() => setEditModal({ ...editModal, isOpen: false })}
+        subjectId={editModal.subjectId}
+        currentName={editModal.name}
+        currentCode={editModal.code}
+        onSuccess={() => {
+          refetchSubjects();
+          showNotification("Subject updated successfully", "success");
+        }}
+      />
+
       <ConfirmDialog
         isOpen={deleteDialog.isOpen}
         onClose={() => setDeleteDialog({ isOpen: false, classSubjectId: null, subjectName: "" })}
@@ -245,10 +282,11 @@ interface SubjectCardProps {
     academicYearName: string;
   };
   onManageChapters: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }
 
-const SubjectCard: React.FC<SubjectCardProps> = ({ subject, onManageChapters, onDelete }) => {
+const SubjectCard: React.FC<SubjectCardProps> = ({ subject, onManageChapters, onEdit, onDelete }) => {
   const { icon: subjectIconName, bg: iconBg, text: iconText } = subjectIcon(subject.subjectName);
   const { data: chapters = [] } = useChapters(subject.subjectId);
 
@@ -263,12 +301,20 @@ const SubjectCard: React.FC<SubjectCardProps> = ({ subject, onManageChapters, on
             {subjectIconName}
           </span>
         </div>
-        <button
-          onClick={onDelete}
-          className="p-2 hover:bg-rose-50 rounded-lg transition-colors"
-        >
-          <Trash2 className="w-4 h-4 text-rose-400" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onEdit}
+            className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            <Pencil className="w-4 h-4 text-blue-400" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="p-2 hover:bg-rose-50 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4 text-rose-400" />
+          </button>
+        </div>
       </div>
 
       <h3 className="text-lg font-bold text-slate-900 mb-1">{subject.subjectName}</h3>

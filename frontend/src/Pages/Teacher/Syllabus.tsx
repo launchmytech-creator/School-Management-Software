@@ -11,6 +11,7 @@ import { useUpdateChapterStatus } from '../../hooks/mutations/useSubjectMutation
 import { type TeacherAllocation } from '../../types/teacher';
 import { type ChapterWithStatus } from '../../services/syllabusService';
 import { BookMarked } from 'lucide-react';
+import { gradeRank } from '../../lib/utils';
 
 interface TeacherSubjectProgress {
   allocationId: number;
@@ -250,7 +251,9 @@ const TeacherSyllabus: React.FC<TeacherSyllabusProps> = ({
           />
         ) : (
           <div className="space-y-4">
-            {Object.values(groupedByClass).map((classGroup) => (
+            {Object.values(groupedByClass).sort(
+              (a, b) => gradeRank(a.className) - gradeRank(b.className) || (a.classSection || '').localeCompare(b.classSection || '')
+            ).map((classGroup) => (
               <ClassSyllabusCard
                 key={`${classGroup.classId}-${classGroup.className}`}
                 classGroup={classGroup}

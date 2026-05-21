@@ -3,6 +3,7 @@ import { useAcademicYear } from '../context/AcademicYearContext';
 import { useFeeDefaulters } from './queries';
 import { useClasses } from './queries';
 import type { FeeDefaulter } from '../services/feeService';
+import { sortByGrade } from '../lib/utils';
 
 interface UseFeeDefaultersPageReturn {
   classes: { id: string; name: string }[];
@@ -29,7 +30,7 @@ export const useFeeDefaultersPage = (): UseFeeDefaultersPageReturn => {
   });
 
   const { data: classesData } = useClasses(selectedYear?.id);
-  const classes = classesData?.map(c => ({ id: String(c.id), name: c.name })) ?? [];
+  const classes = sortByGrade(classesData?.map(c => ({ id: String(c.id), name: c.name })) ?? []);
 
   const totalDue = useMemo(() => 
     defaulters.reduce((sum, d) => sum + d.totalDue, 0), 

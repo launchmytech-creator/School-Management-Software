@@ -203,7 +203,7 @@ export const ExamResultCard: React.FC<ExamResultProps> = ({ examResult, studentI
 
       <div className="px-5 pb-5">
         <button
-          onClick={() => navigate(`/parent/exams?studentId=${studentId}`)}
+          onClick={() => navigate('/parent/exam-results')}
           className="text-sm font-semibold text-[#4A9FD4] hover:underline"
         >
           View All Results

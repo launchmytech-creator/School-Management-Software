@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import { useAllClassesProgress } from '../../hooks/queries/useSyllabus';
+import { gradeRank } from '../../lib/utils';
 import { BookMarked, ChevronRight } from 'lucide-react';
 import { QueryErrorFallback } from '../../components/error';
 
@@ -10,7 +11,9 @@ const SyllabusTracking: React.FC = () => {
   const navigate = useNavigate();
 
   const { data: classesProgressData, isLoading: loadingProgress } = useAllClassesProgress();
-  const classesProgress = classesProgressData?.classes || [];
+  const classesProgress = [...(classesProgressData?.classes || [])].sort(
+    (a, b) => gradeRank(a.className) - gradeRank(b.className) || (a.classSection || '').localeCompare(b.classSection || '')
+  );
 
   const getProgressColor = (percentage: number) => {
     if (percentage >= 80) return 'text-emerald-600 bg-emerald-50';

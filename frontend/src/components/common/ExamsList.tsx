@@ -13,6 +13,7 @@ import { useClasses } from "../../hooks/queries";
 import { Plus, GraduationCap, ArrowLeft, FileText } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import { sortByGrade } from "../../lib/utils";
 import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
 import type { Class } from "../../types/class";
 
@@ -54,12 +55,14 @@ const ExamsList: React.FC<ExamsListProps> = ({ layout }) => {
   const deleteExam = useDeleteExam();
 
   const filteredClasses = useMemo(() => {
-    if (!classSearch.trim()) return classes;
+    if (!classSearch.trim()) return sortByGrade(classes);
     const s = classSearch.toLowerCase();
-    return classes.filter(
-      (c) =>
-        c.name.toLowerCase().includes(s) ||
-        (c.section && c.section.toLowerCase().includes(s)),
+    return sortByGrade(
+      classes.filter(
+        (c) =>
+          c.name.toLowerCase().includes(s) ||
+          (c.section && c.section.toLowerCase().includes(s)),
+      )
     );
   }, [classes, classSearch]);
 

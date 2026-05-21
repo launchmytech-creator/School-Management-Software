@@ -40,7 +40,12 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   const { data: chapters = [] } = useChapters(subject.subjectId);
 
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+    <div
+      onClick={() =>
+        (window.location.href = `/admin/classes/${classId}/subjects/${subject.subjectId}/chapters`)
+      }
+      className="bg-white p-6 rounded-2xl cursor-pointer border border-slate-100 shadow-sm hover:shadow-md transition-all"
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">

@@ -31,6 +31,8 @@ const ParentRoutes = () => (
         <Route path="syllabus/subject/:subjectId" element={<SyllabusChapterProgress />} />
         <Route path="fees" element={<ParentFeeStatus />} />
         <Route path="exam-results" element={<ParentExamResults />} />
+        <Route path="exam-results/exam/:examId" element={<ParentExamResults />} />
+        <Route path="exam-results/exam/:examId/subject/:subjectName" element={<ParentExamResults />} />
         <Route path="announcements" element={<Announcements layout="parent" />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

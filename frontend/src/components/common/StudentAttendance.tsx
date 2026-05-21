@@ -27,7 +27,7 @@ import {
   CalendarCheck,
   Lock,
 } from "lucide-react";
-import { getLocalDateString } from "../../lib/utils";
+import { getLocalDateString, sortByGrade } from "../../lib/utils";
 import { QueryErrorFallback } from "../../components/error";
 
 type AttendanceStatus = "present" | "absent";
@@ -287,7 +287,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
                     Class
                   </label>
                   <div className="flex items-start gap-2 flex-wrap">
-                    {inchargeClasses.map((cls) => (
+                    {sortByGrade(inchargeClasses).map((cls) => (
                       <button
                         key={cls.id}
                         onClick={() => setSelectedClass(cls)}
@@ -352,7 +352,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ layout }) => {
                 <option value="">
                   {loadingClasses ? "Loading classes..." : "Select a class"}
                 </option>
-                {allClasses.map((cls) => (
+                {sortByGrade(allClasses).map((cls) => (
                   <option key={cls.id} value={cls.id}>
                     {cls.name} {cls.section ? `- Section ${cls.section}` : ""}
                   </option>
