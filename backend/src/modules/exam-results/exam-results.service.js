@@ -145,7 +145,7 @@ class ExamResultsService {
   async getStudentResults(studentId, schoolId, filters = {}) {
     let query = `
       SELECT er.*, 
-             es.max_marks, es.exam_date,
+             e.id as exam_id, es.max_marks, es.exam_date,
              sub.name as subject_name, sub.code as subject_code,
              e.name as exam_name, e.exam_type, e.start_date,
              ay.year_name as academic_year_name

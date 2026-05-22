@@ -222,7 +222,7 @@ class ParentsService {
     const query = `
       SELECT s.id, s.admission_number, s.full_name, s.date_of_birth, 
              s.gender, s.roll_number, s.status,
-             c.name as class_name, c.section as class_section
+             c.id as class_id, c.name as class_name, c.section as class_section
       FROM students s
       LEFT JOIN classes c ON s.current_class_id = c.id
       WHERE s.parent_id = $1 AND s.school_id = $2
