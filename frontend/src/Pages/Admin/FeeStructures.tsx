@@ -120,7 +120,7 @@ const FeeStructures: React.FC = () => {
         ) : filteredGroups.length > 0 ? (
           <div className="space-y-4">
             {filteredGroups.map((group) => {
-              const groupKey = `${group.classId}-${group.academicYearId}`;
+              const groupKey = `${group.classId}-${group.academicYearId}-${group.feeTerms}`;
               return (
                 <FeeStructureGroupCard
                   key={groupKey}
@@ -184,7 +184,7 @@ const FeeStructures: React.FC = () => {
           onClose={() => setDeleteGroupDialogState({ isOpen: false, group: null, loading: false })}
           onConfirm={confirmDeleteGroup}
           title="Delete All Fee Components"
-          message={deleteGroupDialog.group ? `Are you sure you want to delete ALL fee components for ${deleteGroupDialog.group.className} - ${deleteGroupDialog.group.academicYearName}? This will remove all ${deleteGroupDialog.group.components.length} components. This action cannot be undone.` : ""}
+          message={deleteGroupDialog.group ? `Are you sure you want to delete all ${deleteGroupDialog.group.components.length} fee components for ${deleteGroupDialog.group.className} (${deleteGroupDialog.group.academicYearName} — ${deleteGroupDialog.group.feeTerms === 1 ? 'Annual' : deleteGroupDialog.group.feeTerms === 2 ? 'Half-Yearly' : deleteGroupDialog.group.feeTerms === 4 ? 'Quarterly' : 'Monthly'} billing)? This action cannot be undone.` : ""}
           confirmText="Delete All"
           variant="danger"
           loading={deleteGroupDialog.loading}

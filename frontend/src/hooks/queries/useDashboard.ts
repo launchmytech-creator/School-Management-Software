@@ -109,6 +109,7 @@ interface TeacherDashboardData {
 
 export interface ChildExamResult {
   examName: string;
+  examType: string;
   examDate: string;
   overallPercentage: number;
   subjects: Array<{
@@ -133,6 +134,7 @@ export interface ChildOverview {
     full_name: string;
     class_name: string;
     class_section: string | null;
+    roll_number: string | null;
   };
   fee_summary: {
     total_fees: string;

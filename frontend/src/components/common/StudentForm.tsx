@@ -216,7 +216,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ layout, mode }) => {
           finalParentId = newParent.id;
           showNotification('New parent created successfully!', 'success');
         } catch (parentError: any) {
-          showNotification(parentError.response?.data?.message || 'Failed to create parent. Email might already exist.', 'error');
+          showNotification(parentError.message || 'Failed to create parent. Email might already exist.', 'error');
           setLoading(false);
           return;
         }

@@ -63,12 +63,29 @@ const StudentFeeDetail: React.FC<StudentFeeDetailProps> = ({
     tx: null as unknown as FeeTransaction,
   });
 
-  const feeSummary = useMemo(() => computeFeeSummary(feeData), [feeData]);
+  const feeSummary = useMemo(() => computeFeeSummary(feeData, "amountDue"), [feeData]);
 
-  const sortedFees = useMemo(
-    () => [...feeData].sort((a, b) => (a.termNumber ?? 999) - (b.termNumber ?? 999)),
-    [feeData],
-  );
+  // Group by billing cycle (feeTerms), then sort terms within each group
+  const feeGroups = useMemo(() => {
+    const groups: Record<string, { cycle: string; feeTerms: number | null; txs: typeof feeData }> = {};
+    for (const tx of feeData) {
+      const key = String(tx.feeTerms ?? 0);
+      if (!groups[key]) {
+        groups[key] = { cycle: tx.billingCycle, feeTerms: tx.feeTerms, txs: [] };
+      }
+      groups[key].txs.push(tx);
+    }
+    // Sort txs within each group by termNumber
+    for (const g of Object.values(groups)) {
+      g.txs.sort((a, b) => (a.termNumber ?? 999) - (b.termNumber ?? 999));
+    }
+    // Return groups ordered by feeTerms ascending (Annual last)
+    return Object.values(groups).sort((a, b) => {
+      const ta = a.feeTerms ?? 0;
+      const tb = b.feeTerms ?? 0;
+      return ta > tb ? 1 : ta < tb ? -1 : 0;
+    });
+  }, [feeData]);
 
   const handleCollect = (tx: FeeTransaction) => {
     setPaymentModal({
@@ -180,61 +197,86 @@ const StudentFeeDetail: React.FC<StudentFeeDetailProps> = ({
             paidPercentage={feeSummary.paidPercentage}
           />
 
-          <div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight mb-4">
-              Term-wise Breakdown
-            </h3>
-            <div className="space-y-4">
-              {sortedFees.map((tx) => (
-                <div key={tx.id} className="rounded-xl border border-slate-200 overflow-hidden bg-white">
-                  <FeeTransactionCard
-                    termNumber={tx.termNumber}
-                    academicYearName={tx.academicYearName}
-                    status={tx.status}
-                    originalAmount={tx.originalAmount}
-                    amountPaid={tx.amountPaid}
-                    amountPending={tx.amountPending}
-                    dueDate={tx.dueDate}
-                    waiverAmount={tx.waiverAmount}
-                    paymentDate={tx.paymentDate}
-                    paymentMode={tx.paymentMode}
-                    receiptNumber={tx.receiptNumber}
-                    studentName={tx.studentName}
-                    className={tx.className}
-                    onDownloadReceipt={() => handleReceipt(tx)}
-                  />
-                  {(canApplyWaiver || canEdit || tx.status !== 'paid') && (
-                    <div className="flex flex-wrap items-center justify-end gap-2 px-4 py-3 bg-slate-50 border-t border-slate-100">
-                      {canEdit && tx.status !== 'paid' && (
-                        <button
-                          onClick={() => handleEdit(tx)}
-                          className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors whitespace-nowrap"
-                        >
-                          Edit
-                        </button>
-                      )}
-                      {canApplyWaiver && tx.status !== 'paid' && tx.amountPending > 0 && (
-                        <button
-                          onClick={() => handleWaive(tx)}
-                          className="px-3 py-1.5 text-xs font-semibold text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors whitespace-nowrap"
-                        >
-                          Waive
-                        </button>
-                      )}
-                      {tx.status !== 'paid' && (
-                        <button
-                          onClick={() => handleCollect(tx)}
-                          className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm whitespace-nowrap"
-                        >
-                          <IndianRupee className="size-3" />
-                          Collect Fee
-                        </button>
-                      )}
+          <div className="space-y-8">
+            {feeGroups.map((group) => {
+              const groupTotal = group.txs.reduce((s, t) => s + t.amountDue, 0);
+              const groupPaid  = group.txs.reduce((s, t) => s + t.amountPaid, 0);
+              const groupPending = groupTotal - groupPaid;
+              return (
+                <div key={String(group.feeTerms)}>
+                  {/* billing-cycle header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                        {group.cycle} Fees
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {group.txs.length} {group.feeTerms === 1 ? 'payment' : 'instalment' + (group.txs.length !== 1 ? 's' : '')}
+                      </span>
                     </div>
-                  )}
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                      <span className="text-emerald-600 font-semibold">Paid ₹{groupPaid.toLocaleString('en-IN')}</span>
+                      {groupPending > 0 && <span className="text-rose-600 font-semibold">Due ₹{groupPending.toLocaleString('en-IN')}</span>}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {group.txs.map((tx) => (
+                      <div key={tx.id} className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+                        <FeeTransactionCard
+                          termNumber={tx.termNumber}
+                          academicYearName={tx.academicYearName}
+                          status={tx.status}
+                          originalAmount={tx.originalAmount}
+                          amountPaid={tx.amountPaid}
+                          amountPending={tx.amountPending}
+                          dueDate={tx.dueDate}
+                          waiverAmount={tx.waiverAmount}
+                          paymentDate={tx.paymentDate}
+                          paymentMode={tx.paymentMode}
+                          receiptNumber={tx.receiptNumber}
+                          studentName={tx.studentName}
+                          className={tx.className}
+                          onDownloadReceipt={() => handleReceipt(tx)}
+                        />
+                        {(canApplyWaiver || canEdit || tx.status !== 'paid') && (
+                          <div className="flex flex-wrap items-center justify-end gap-2 px-4 py-3 bg-slate-50 border-t border-slate-100">
+                            {canEdit && tx.status !== 'paid' && (
+                              <button
+                                type="button"
+                                onClick={() => handleEdit(tx)}
+                                className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors whitespace-nowrap"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {canApplyWaiver && tx.status !== 'paid' && tx.amountPending > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleWaive(tx)}
+                                className="px-3 py-1.5 text-xs font-semibold text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors whitespace-nowrap"
+                              >
+                                Waive
+                              </button>
+                            )}
+                            {tx.status !== 'paid' && (
+                              <button
+                                type="button"
+                                onClick={() => handleCollect(tx)}
+                                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm whitespace-nowrap"
+                              >
+                                <IndianRupee className="size-3" />
+                                Collect Fee
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </>
       ) : (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BookOpen, ArrowRight, Trophy } from 'lucide-react';
 import type { ChildExamResult } from '../../../hooks/queries/useDashboard';
 
 interface ExamResultProps {
@@ -7,61 +8,54 @@ interface ExamResultProps {
   studentId: number;
 }
 
-const getGradeColor = (grade: string): string => {
-  const colors: Record<string, string> = {
-    'A+': '#16a34a',
-    'A': '#16a34a',
-    'A-': '#22c55e',
-    'B+': '#eab308',
-    'B': '#eab308',
-    'B-': '#f59e0b',
-    'C': '#f97316',
-    'D': '#ef4444',
-    'F': '#dc2626',
+const gradeStyle = (grade: string): { bg: string; text: string } => {
+  const map: Record<string, { bg: string; text: string }> = {
+    'A+': { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+    'A':  { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+    'B':  { bg: 'bg-blue-100',    text: 'text-blue-700'    },
+    'C':  { bg: 'bg-amber-100',   text: 'text-amber-700'   },
+    'D':  { bg: 'bg-orange-100',  text: 'text-orange-700'  },
+    'F':  { bg: 'bg-rose-100',    text: 'text-rose-700'    },
   };
-  return colors[grade] || '#4A9FD4';
+  return map[grade] ?? { bg: 'bg-slate-100', text: 'text-slate-600' };
 };
 
-const CircularProgress: React.FC<{ percentage: number }> = ({ percentage }) => {
-  const radius = 36;
-  const stroke = 6;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - percentage / 100);
-  const color = percentage >= 75 ? '#10b981' : percentage >= 50 ? '#f59e0b' : '#ef4444';
+const barColor = (pct: number) => {
+  if (pct >= 75) return 'bg-emerald-400';
+  if (pct >= 50) return 'bg-amber-400';
+  return 'bg-rose-400';
+};
 
+const ringColor = (pct: number) => {
+  if (pct >= 75) return '#10b981';
+  if (pct >= 50) return '#f59e0b';
+  return '#ef4444';
+};
+
+const ringTrack = (pct: number) => {
+  if (pct >= 75) return '#d1fae5';
+  if (pct >= 50) return '#fef3c7';
+  return '#fee2e2';
+};
+
+const OverallRing: React.FC<{ pct: number }> = ({ pct }) => {
+  const r = 32;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - Math.min(pct, 100) / 100);
   return (
-    <div className="relative w-[96px] h-[96px] flex items-center justify-center">
-      <svg width="96" height="96" className="absolute">
-        <circle
-          cx="48"
-          cy="48"
-          r={radius}
-          fill="none"
-          stroke="#e2e8f0"
-          strokeWidth={stroke}
-        />
-        <circle
-          cx="48"
-          cy="48"
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={stroke}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          transform="rotate(-90 48 48)"
-          className="transition-all duration-500"
-        />
+    <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
+      <svg width="80" height="80" className="absolute -rotate-90">
+        <circle cx="40" cy="40" r={r} fill="none" stroke={ringTrack(pct)} strokeWidth="7" />
+        <circle cx="40" cy="40" r={r} fill="none" stroke={ringColor(pct)} strokeWidth="7"
+          strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" />
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xl font-black text-slate-800">
-          {Math.round(percentage)}%
-        </span>
-      </div>
+      <span className="relative text-sm font-black text-slate-800">{pct}%</span>
     </div>
   );
 };
+
+const formatDate = (d: string) =>
+  new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
 export const ExamResultCard: React.FC<ExamResultProps> = ({ examResult, studentId }) => {
   const navigate = useNavigate();
@@ -69,144 +63,102 @@ export const ExamResultCard: React.FC<ExamResultProps> = ({ examResult, studentI
   if (!examResult) {
     return (
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 bg-slate-50 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
-              <span
-                className="material-symbols-outlined text-lg text-purple-500"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                school
-              </span>
-            </div>
-            <h3 className="font-bold text-slate-800">Exam Results</h3>
+        <div className="px-5 py-3.5 flex items-center gap-2 border-b border-slate-100">
+          <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center">
+            <BookOpen size={14} className="text-purple-500" />
           </div>
+          <span className="font-bold text-slate-800 text-sm">Exam Results</span>
         </div>
         <div className="p-8 text-center">
-          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
-            <span className="material-symbols-outlined text-3xl text-slate-300">
-              assignment
-            </span>
+          <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
+            <BookOpen size={24} className="text-slate-300" />
           </div>
-          <p className="text-sm font-medium text-slate-500">No exam results yet</p>
+          <p className="text-sm font-semibold text-slate-400">No exam results yet</p>
         </div>
       </div>
     );
   }
 
-  const { examName, examDate, overallPercentage, subjects } = examResult;
-  const maxMarks = Math.max(...subjects.map((s) => s.maxMarks));
-  const grade = subjects[0]?.grade || 'N/A';
-  const gradeColor = getGradeColor(grade);
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
+  const { examName, examType, examDate, overallPercentage, subjects } = examResult;
+  const topSubject = [...subjects].sort((a, b) => (b.marksObtained / b.maxMarks) - (a.marksObtained / a.maxMarks))[0];
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 bg-slate-50 border-b border-slate-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
-              <span
-                className="material-symbols-outlined text-lg text-purple-500"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                school
-              </span>
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-800">Latest Exam</h3>
-              <p className="text-xs text-slate-500">
-                {examName} • {formatDate(examDate)}
-              </p>
-            </div>
+      {/* header */}
+      <div className="px-5 py-3.5 flex items-center justify-between border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center">
+            <BookOpen size={14} className="text-purple-500" />
           </div>
-          <span
-            className="px-3 py-1.5 rounded-lg font-bold text-sm"
-            style={{ backgroundColor: gradeColor + '20', color: gradeColor }}
-          >
-            Grade: {grade}
-          </span>
+          <div>
+            <span className="font-bold text-slate-800 text-sm">Latest Exam</span>
+            <p className="text-[10px] text-slate-400 leading-none mt-0.5">{examType} · {formatDate(examDate)}</p>
+          </div>
         </div>
+        <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg max-w-30 truncate">
+          {examName}
+        </span>
       </div>
 
-      <div className="p-5">
-        <div className="flex items-center gap-6">
-          <CircularProgress percentage={overallPercentage} />
-
-          <div className="flex-1 flex justify-around">
-            <div className="text-center">
-              <p className="text-2xl font-black text-slate-800">
-                {subjects.length}
-              </p>
-              <p className="text-xs font-semibold text-slate-500 mt-1">Subjects</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-black text-slate-800">
-                {maxMarks}
-              </p>
-              <p className="text-xs font-semibold text-slate-500 mt-1">Max Marks</p>
+      <div className="p-5 space-y-4">
+        {/* overall score row */}
+        <div className="flex items-center gap-4">
+          <OverallRing pct={overallPercentage} />
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-slate-500 mb-1">Overall Score</p>
+            <p className="text-2xl font-black text-slate-800">{overallPercentage}<span className="text-sm font-semibold text-slate-400">%</span></p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] text-slate-400">{subjects.length} subjects</span>
+              {topSubject && (
+                <>
+                  <span className="w-0.5 h-3 bg-slate-200 rounded" />
+                  <span className="flex items-center gap-1 text-[10px] text-amber-600 font-semibold">
+                    <Trophy size={9} /> Best: {topSubject.subjectName}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="mt-5 pt-5 border-t border-slate-100">
-          <p className="text-sm font-bold text-slate-700 mb-3">Subject Performance</p>
-          <div className="space-y-3">
-            {subjects.slice(0, 4).map((subject, index) => (
-              <div key={subject.subjectId || index}>
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-sm font-medium text-slate-700 truncate w-28">
-                    {subject.subjectName}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-slate-500">
-                      {subject.marksObtained}/{subject.maxMarks}
-                    </span>
-                    <span
-                      className="px-2 py-0.5 rounded text-xs font-bold"
-                      style={{
-                        backgroundColor: getGradeColor(subject.grade) + '20',
-                        color: getGradeColor(subject.grade),
-                      }}
-                    >
-                      {subject.grade}
-                    </span>
+        {/* subject bars */}
+        <div className="space-y-2.5">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Subject Breakdown</p>
+          {subjects.slice(0, 5).map((s, i) => {
+            const pct = s.maxMarks > 0 ? Math.round((s.marksObtained / s.maxMarks) * 100) : 0;
+            const gs = gradeStyle(s.grade);
+            return (
+              <div key={s.subjectId ?? i}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-semibold text-slate-700 truncate w-28">{s.subjectName}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-slate-400">{s.marksObtained}/{s.maxMarks}</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${gs.bg} ${gs.text}`}>{s.grade}</span>
                   </div>
                 </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all duration-300"
-                    style={{
-                      width: `${(subject.marksObtained / subject.maxMarks) * 100}%`,
-                      backgroundColor: getGradeColor(subject.grade),
-                    }}
+                    className={`h-full rounded-full ${barColor(pct)}`}
+                    style={{ width: `${pct}%` }}
                   />
                 </div>
               </div>
-            ))}
-          </div>
-          {subjects.length > 4 && (
-            <p className="text-xs text-slate-400 mt-3">
-              +{subjects.length - 4} more subjects
-            </p>
+            );
+          })}
+          {subjects.length > 5 && (
+            <p className="text-[10px] text-slate-400">+{subjects.length - 5} more subjects</p>
           )}
         </div>
       </div>
 
-      <div className="px-5 pb-5">
+      {/* footer */}
+      <div className="px-5 pb-4">
         <button
+          type="button"
           onClick={() => navigate(`/parent/exams?studentId=${studentId}`)}
-          className="text-sm font-semibold text-[#4A9FD4] hover:underline"
+          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-600 transition-colors"
         >
-          View All Results
+          View All Results <ArrowRight size={12} />
         </button>
       </div>
     </div>

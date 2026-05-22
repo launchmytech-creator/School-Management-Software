@@ -1,6 +1,7 @@
 import { apiRequest } from './api';
 import { subjectService } from './subjectService';
 import { classService } from './classService';
+import { studentService } from './studentService';
 import { logger } from '../lib/logger';
 
 export interface SyllabusCompletion {

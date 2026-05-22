@@ -4,7 +4,7 @@ import { Search, IndianRupee } from 'lucide-react';
 import { useAcademicYear } from '../../context/AcademicYearContext';
 import { useClasses } from '../../hooks/queries/useClasses';
 import { useStudents } from '../../hooks/queries/useStudents';
-import { useFeeTransactions } from '../../hooks/queries/useFeeTransactions';
+import { useAllFeeTransactions } from '../../hooks/queries/useFeeTransactions';
 import PageHeader from '../../components/common/PageHeader';
 import FilterBar from '../../components/common/FilterBar';
 import Pagination from '../../components/common/Pagination';
@@ -44,7 +44,7 @@ const StudentFeeList: React.FC<StudentFeeListProps> = ({ layout }) => {
   } = useStudents({ classId: classId || '' }, !!classId);
 
   const academicYearId = selectedYear?.id ? parseInt(selectedYear.id) : undefined;
-  const { data: allTransactions = [] } = useFeeTransactions({
+  const { data: allTransactions = [] } = useAllFeeTransactions({
     classId: classId ? parseInt(classId) : undefined,
     academicYearId,
   });
@@ -61,7 +61,7 @@ const StudentFeeList: React.FC<StudentFeeListProps> = ({ layout }) => {
   const studentsWithFee = useMemo(() => {
     return students.map((s) => {
       const txs = txByStudent.get(s.id) || [];
-      const summary = computeFeeSummary(txs);
+      const summary = computeFeeSummary(txs, "amountDue");
       let feeStatusLocal: StudentFeeRow['feeStatusLocal'] = 'none';
       if (txs.length > 0) {
         if (summary.paidPercentage === 100) feeStatusLocal = 'paid';

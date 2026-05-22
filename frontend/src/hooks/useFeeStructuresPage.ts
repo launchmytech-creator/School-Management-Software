@@ -132,7 +132,7 @@ export const useFeeStructuresPage = (): UseFeeStructuresPageReturn => {
 
   useEffect(() => {
     if (groupedStructuresData) {
-      setExpandedGroups(new Set(groupedStructuresData.map((g) => `${g.classId}-${g.academicYearId}`)));
+      setExpandedGroups(new Set(groupedStructuresData.map((g) => `${g.classId}-${g.academicYearId}-${g.feeTerms}`)));
     }
   }, [groupedStructuresData]);
 
@@ -190,10 +190,12 @@ export const useFeeStructuresPage = (): UseFeeStructuresPageReturn => {
       (sum, g) => sum + g.totalAnnualFee,
       0,
     );
+    const uniqueClassYearPairs = new Set(groupedStructures.map(g => `${g.classId}-${g.academicYearId}`));
+    const classCount = uniqueClassYearPairs.size;
     return {
-      totalClasses: groupedStructures.length,
+      totalClasses: classCount,
       totalAnnualRevenue,
-      avgPerClass: totalAnnualRevenue / (groupedStructures.length || 1),
+      avgPerClass: totalAnnualRevenue / (classCount || 1),
     };
   }, [groupedStructures]);
 
@@ -321,6 +323,7 @@ export const useFeeStructuresPage = (): UseFeeStructuresPageReturn => {
       await feeStructureService.deleteFeeStructureGroup(
         deleteGroupDialog.group.classId,
         deleteGroupDialog.group.academicYearId,
+        deleteGroupDialog.group.feeTerms,
       );
       showNotification("All fee components deleted successfully", "success");
       setDeleteGroupDialog({ isOpen: false, group: null, loading: false });

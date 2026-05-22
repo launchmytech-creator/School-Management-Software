@@ -215,7 +215,7 @@ const ClassDetail: React.FC = () => {
               subjects.map((sub) => (
                 <SubjectCard
                   key={sub.id}
-                  subject={sub}
+                  subject={{ ...sub, id: String(sub.id) }}
                   classId={id || ""}
                   allocations={allocations}
                 />
