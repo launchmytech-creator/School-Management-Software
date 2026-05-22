@@ -11,6 +11,7 @@ export interface Exam {
   endDate: string;
   weightage?: number;
   description?: string;
+  subjectCount: number;
   subjects?: ExamSubject[];
 }
 
@@ -119,6 +120,7 @@ const mapExamFromBackend = (data: BackendExam): Exam => ({
   endDate: data.end_date,
   weightage: data.weightage || undefined,
   description: data.description || undefined,
+  subjectCount: Number(data.subject_count) || 0,
   subjects: data.subjects?.map(mapExamSubjectFromBackend) || [],
 });
 

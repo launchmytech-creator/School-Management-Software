@@ -31,6 +31,7 @@ interface BackendLinkedStudent {
   gender: string | null;
   roll_number: string | null;
   status: string;
+  class_id: number | null;
   class_name: string | null;
   class_section: string | null;
 }
@@ -112,6 +113,7 @@ export const parentService = {
       gender: s.gender,
       rollNumber: s.roll_number,
       status: s.status,
+      classId: s.class_id,
       className: s.class_name,
       classSection: s.class_section,
     }));

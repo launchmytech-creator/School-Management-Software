@@ -39,6 +39,7 @@ export interface LinkedStudent {
   gender: string | null;
   rollNumber: string | null;
   status: string;
+  classId: number | null;
   className: string | null;
   classSection: string | null;
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useSelectedChild } from '../../context/SelectedChildContext';
 import { useParentChildren } from '../../hooks/queries';
 import { GraduationCap } from 'lucide-react';
@@ -8,15 +9,15 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
 import ParentExamList from '../../components/parent/exam/ExamList';
 import ParentExamSubjectGrid from '../../components/parent/exam/ExamSubjectGrid';
-import ParentExamMarksDetail from '../../components/parent/exam/ExamMarksDetail';
 
 const EMPTY_CHILDREN: any[] = [];
 
 const ParentExamResults: React.FC = () => {
-  const { examId, subjectName } = useParams<{ examId?: string; subjectName?: string }>();
+  const { examId } = useParams<{ examId?: string }>();
   const { selectedChildId } = useSelectedChild();
+  const { user } = useAuth();
 
-  const { data: childrenData, isLoading: childrenLoading } = useParentChildren(0);
+  const { data: childrenData, isLoading: childrenLoading } = useParentChildren(Number(user?.id));
   const children = childrenData || EMPTY_CHILDREN;
   const selectedChild = children.find((c: any) => c.id === selectedChildId);
 
@@ -49,6 +50,14 @@ const ParentExamResults: React.FC = () => {
     );
   }
 
+  if (examId) {
+    return (
+      <div className="max-w-7xl mx-auto space-y-6 pb-10">
+        <ParentExamSubjectGrid examId={parseInt(examId)} />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-10">
       <PageHeader
@@ -61,17 +70,7 @@ const ParentExamResults: React.FC = () => {
           ],
         }}
       />
-
-      {subjectName && examId ? (
-        <ParentExamMarksDetail
-          examId={parseInt(examId)}
-          subjectName={decodeURIComponent(subjectName)}
-        />
-      ) : examId ? (
-        <ParentExamSubjectGrid examId={parseInt(examId)} />
-      ) : (
-        <ParentExamList />
-      )}
+      <ParentExamList />
     </div>
   );
 };

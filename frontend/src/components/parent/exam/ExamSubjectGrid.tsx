@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useAcademicYear } from '../../../context/AcademicYearContext';
 import { useSelectedChild } from '../../../context/SelectedChildContext';
@@ -7,7 +7,7 @@ import { useParentChildren, useStudentResults } from '../../../hooks/queries';
 import type { LinkedStudent } from '../../../types/parent';
 import type { StudentResult } from '../../../services/examResultService';
 import { subjectIcon } from '../../../lib/subject-utils';
-import { ChevronRight, ArrowLeft, TrendingUp, CheckCircle, XCircle } from 'lucide-react';
+import { TrendingUp, CheckCircle, XCircle } from 'lucide-react';
 import { LoadingSpinner } from '../../common/LoadingSpinner';
 import PageHeader from '../../common/PageHeader';
 import EmptyState from '../../common/EmptyState';
@@ -79,22 +79,11 @@ const ParentExamSubjectGrid: React.FC<ParentExamSubjectGridProps> = ({ examId })
 
   const examInfo = subjectResults[0] || null;
 
-  const handleSubjectClick = (subjectName: string) => {
-    navigate(`/parent/exam-results/exam/${examId}/subject/${encodeURIComponent(subjectName)}`);
-  };
-
   const getGradeColor = (grade: string) => {
     if (["A+", "A"].includes(grade)) return "text-emerald-600 bg-emerald-50";
     if (["B+", "B"].includes(grade)) return "text-blue-600 bg-blue-50";
     if (["C+", "C"].includes(grade)) return "text-amber-600 bg-amber-50";
     return "text-red-600 bg-red-50";
-  };
-
-  const getPassFailIcon = (grade: string) => {
-    if (["A+", "A", "B+", "B", "C+", "C"].includes(grade)) {
-      return <CheckCircle className="size-4 text-emerald-600" />;
-    }
-    return <XCircle className="size-4 text-red-600" />;
   };
 
   if (isLoading) {
@@ -108,15 +97,6 @@ const ParentExamSubjectGrid: React.FC<ParentExamSubjectGridProps> = ({ examId })
   if (subjectResults.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/parent/exam-results")}
-            className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <span className="text-slate-500">Back to Exam List</span>
-        </div>
         <EmptyState
           icon={TrendingUp}
           title="No subject results found"
@@ -132,15 +112,6 @@ const ParentExamSubjectGrid: React.FC<ParentExamSubjectGridProps> = ({ examId })
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate("/parent/exam-results")}
-          className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <span className="text-slate-500">Back to Exam List</span>
-      </div>
 
       <PageHeader
         title={examInfo?.examName || 'Exam Results'}
@@ -159,10 +130,9 @@ const ParentExamSubjectGrid: React.FC<ParentExamSubjectGridProps> = ({ examId })
           const iconConfig = subjectIcon(subject.subjectName);
           
           return (
-            <button
+            <div
               key={subject.subjectId}
-              onClick={() => handleSubjectClick(subject.subjectName)}
-              className="bg-white rounded-xl border border-slate-200 p-5 text-left hover:shadow-lg hover:border-blue-300 transition-all group"
+              className="bg-white rounded-xl border border-slate-200 p-5"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -176,7 +146,6 @@ const ParentExamSubjectGrid: React.FC<ParentExamSubjectGridProps> = ({ examId })
                     <p className="text-xs text-slate-500">{subject.subjectCode}</p>
                   </div>
                 </div>
-                <ChevronRight className="size-5 text-slate-400 group-hover:text-blue-500 transition-colors" />
               </div>
 
               <div className="space-y-3">
@@ -197,14 +166,18 @@ const ParentExamSubjectGrid: React.FC<ParentExamSubjectGridProps> = ({ examId })
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                   <span className="text-sm font-medium text-slate-700">{subject.percentage}%</span>
                   <div className="flex items-center gap-2">
-                    {getPassFailIcon(subject.grade)}
+                    {subject.grade && ["A+", "A", "B+", "B", "C+", "C"].includes(subject.grade) ? (
+                      <CheckCircle className="size-4 text-emerald-600" />
+                    ) : (
+                      <XCircle className="size-4 text-red-600" />
+                    )}
                     <span className={`px-3 py-1 rounded-full text-sm font-bold ${getGradeColor(subject.grade)}`}>
                       {subject.grade}
                     </span>
                   </div>
                 </div>
               </div>
-            </button>
+            </div>
           );
         })}
       </div>

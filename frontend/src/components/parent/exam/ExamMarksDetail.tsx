@@ -57,7 +57,11 @@ const ParentExamMarksDetail: React.FC<ExamMarksDetailProps> = ({ examId, subject
     const totalMax = examResults.reduce((sum, r) => sum + r.maxMarks, 0);
     const percentage = totalMax > 0 ? Math.round((totalMarks / totalMax) * 100) : 0;
     const totalSubjects = examResults.length;
-    const passedSubjects = examResults.filter((r) => ["A+", "A", "B+", "B", "C+", "C"].includes(r.grade)).length;
+    const passedSubjects = examResults.filter((r) => {
+      if (r.isAbsent) return false;
+      const pct = r.maxMarks > 0 ? (r.marksObtained / r.maxMarks) * 100 : 0;
+      return pct >= 50;
+    }).length;
     
     return {
       totalMarks,

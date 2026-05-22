@@ -28,12 +28,13 @@ export const useExams = (filters: ExamFilters = {}) => {
     queryKey: queryKeys.exams.byFilters(user?.schoolId ?? null, filters),
     queryFn: async () => {
       try {
-        return await examService.getExams(filters.classId);
+        return await examService.getExams(filters.classId, filters.academicYearId);
       } catch (error) {
         handleServiceError(error, 'EXAMS', 'FETCH');
         throw error;
       }
     },
+    enabled: !!filters.classId,
     staleTime: QUERY_STALE_TIME.LISTS,
     ...retryConfig,
   });
